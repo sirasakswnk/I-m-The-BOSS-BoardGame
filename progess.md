@@ -8,7 +8,7 @@
 | Milestone | รายละเอียด | สถานะ |
 | --- | --- | --- |
 | M0 | Scaffold (Vite + React + TS + Tailwind + design tokens) | ✅ เสร็จ (20/10/2026) |
-| M1 | Game Engine (pure TS + tests) | ⬜ ยังไม่เริ่ม |
+| M1 | Game Engine (pure TS + tests) | ✅ เสร็จ (20/10/2026) |
 | M2 | Firebase: Auth, Lobby, Presence, Home | ⬜ |
 | M3 | Host Loop + Security Rules | ⬜ |
 | M4 | Tabletop UI (Desktop) | ⬜ |
@@ -88,9 +88,77 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 - [ ] Deploy — ผู้ใช้เลือกทาง **GitHub** และจะ deploy ทีหลัง (รอสรุปวิธีตอน M9; ถ้าเป็น GitHub Pages ต้องปรับจาก `vercel.json`)
 - [x] Push ไป GitHub — ✅ สำเร็จ (commit `1cd12ed` → branch `main`, ตั้ง `origin` = `https://github.com/sirasakswnk/I-m-The-BOSS-BoardGame.git` แล้ว)
 
-### ขั้นถัดไป — M1 Game Engine (ไม่มี UI / ไม่มี Firebase)
+## M1 — Game Engine ✅ (20/10/2026)
 
-- types + config ครบหัวข้อ 3: `families.ts`, `influenceCards.ts` (98 ใบ), `dealBoard.ts` (16 ช่อง), `dealTiles.ts` (15 แผ่น), `rules.ts`
-- seeded RNG (mulberry32), deck builder, setup, validators, `applyAction`, `tick`, `project`
-- ชุดเทสต์ตาม DoD M1: ข้อมูลกระดาน/การ์ด, กติกาทุกข้อ, simulation 200 เกม, `project()` ไม่รั่วข้อมูลลับ
-- รายงานรายการ `ASSUMPTION` (หัวข้อ 3.6) ให้ผู้ใช้ตอนจบ M1
+### สิ่งที่ทำ
+
+- สร้าง `src/engine/` เป็น **pure TypeScript** ทั้งหมด — ไม่มี import React/Firebase/UI, ไม่แตะ DOM และไม่เรียก `Date.now()` ในลอจิก (รับ `now`/`at` จากผู้เรียก)
+- **Config ตามหัวข้อ 3**
+  - `config/families.ts` — 6 ตระกูลตาม `FAMILY_ORDER` (A–F), 3–6 ผู้เล่น
+  - `config/influenceCards.ts` — การ์ด 98 ใบ: clan 24, travel 21 (18 + wild 3), recruitment 33, stop 10, imTheBoss 10 + type `ClanCard`
+  - `config/dealBoard.ts` — กระดาน 16 ช่อง, กลุ่มสี/`pick`/`requiredInvestors`/`dividends` ตรง plan ทุกช่อง
+  - `config/dealTiles.ts` — 15 แผ่น, `valuePerDividend` 2/3/4/5 ตามช่วงดีล, `endCheckFaces` ของ #10–#14, #15 `autoEnd`
+  - `config/rules.ts` — `STARTING_MONEY=0`, `STARTING_HAND_SIZE=5`, `HAND_LIMIT=12`, `INTERRUPT_MS=5000`, `GRACE_MS=300`, `DEAL_TILE_COUNT=15`, `DRAW_COUNT=3`, `END_CHECK_FIRST_DEAL=10`, `HOST_CLOSE_BUFFER_MS=200`, log limits
+- **RNG / deck** — mulberry32 เก็บ `rngState` ใน state (reproducible), `randomInt`/`shuffle`, deck 98 ใบ, จั่วจากบนสุด, reshuffle discard เมื่อเด็คหมด
+- **Setup** — `createInitialState`, `startGame`: แจก investor ตามจำนวนผู้เล่น (3 คน = 2 คน, 4–6 คน = 1 คน), ที่เหลือเป็น `unclaimedInvestors`, แจกการ์ดคนละ 5, หา first player จาก investor ที่อยู่ใน `FAMILY_ORDER` ก่อน, ผู้เล่นทางขวาเลือกช่องเริ่ม (`SET_START_SPACE`)
+- **Validators** — กติกาครบ: turn/space/card, offers (source/card/amount, `OFFER_SOURCE_MISMATCH`, `OFFER_ACCEPTED`), accept (required color, free participation, dividends), exclusions, travel/stop/recruitment targets, lock, `isDealComplete`
+- **Reducer** — `applyAction` โคลน state, คืน `{ state, events }` หรือ `{ error }`; handlers ครบทุก action; `FAIL_DEAL`; `LOCK_DEAL` + interrupt window; resolve pending ตาม `ts` แล้ว `seq`; `imTheBoss` เปลี่ยนบอส; เงิน `dividends × valuePerDividend`; ส่งเทิร์นซ้าย; hand limit/discard; END_CHECK
+- **Tick** — ปิด window ที่ `deadline + GRACE_MS + HOST_CLOSE_BUFFER_MS` (5.5 วินาที)
+- **Endgame** — `runEndCheck` ตาม `endCheckFaces`, `finishGame` (finalScores + winners ร่วมเมื่อเงินเท่ากัน), rematch ผ่าน `REMATCH`
+- **Projection** — `project(state, viewerUid)`: ซ่อนมือ/เงิน/deck/`cardId`, offers ตัดการ์ด, `bossClans` เป็นสี, pending ไม่มี `cards`; เปิดเงินเมื่อ `gameOver`; log สาธารณะ 50 รายการ
+- **เทสต์ 10 ไฟล์ / 106 tests** — config, setup, turn, deal, cards, window, endgame, project, simulation 200 เกม + bot/invariants
+
+### ผลการตรวจสอบ (Definition of Done ของ M1)
+
+| คำสั่ง / รายการ | ผลลัพธ์ |
+| --- | --- |
+| `npm run typecheck` | ✅ ผ่าน (tsc ไม่มี error) |
+| `npm run lint` | ✅ ผ่าน (eslint ไม่มี error/warning) |
+| `npm run test` | ✅ ผ่าน **106/106 tests** (10 files) |
+| Simulation 200 seeds | ✅ ไม่ throw, การ์ดครบ 98 ใบ, เงินรวมตรง `dealResolved.totalPaid`, จบเกม/ชนะร่วม/rematch ถูกต้อง |
+| `npm run build` | ✅ ผ่าน — JS 174.03 kB (gzip 57.71 kB), CSS 15.43 kB (gzip 4.36 kB) |
+
+**ตรวจตาม DoD M1 แล้ว:**
+
+- seeded RNG, deck 98, setup 3–6 คน, first player, movement, validators, `applyAction`, `tick`, `project`
+- `isDealComplete` เทสต์ช่อง 4, 7, 12, 14 (รวมกลุ่มเดียวและหลายกลุ่ม)
+- overfill/exclusions, lock + interrupt window, เงิน `dividends × valuePerDividend`, `FAIL_DEAL`
+- travel / recruitment (`onVacation` คงอยู่หลังถูก recruit) / `imTheBoss` / stop / pending ตามลำดับ `ts` + `seq`
+- hand limit 12, END_CHECK 10–15, เงินเท่ากันชนะร่วม, project privacy (ไม่รั่วมือ/เงิน/deck/การ์ด)
+- pending target หายก่อน resolve → fizzle (`cardFizzled`) ไม่ throw
+
+### การตัดสินใจ / ASSUMPTION (หัวข้อ 3.6)
+
+1. **เพิ่ม action `SET_EXCLUDED_COLORS`** — plan ไม่มี action นี้ แต่จำเป็นเมื่อบอสเปลี่ยนกลางดีลแล้วนักลงทุนบอสใหม่ overfill กลุ่ม ใช้ได้ระหว่าง `dealOpen` และต้องไม่ล็อก/ไม่เปิด window; exclusion ต้องเป็นสีของบอสในกลุ่มที่ overfill จริง และหลังหักแล้ว auto-join ต่อกลุ่มต้อง ≤ `pick`; นักลงทุน `onVacation` ไม่ auto-join — ฝ่าฝืน reject `INVALID_EXCLUSION`
+2. **Stop** — ทิ้งการ์ดทันที, mark `stoppedBy` ทันที, reset deadline และ stopper เป็น `triggeredBy`; ผลของ target เป็นโมฆะเมื่อ window ปิด; stop หนึ่งใบหยุด pending ได้หนึ่งรายการ
+3. **`imTheBoss`** — clan ที่บอสใหม่วางไว้กลายเป็น `bossClanCards` ฟรีถ้าสีจำเป็น; นักลงทุนบอสเดิม → table offer amount 1; clan บอสเดิม → hand offer amount 1; ล้าง accepted/exclusions/lock; บอสใหม่ต้องแก้ overfill เองด้วย `SET_EXCLUDED_COLORS`
+4. **Pending target หายก่อน resolve** — fizzle (`cardFizzled`) และการ์ดที่ใช้ยังถูกทิ้ง; ผลของ target ไม่ย้อนหลัง (เช่น travel หลัง recruitment ที่ย้าย investor ไปแล้ว)
+5. **ตัวแทนสีซ้ำ** — boss investor + clan ของสีเดียวกันยุบเป็นสีเดียว; ตอน resolve investor บอสมีสิทธิ์เหนือ clan, clan ที่ไม่ใช้คืนมือ; ถ้ามี accepted offer สีนั้น clan ของบอสคืนมือ
+6. **Recruitment + onVacation** — investor ที่ถูก recruit ยัง `onVacation`; ถ้าบอส recruit investor ที่ vacationing และมี accepted offer สีนั้นอยู่ ให้เก็บ offer ไว้ (investor ไม่ free จึงไม่ควรลบตัวแทน)
+7. **Offer update** — แก้ได้เฉพาะ `amount`; `source`/`card` ต้องเดิม; offer ที่ accept แล้วแก้ไม่ได้; accept ซ้ำ reject `OFFER_ACCEPTED` แต่เปลี่ยน target ที่ accept แทนได้ถ้า dividends ยังพอ
+8. **Boss clan** — บอสวาง clan สีที่ตัวเองถือ investor ไม่ได้ เว้นแต่ investor สีนั้น `onVacation`; accept offer สีที่มี free participation อยู่แล้วไม่ได้
+9. **Host-only / leave** — `SKIP_DISCONNECTED_BOSS`, `REASSIGN_SEAT`, `REMATCH` เป็นสิทธิ์ host ที่ room layer (M3) ไม่ใช่ engine; `LEAVE` ได้เฉพาะ lobby (ห้ามออกถาวรกลางเกม); `REASSIGN_SEAT` ย้ายไปที่นั่งว่างเท่านั้น (ไม่สลับที่นั่ง)
+10. **เวลา** — ไม่มีเวลาจำกัดช่วงเจรจา; เฉพาะ interrupt window 5,000 ms + grace 300 ms + host buffer 200 ms; action หลัง `deadline + GRACE_MS` reject `TOO_LATE`
+11. **เงิน/เสมอ** — บอสได้ `(dividends − Σaccepted.amount) × valuePerDividend`, ผู้เสนอได้ `amount × valuePerDividend`; รวมเท่า `dividends × valuePerDividend`; เงินเท่ากันชนะร่วม; `dealResolved` มี `totalPaid`
+12. **Reject reasons ใหม่** — `INVALID_EXCLUSION`, `OFFER_ACCEPTED` (accept offer เดิมซ้ำ), `OFFER_SOURCE_MISMATCH` (นอกเหนือจากชุดใน plan)
+
+### จุดที่ต่างจากแผน (รับทราบ)
+
+- เพิ่ม type `ClanCard`, `DealState.bossClanCards`, `OfferState.card`/`ValidatedOffer.card` และ event `cardResolved`/`cardFizzled`/`bossStolen`/`dealUnlocked`
+- เพิ่ม action `SET_EXCLUDED_COLORS` (ข้อ 1 ด้านบน) — ยังไม่แตะ UI/ Firebase
+- `dealResolved` เก็บ `dividends`, `valuePerDividend`, `bossDividends` (จำนวน ไม่ใช่เงิน), `accepted`, `totalPaid` (ไม่มี `bossPaid`)
+- ไฟล์เทสต์เสริม: `helpers.ts`, `bot.ts`, `simulation.test.ts` (ไม่ได้ระบุชื่อใน plan แต่จำเป็นต่อ DoD)
+- `test:rules` จะเริ่มใช้จริงตอน M3 — M1 ยังไม่มี security rules ให้ทดสอบ
+
+### งานค้าง / รอผู้ใช้
+
+- [ ] Firebase project id จริงใน `.firebaserc` (ตอนนี้เป็น demo project) — ใช้ตอน Emulator (M3) และ Deploy (M9)
+- [ ] สรุปวิธี Deploy/โดเมน (GitHub Pages หรือ Vercel) ตอน M9
+- [x] Engine M1 ผ่าน DoD ครบ — ไม่มี bug ค้างที่ทราบ
+
+### ขั้นถัดไป — M2 Firebase: Auth, Lobby, Presence, Home
+
+- Firebase Anonymous Auth + สร้าง/เข้าร่วมห้องด้วยรหัส 6 ตัว
+- Lobby: join/leave/seat/reassign, presence ด้วย `onDisconnect`, sync ผ่าน RTDB
+- หน้า Home/Room ตาม `design/home.html` + ข้อความจาก `src/i18n/th.ts`
+- ยังใช้ `database.rules.json` แบบ deny-all ชั่วคราว; กฎจริง + host loop อยู่ใน M3
