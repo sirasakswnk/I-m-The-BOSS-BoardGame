@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (plan.md section 9.0 - prototype: design/home.html) */
+:root {
+  --paper: #fff6e6;
+  --paper-deep: #f6e6c6;
+  --board: #f3dfb8;
+  --ink: #1d1b2e;
+  --ink-soft: #4a4760;
+  --line: #d6cbb3;
+  --white: #ffffff;
+  --accent: #2b59c3;
+  --gold: #ffe08a;
+  --red: #c8382d;
+  --blue: #2b59c3;
+  --green: #2e8b57;
+  --yellow: #e8b730;
+  --purple: #7b4fb3;
+  --black: #26252b;
+}
+
+@layer base {
+  body {
+    @apply bg-paper font-body text-ink antialiased;
+    background-image: radial-gradient(rgba(29, 27, 46, 0.07) 1.1px, transparent 1.1px);
+    background-size: 14px 14px;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Base button: 54px tall, thick ink border, hard press shadow (plan.md section 9.0). */
+  .btn {
+    @apply inline-flex h-[54px] cursor-pointer select-none items-center justify-center gap-2 rounded-btn border-2 border-ink px-6 font-display text-[17px] font-bold shadow-press transition-transform duration-100;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(5px);
+    box-shadow: none;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-[0.55];
+  }
+
+  .btn-light {
+    @apply bg-white text-ink;
+  }
+
+  .btn-dark {
+    @apply bg-ink text-paper;
+  }
+
+  .btn-gold {
+    @apply bg-gold text-ink;
+  }
+
+  /* Diagonal stripes used on cards and card headers (plan.md section 9.0). */
+  .stripes {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  /* Tilted "stamp" headline (plan.md section 9.0). */
+  .stamp {
+    @apply inline-block -rotate-2 rounded-btn border-[3px] border-ink bg-white px-4 py-1.5 font-display font-extrabold shadow-hard;
+  }
+
+  /* Paper grain overlay: Home/Lobby only (the game table uses halftone only for mobile perf). */
+  .grain-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.55;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+  }
+}
