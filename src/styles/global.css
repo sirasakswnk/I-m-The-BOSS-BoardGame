@@ -19,6 +19,7 @@
   --yellow: #e8b730;
   --purple: #7b4fb3;
   --black: #26252b;
+  --shadow-hard: 4px 4px 0 var(--ink);
 }
 
 @layer base {
@@ -225,6 +226,274 @@
 
   .space .pawn {
     @apply absolute -top-[22px] left-1/2 -translate-x-1/2;
+  }
+
+  /* Lobby / join screen (design: lobby.html). */
+  .nav-link {
+    @apply inline-flex min-h-[44px] cursor-pointer select-none items-center justify-center gap-2 rounded-full border-2 border-ink bg-white px-3.5 py-2 font-display text-[17px] font-medium text-ink no-underline shadow-hard-sm;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .nav-link:hover {
+    @apply bg-gold text-ink;
+  }
+
+  .nav-link:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .room-board {
+    @apply relative mx-auto mt-[26px] max-w-[900px] rounded-board border-[3px] border-ink bg-board p-3.5 shadow-[6px_7px_0_#1D1B2E];
+    background-image:
+      linear-gradient(rgba(29, 27, 46, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(29, 27, 46, 0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .room-board-inner {
+    @apply flex flex-col gap-[22px] rounded-2xl border-2 border-dashed border-ink/35 px-[22px] pb-[26px] pt-[22px];
+  }
+
+  .code-tiles {
+    @apply flex justify-center gap-2.5 pb-[18px] pt-2;
+  }
+
+  .code-tile {
+    position: relative;
+    display: grid;
+    width: 66px;
+    height: 82px;
+    padding-top: 10px;
+    place-items: center;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    background: var(--white);
+    box-shadow: 3px 3px 0 var(--ink);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 46px;
+    font-weight: 600;
+    line-height: 1;
+    transform: rotate(var(--r, 0deg));
+  }
+
+  .code-tile::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 14px;
+    border-bottom: 2px solid var(--ink);
+    border-radius: 8px 8px 0 0;
+    background: var(--c);
+  }
+
+  .link-box {
+    @apply flex h-[54px] min-w-0 flex-1 basis-[260px] items-center overflow-hidden whitespace-nowrap rounded-btn border-2 border-line bg-[#FFFDF8] px-3.5 font-mono text-[16px] font-medium;
+    text-overflow: ellipsis;
+  }
+
+  .seat-grid {
+    @apply grid grid-cols-3 gap-3.5;
+  }
+
+  .seat-card {
+    @apply relative flex min-h-[168px] flex-col items-center gap-1.5 rounded-card border-2 border-ink bg-white px-2.5 pb-3.5 pt-[26px] text-center shadow-[3px_4px_0_#1D1B2E];
+  }
+
+  .seat-card.is-me .seat-avatar {
+    background-color: var(--gold);
+  }
+
+  .seat-card.is-off {
+    background: #f1ebdd;
+  }
+
+  .seat-card.is-off .seat-avatar {
+    filter: grayscale(1);
+    opacity: 0.7;
+  }
+
+  .seat-card.is-off .seat-dot {
+    background: var(--white);
+  }
+
+  .seat-card.is-empty {
+    justify-content: center;
+    border-style: dashed;
+    border-color: rgba(29, 27, 46, 0.4);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .seat-no {
+    @apply absolute left-2.5 top-2 font-mono text-[13px] font-semibold text-ink-soft;
+  }
+
+  .seat-crown {
+    @apply absolute right-2 top-[5px];
+  }
+
+  .seat-avatar {
+    @apply grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-ink bg-paper-deep font-display text-[26px] font-extrabold;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.35) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  .seat-name {
+    @apply max-w-full truncate font-display text-[20px] font-bold leading-tight;
+  }
+
+  .seat-tags {
+    @apply flex min-h-[24px] flex-wrap items-center justify-center gap-1.5;
+  }
+
+  .seat-tag {
+    @apply inline-flex items-center rounded-full border-2 border-ink bg-gold px-2 py-1 font-display text-[12px] font-bold leading-none;
+  }
+
+  .seat-tag-you {
+    @apply bg-accent text-white;
+  }
+
+  .seat-status {
+    @apply inline-flex items-center gap-1.5 text-[14px] text-ink-soft;
+  }
+
+  .seat-dot {
+    @apply h-2.5 w-2.5 rounded-full border-2 border-ink bg-family-green;
+  }
+
+  .seat-empty-ghost {
+    @apply grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-ink/40 font-display text-[26px] font-bold;
+  }
+
+  .seat-empty-label {
+    @apply font-display text-[17px] font-medium;
+  }
+
+  .wait-dots span {
+    display: inline-block;
+    animation: wait-blink 1.2s infinite;
+  }
+
+  .wait-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .wait-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes wait-blink {
+    0%,
+    60%,
+    100% {
+      opacity: 0.25;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  .lobby-actions {
+    @apply flex flex-wrap gap-[18px];
+  }
+
+  .lobby-action-card {
+    @apply relative flex min-w-0 flex-1 basis-[280px] flex-col gap-2.5 overflow-hidden rounded-panel border-2 border-ink bg-white p-[22px] shadow-hard;
+  }
+
+  .lobby-action-card h2 {
+    @apply font-display text-[26px] font-bold leading-tight;
+  }
+
+  .lobby-action-start {
+    background-color: var(--accent);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.09) 0 10px,
+      transparent 10px 20px
+    );
+    color: var(--white);
+  }
+
+  .lobby-action-start p {
+    color: #eaf0ff;
+  }
+
+  .lobby-ribbon {
+    position: absolute;
+    top: 14px;
+    right: -34px;
+    padding: 2px 40px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    background: var(--gold);
+    color: var(--ink);
+    font-family: 'Kanit', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    transform: rotate(35deg);
+  }
+
+  .lobby-facts {
+    @apply m-0 flex list-none flex-col gap-2 p-0;
+  }
+
+  .lobby-facts li {
+    @apply flex items-baseline gap-2.5;
+  }
+
+  .lobby-facts .k {
+    @apply shrink-0 font-display font-bold;
+  }
+
+  @media (max-width: 767px) {
+    .nav-link {
+      @apply px-3 py-2 text-[15px];
+    }
+
+    .room-board {
+      @apply mt-5 rounded-[18px] p-2 shadow-[4px_5px_0_#1D1B2E];
+    }
+
+    .room-board-inner {
+      @apply px-3 pb-[18px] pt-[18px];
+    }
+
+    .seat-grid {
+      @apply grid-cols-2 gap-2.5;
+    }
+
+    .seat-card {
+      @apply min-h-[156px];
+    }
+
+    .lobby-action-card {
+      @apply p-[18px];
+    }
+
+    .lobby-action-card h2 {
+      @apply text-[22px];
+    }
+  }
+
+  @media (max-width: 640px) {
+    .code-tiles {
+      @apply gap-[7px];
+    }
+
+    .code-tile {
+      width: 52px;
+      height: 68px;
+      font-size: 36px;
+    }
   }
 
   /* Global toast from design/home.html. */
