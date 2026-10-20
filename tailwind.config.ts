@@ -37,6 +37,7 @@ export default {
         hard: '4px 4px 0 #1D1B2E',
         'hard-sm': '2px 2px 0 #1D1B2E',
         press: '0 5px 0 #1D1B2E',
+        card: '3px 4px 0 rgba(29, 27, 46, 0.85)',
       },
     },
   },

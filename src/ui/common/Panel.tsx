@@ -9,7 +9,7 @@ interface PanelProps {
 export function Panel({ title, children, className }: PanelProps) {
   return (
     <section
-      className={`rounded-panel border-2 border-ink bg-white p-5 shadow-hard ${className ?? ''}`}
+      className={`rounded-panel border-2 border-ink bg-white px-[22px] py-5 shadow-hard ${className ?? ''}`}
     >
       {title !== undefined && <h2 className="mb-3 font-display text-xl font-bold">{title}</h2>}
       {children}

@@ -23,9 +23,17 @@
 
 @layer base {
   body {
-    @apply bg-paper font-body text-ink antialiased;
-    background-image: radial-gradient(rgba(29, 27, 46, 0.07) 1.1px, transparent 1.1px);
+    @apply overflow-x-hidden bg-paper font-body text-ink antialiased;
+    background-image: radial-gradient(rgba(29, 27, 46, 0.07) 1.2px, transparent 1.3px);
     background-size: 14px 14px;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  a:hover {
+    color: #1c3f94;
   }
 
   :focus-visible {
@@ -47,24 +55,37 @@
 @layer components {
   /* Base button: 54px tall, thick ink border, hard press shadow (plan.md section 9.0). */
   .btn {
-    @apply inline-flex h-[54px] cursor-pointer select-none items-center justify-center gap-2 rounded-btn border-2 border-ink px-6 font-display text-[17px] font-bold shadow-press transition-transform duration-100;
+    @apply inline-flex h-[54px] cursor-pointer select-none items-center justify-center gap-2 rounded-btn border-2 border-ink px-6 font-display text-[18px] font-bold shadow-press;
+    transition:
+      transform 0.08s ease,
+      box-shadow 0.08s ease,
+      background-color 0.15s ease;
   }
 
   .btn:active:not(:disabled) {
     transform: translateY(5px);
-    box-shadow: none;
+    box-shadow: 0 0 0 var(--ink);
   }
 
   .btn:disabled {
     @apply cursor-not-allowed opacity-[0.55];
+    box-shadow: 0 2px 0 var(--ink);
   }
 
   .btn-light {
     @apply bg-white text-ink;
   }
 
+  .btn-light:hover:not(:disabled) {
+    background: var(--gold);
+  }
+
   .btn-dark {
     @apply bg-ink text-paper;
+  }
+
+  .btn-dark:hover:not(:disabled) {
+    background: #33304a;
   }
 
   .btn-gold {
@@ -80,19 +101,26 @@
     );
   }
 
-  /* Tilted "stamp" headline (plan.md section 9.0). */
+  /* Tilted "stamp" highlight inside a headline (design/home.html). */
   .stamp {
-    @apply inline-block -rotate-2 rounded-btn border-[3px] border-ink bg-white px-4 py-1.5 font-display font-extrabold shadow-hard;
+    display: inline-block;
+    padding: 0 0.22em;
+    background: var(--accent);
+    color: var(--white);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    transform: rotate(-2deg);
+    box-shadow: var(--shadow-hard);
   }
 
   /* Paper grain overlay: Home/Lobby only (the game table uses halftone only for mobile perf). */
   .grain-overlay {
     position: fixed;
     inset: 0;
-    z-index: 40;
+    z-index: 100;
     pointer-events: none;
-    opacity: 0.55;
+    opacity: 0.18;
     mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0 0.22  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
 }

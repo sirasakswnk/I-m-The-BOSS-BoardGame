@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>โต๊ะเจรจาดีล — หน้าแรก</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;700;800&family=Sarabun:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #FFF6E6;
+    --paper-deep: #F6E6C6;
+    --board: #F3DFB8;
+    --ink: #1D1B2E;
+    --ink-soft: #4A4760;
+    --line: #D6CBB3;
+    --white: #FFFFFF;
+    --accent: #2B59C3;
+    --gold: #FFE08A;
+
+    --red: #C8382D;
+    --blue: #2B59C3;
+    --green: #2E8B57;
+    --yellow: #E8B730;
+    --purple: #7B4FB3;
+    --black: #26252B;
+
+    --radius-card: 14px;
+    --shadow-hard: 4px 4px 0 var(--ink);
+    --shadow-press: 0 5px 0 var(--ink);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  body {
+    background-color: var(--paper);
+    /* halftone dots — printed board feel */
+    background-image: radial-gradient(rgba(29, 27, 46, 0.07) 1.2px, transparent 1.3px);
+    background-size: 14px 14px;
+    color: var(--ink);
+    font-family: 'Sarabun', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* paper grain overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.18;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0 0.22  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  a { color: var(--accent); }
+  a:hover { color: #1C3F94; }
+
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* ---------- header ---------- */
+  .site-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-top: 22px;
+    padding-bottom: 12px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .brand-mark {
+    display: grid;
+    grid-template-columns: repeat(3, 11px);
+    gap: 3px;
+    padding: 4px;
+    background: var(--white);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .brand-mark span { height: 11px; border-radius: 2px; }
+  .brand-name {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    line-height: 1;
+  }
+  .nav-link {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    text-decoration: none;
+    padding: 10px 14px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .nav-link:hover { color: var(--ink); background: var(--gold); }
+
+  /* ---------- hero ---------- */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding-top: 18px;
+    text-align: center;
+  }
+
+  .rejoin {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--gold);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 6px 6px 6px 18px;
+    font-weight: 500;
+    box-shadow: var(--shadow-hard);
+  }
+  .rejoin[hidden] { display: none; }
+  .rejoin code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .rejoin .btn { height: 44px; padding: 0 18px; border-radius: 999px; font-size: 16px; }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .icon-btn:hover { background: rgba(29, 27, 46, 0.1); }
+
+  h1 {
+    margin: 4px 0 0;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 8vw, 68px);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+  }
+  h1 .stamp {
+    display: inline-block;
+    padding: 0 0.22em;
+    background: var(--accent);
+    color: var(--white);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    transform: rotate(-2deg);
+    box-shadow: var(--shadow-hard);
+  }
+  .nowrap { white-space: nowrap; }
+  .lead {
+    margin: 0;
+    max-width: 620px;
+    font-size: 19px;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- card fan ---------- */
+  .fan {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 26px 0 8px;
+    min-height: 190px;
+  }
+  .family-card {
+    --rot: 0deg;
+    --lift: 0px;
+    position: relative;
+    width: 104px;
+    height: 146px;
+    margin: 0 -10px;
+    border-radius: var(--radius-card);
+    background: var(--white);
+    border: 2px solid var(--ink);
+    padding: 6px;
+    box-shadow: 3px 4px 0 rgba(29, 27, 46, 0.85);
+    transform: translateY(var(--lift)) rotate(var(--rot));
+    transform-origin: 50% 120%;
+    transition: transform 0.2s ease;
+  }
+  .family-card:hover { transform: translateY(calc(var(--lift) - 14px)) rotate(var(--rot)); z-index: 2; }
+  .family-card .face {
+    position: relative;
+    height: 100%;
+    border-radius: 9px;
+    background-color: var(--c);
+    /* subtle printed linework inside the card */
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.10) 0 6px, transparent 6px 12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--on, var(--white));
+  }
+  .family-card .corner {
+    position: absolute;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .family-card .corner.tl { top: 7px; left: 8px; }
+  .family-card .corner.br { bottom: 7px; right: 8px; transform: rotate(180deg); }
+  .family-card .emblem {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    border: 2px solid var(--ink);
+    display: grid;
+    place-items: center;
+  }
+  .family-card .name {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    background: rgba(29, 27, 46, 0.18);
+    padding: 0 10px;
+    border-radius: 999px;
+  }
+  .family-card.light .name { background: rgba(255, 255, 255, 0.45); }
+
+  .fan .family-card:nth-child(1) { --rot: -15deg; --lift: 18px; }
+  .fan .family-card:nth-child(2) { --rot: -9deg;  --lift: 6px; }
+  .fan .family-card:nth-child(3) { --rot: -3deg;  --lift: 0px; }
+  .fan .family-card:nth-child(4) { --rot: 3deg;   --lift: 0px; }
+  .fan .family-card:nth-child(5) { --rot: 9deg;   --lift: 6px; }
+  .fan .family-card:nth-child(6) { --rot: 15deg;  --lift: 18px; }
+
+  /* ---------- game board ---------- */
+  .board {
+    position: relative;
+    margin: 28px auto 0;
+    max-width: 860px;
+    border: 3px solid var(--ink);
+    border-radius: 24px;
+    background-color: var(--board);
+    background-image:
+      linear-gradient(rgba(29, 27, 46, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(29, 27, 46, 0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    box-shadow: 6px 7px 0 var(--ink);
+    padding: 14px;
+  }
+  .board-inner {
+    border: 2px dashed rgba(29, 27, 46, 0.35);
+    border-radius: 16px;
+    padding: 22px 22px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .track {
+    padding-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+  .space {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--white);
+    display: grid;
+    place-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .space::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 9px;
+    border-radius: 5px 5px 0 0;
+    background: var(--c);
+    border-bottom: 2px solid var(--ink);
+  }
+  .space span { padding-top: 7px; }
+  .space.end { background: var(--gold); }
+  .space .pawn {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .track-caption {
+    text-align: center;
+    margin-top: -8px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  .panel {
+    background: var(--white);
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow-hard);
+  }
+  .field-label {
+    display: block;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+  .text-input {
+    width: 100%;
+    min-width: 0;
+    height: 56px;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    background: #FFFDF8;
+    padding: 0 16px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 22px;
+    color: var(--ink);
+  }
+  .text-input::placeholder { color: #8A8697; }
+  .text-input:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 3px rgba(43, 89, 195, 0.35); }
+  .text-input.code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: 0.45em;
+    text-align: center;
+    padding-left: calc(16px + 0.45em);
+  }
+  .hint {
+    margin: 8px 0 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+    min-height: 21px;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+  .action-card {
+    flex: 1 1 280px;
+    min-width: 0;
+    position: relative;
+    border: 2px solid var(--ink);
+    border-radius: 18px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--shadow-hard);
+    overflow: hidden;
+  }
+  .action-card.create {
+    background-color: var(--accent);
+    background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.09) 0 10px, transparent 10px 20px);
+    color: var(--white);
+  }
+  .action-card.join { background: var(--white); }
+  .action-card h2,
+  .action-card .card-title {
+    margin: 0;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.2;
+  }
+  .action-card p { margin: 0; font-size: 16px; flex-grow: 1; }
+  .action-card.create p { color: #EAF0FF; }
+  .action-card .tag {
+    position: absolute;
+    top: 14px;
+    right: -34px;
+    transform: rotate(35deg);
+    background: var(--gold);
+    color: var(--ink);
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    padding: 2px 40px;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .btn {
+    height: 54px;
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: var(--shadow-press);
+    transform: translateY(0);
+    transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+  }
+  .btn:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 0 0 var(--ink); }
+  .btn:disabled { cursor: not-allowed; opacity: 0.55; box-shadow: 0 2px 0 var(--ink); }
+  .btn-light { background: var(--white); color: var(--ink); }
+  .btn-light:hover:not(:disabled) { background: var(--gold); }
+  .btn-dark { background: var(--ink); color: var(--white); }
+  .btn-dark:hover:not(:disabled) { background: #33304A; }
+
+  .join-row { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ---------- how to play ---------- */
+  .how {
+    padding: 56px 0 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .how h2 {
+    margin: 0;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 800;
+    font-size: 34px;
+  }
+  .rules {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+    width: 100%;
+  }
+  .rule-card {
+    flex: 1 1 240px;
+    max-width: 330px;
+    background: var(--white);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-hard);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .rule-card .rule-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--ink);
+    background-color: var(--c);
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.14) 0 6px, transparent 6px 12px);
+    color: var(--white);
+  }
+  .rule-card .num {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    background: var(--white);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .rule-card .rule-title {
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+  }
+  .rule-card p { margin: 0; padding: 14px 16px 18px; font-size: 16px; color: var(--ink-soft); }
+
+  /* ---------- footer ---------- */
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 0 56px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--white);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .dice { margin-right: 6px; }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 140%);
+    max-width: calc(100% - 32px);
+    background: var(--ink);
+    color: var(--white);
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-weight: 500;
+    box-shadow: 4px 4px 0 var(--accent);
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
+    visibility: hidden;
+    z-index: 200;
+  }
+  .toast.show { transform: translate(-50%, 0); visibility: visible; transition: transform 0.25s ease; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 640px) {
+    .brand-name { font-size: 22px; }
+    .nav-link { padding: 8px 12px; font-size: 15px; }
+    .lead { font-size: 17px; }
+    .rejoin { border-radius: 18px; padding: 10px 8px 10px 14px; justify-content: space-between; text-align: left; }
+    .rejoin > span { flex: 1 1 100%; }
+    .rejoin .btn { flex: 1 1 auto; }
+    .fan { min-height: 128px; padding-top: 14px; }
+    .family-card { width: 58px; height: 84px; margin: 0 -5px; padding: 3px; border-radius: 9px; }
+    .family-card .face { border-radius: 7px; gap: 4px; }
+    .family-card .emblem { width: 28px; height: 28px; }
+    .family-card .emblem svg { width: 16px; height: 16px; }
+    .family-card .name { font-size: 11px; padding: 0 5px; }
+    .family-card .corner { display: none; }
+    .board { padding: 8px; border-radius: 18px; box-shadow: 4px 5px 0 var(--ink); }
+    .board-inner { padding: 18px 12px 18px; }
+    .space { width: 34px; height: 34px; font-size: 12px; }
+    .space::before { height: 7px; }
+    .space span { padding-top: 5px; }
+    .action-card { padding: 18px; }
+    .action-card h2, .action-card .card-title { font-size: 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Reusable emblem shapes (one shape per family, so color is never the only cue) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="em-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="#1D1B2E" stroke-width="2"/></symbol>
+    <symbol id="em-square" viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="2" fill="currentColor" stroke="#1D1B2E" stroke-width="2"/></symbol>
+    <symbol id="em-triangle" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3z" fill="currentColor" stroke="#1D1B2E" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="em-diamond" viewBox="0 0 24 24"><path d="M12 2.5 21.5 12 12 21.5 2.5 12z" fill="currentColor" stroke="#1D1B2E" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="em-star" viewBox="0 0 24 24"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z" fill="currentColor" stroke="#1D1B2E" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="em-hex" viewBox="0 0 24 24"><path d="M12 2.5 20.2 7.2v9.6L12 21.5 3.8 16.8V7.2z" fill="currentColor" stroke="#1D1B2E" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="wrap site-header">
+  <a class="brand" href="#" aria-label="โต๊ะเจรจาดีล หน้าแรก">
+    <span class="brand-mark" aria-hidden="true">
+      <span style="background:var(--red)"></span><span style="background:var(--blue)"></span><span style="background:var(--green)"></span>
+      <span style="background:var(--yellow)"></span><span style="background:var(--purple)"></span><span style="background:var(--black)"></span>
+    </span>
+    <span class="brand-name">โต๊ะเจรจาดีล</span>
+  </a>
+  <a class="nav-link" href="#how">วิธีเล่น</a>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="rejoin" id="rejoin" role="status">
+      <span>ห้อง <code id="rejoin-code">48213</code> ยังรอ <strong id="rejoin-name">Fern</strong> อยู่</span>
+      <button type="button" class="btn btn-dark" id="rejoin-btn">กลับเข้าโต๊ะ</button>
+      <button type="button" class="icon-btn" id="rejoin-close" aria-label="ซ่อนแถบนี้">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <h1><span class="nowrap">ใครเป็น<span class="stamp">บอส</span></span> <span class="nowrap">ใครบลัฟ</span><br><span class="nowrap">เดี๋ยวก็รู้</span></h1>
+    <p class="lead">บอร์ดเกมต่อรองสำหรับแก๊งเพื่อน ไม่ต้องสมัคร ไม่ต้องลงแอป เปิด Discord แล้วเข้าห้องเดียวกัน</p>
+
+    <div class="fan" aria-hidden="true">
+      <div class="family-card" style="--c:var(--red)">
+        <div class="face"><span class="corner tl">แดง</span><span class="emblem" style="color:var(--red)"><svg width="28" height="28"><use href="#em-circle"/></svg></span><span class="name">แดง</span><span class="corner br">แดง</span></div>
+      </div>
+      <div class="family-card" style="--c:var(--blue)">
+        <div class="face"><span class="corner tl">น้ำเงิน</span><span class="emblem" style="color:var(--blue)"><svg width="28" height="28"><use href="#em-square"/></svg></span><span class="name">น้ำเงิน</span><span class="corner br">น้ำเงิน</span></div>
+      </div>
+      <div class="family-card" style="--c:var(--green)">
+        <div class="face"><span class="corner tl">เขียว</span><span class="emblem" style="color:var(--green)"><svg width="28" height="28"><use href="#em-triangle"/></svg></span><span class="name">เขียว</span><span class="corner br">เขียว</span></div>
+      </div>
+      <div class="family-card light" style="--c:var(--yellow); --on:var(--ink)">
+        <div class="face"><span class="corner tl">เหลือง</span><span class="emblem" style="color:var(--yellow)"><svg width="28" height="28"><use href="#em-diamond"/></svg></span><span class="name">เหลือง</span><span class="corner br">เหลือง</span></div>
+      </div>
+      <div class="family-card" style="--c:var(--purple)">
+        <div class="face"><span class="corner tl">ม่วง</span><span class="emblem" style="color:var(--purple)"><svg width="28" height="28"><use href="#em-star"/></svg></span><span class="name">ม่วง</span><span class="corner br">ม่วง</span></div>
+      </div>
+      <div class="family-card" style="--c:var(--black)">
+        <div class="face"><span class="corner tl">ดำ</span><span class="emblem" style="color:var(--black)"><svg width="28" height="28"><use href="#em-hex"/></svg></span><span class="name">ดำ</span><span class="corner br">ดำ</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="board" aria-label="เข้าเล่น">
+    <div class="board-inner">
+      <div class="track" id="track" aria-hidden="true"></div>
+      <div class="track-caption">ปิดดีลให้ครบ 15 ช่อง หรือรอลุ้นเต๋าตั้งแต่ดีลที่ 10</div>
+
+      <form id="entry" class="panel" novalidate>
+        <label class="field-label" for="nick">ก่อนอื่น ชื่อเล่นของคุณ</label>
+        <input class="text-input" id="nick" name="nick" type="text" maxlength="16" placeholder="เช่น Fern" autocomplete="nickname">
+        <p class="hint" id="nick-hint">ไม่เกิน 16 ตัวอักษร เพื่อนจะเห็นชื่อนี้บนโต๊ะ</p>
+      </form>
+
+      <div class="actions">
+        <div class="action-card create">
+          <span class="tag">เจ้าของห้อง</span>
+          <h2>สร้างห้องใหม่</h2>
+          <p>คุณเป็นเจ้าของห้อง ได้รหัส 5 หลักกับลิงก์เชิญไว้แปะใน Discord</p>
+          <button type="button" class="btn btn-light" id="create-btn" disabled>สร้างห้อง</button>
+        </div>
+
+        <div class="action-card join">
+          <label class="card-title" for="code">มีรหัสห้องแล้ว</label>
+          <div class="join-row">
+            <input class="text-input code" id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="00000" autocomplete="off" aria-describedby="code-hint">
+            <button type="button" class="btn btn-dark" id="join-btn" disabled>เข้าร่วม</button>
+          </div>
+          <p class="hint" id="code-hint">ขอรหัสจากเจ้าของห้อง หรือกดลิงก์เชิญที่เพื่อนส่งมา</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how">
+    <h2>เล่นยังไง</h2>
+    <div class="rules">
+      <article class="rule-card" style="--c:var(--blue)">
+        <div class="rule-head"><span class="num">1</span><span class="rule-title">สร้างห้อง</span></div>
+        <p>ตั้งชื่อเล่น กดสร้างห้อง แล้วคัดลอกลิงก์เชิญ</p>
+      </article>
+      <article class="rule-card" style="--c:var(--purple)">
+        <div class="rule-head"><span class="num">2</span><span class="rule-title">แปะใน Discord</span></div>
+        <p>เพื่อนกดลิงก์ ใส่ชื่อเล่น ก็นั่งโต๊ะเดียวกันทันที</p>
+      </article>
+      <article class="rule-card" style="--c:var(--red)">
+        <div class="rule-head"><span class="num">3</span><span class="rule-title">ต่อรองให้เนียน</span></div>
+        <p>บอสเปิดดีล ทุกคนยื่นข้อเสนอ ใครจะป่วนมีเวลา 5 วินาที</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap site-footer">
+  <svg class="dice" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+    <rect x="3" y="3" width="32" height="32" rx="7" fill="#1D1B2E"/>
+    <rect x="1.5" y="1.5" width="32" height="32" rx="7" fill="#FFFFFF" stroke="#1D1B2E" stroke-width="2.5"/>
+    <circle cx="10" cy="10" r="2.6" fill="#1D1B2E"/><circle cx="25" cy="10" r="2.6" fill="#1D1B2E"/>
+    <circle cx="17.5" cy="17.5" r="2.6" fill="#C8382D"/>
+    <circle cx="10" cy="25" r="2.6" fill="#1D1B2E"/><circle cx="25" cy="25" r="2.6" fill="#1D1B2E"/>
+  </svg>
+  <span class="chip">ไม่ต้องสมัครสมาชิก</span>
+  <span class="chip">เน็ตหลุดก็กลับที่นั่งเดิมได้</span>
+  <span class="chip">ไพ่และเงินเห็นเฉพาะคุณ</span>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  // Deal track: 15 spaces, color stripe cycles through the 6 families.
+  (function buildTrack() {
+    var colors = ['--red', '--blue', '--green', '--yellow', '--purple', '--black'];
+    var track = document.getElementById('track');
+    for (var i = 1; i <= 15; i++) {
+      var s = document.createElement('div');
+      s.className = 'space' + (i === 15 ? ' end' : '');
+      s.style.setProperty('--c', 'var(' + colors[(i - 1) % colors.length] + ')');
+      s.innerHTML = '<span>' + i + '</span>';
+      if (i === 7) {
+        s.insertAdjacentHTML('beforeend',
+          '<svg class="pawn" width="20" height="24" viewBox="0 0 20 24"><circle cx="10" cy="6" r="4.5" fill="#FFE08A" stroke="#1D1B2E" stroke-width="2"/><path d="M4 22c0-6 2.5-9 6-9s6 3 6 9z" fill="#FFE08A" stroke="#1D1B2E" stroke-width="2" stroke-linejoin="round"/></svg>');
+      }
+      track.appendChild(s);
+    }
+  })();
+
+  var nick = document.getElementById('nick');
+  var code = document.getElementById('code');
+  var createBtn = document.getElementById('create-btn');
+  var joinBtn = document.getElementById('join-btn');
+  var codeHint = document.getElementById('code-hint');
+  var toastEl = document.getElementById('toast');
+  var toastTimer;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+  }
+
+  function nickOk() {
+    var v = nick.value.trim();
+    return v.length >= 1 && v.length <= 16;
+  }
+
+  function update() {
+    code.value = code.value.replace(/\D/g, '').slice(0, 5);
+    createBtn.disabled = !nickOk();
+    joinBtn.disabled = !(nickOk() && code.value.length === 5);
+    if (code.value.length > 0 && code.value.length < 5) {
+      codeHint.textContent = 'อีก ' + (5 - code.value.length) + ' หลัก';
+    } else if (code.value.length === 5 && !nickOk()) {
+      codeHint.textContent = 'ใส่ชื่อเล่นด้านบนก่อนนะ';
+    } else {
+      codeHint.textContent = 'ขอรหัสจากเจ้าของห้อง หรือกดลิงก์เชิญที่เพื่อนส่งมา';
+    }
+  }
+
+  nick.addEventListener('input', update);
+  code.addEventListener('input', update);
+  code.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !joinBtn.disabled) joinBtn.click();
+  });
+  document.getElementById('entry').addEventListener('submit', function (e) { e.preventDefault(); });
+
+  // Placeholder handlers — the real app wires these to Firebase (plan.md, M2).
+  createBtn.addEventListener('click', function () {
+    toast('ตัวอย่าง UI: กำลังสร้างห้องให้ ' + nick.value.trim());
+  });
+  joinBtn.addEventListener('click', function () {
+    toast('ตัวอย่าง UI: กำลังเข้าห้อง ' + code.value);
+  });
+
+  // Rejoin banner — real app shows it only when localStorage has lastRoomCode.
+  document.getElementById('rejoin-btn').addEventListener('click', function () {
+    toast('ตัวอย่าง UI: กลับเข้าห้อง ' + document.getElementById('rejoin-code').textContent);
+  });
+  document.getElementById('rejoin-close').addEventListener('click', function () {
+    document.getElementById('rejoin').hidden = true;
+  });
+
+  // Prefill room code from an invite link like /48213 or ?room=48213
+  (function prefillFromUrl() {
+    var m = location.pathname.match(/\/(\d{5})\/?$/) || location.search.match(/[?&]room=(\d{5})/);
+    if (m) { code.value = m[1]; }
+    try {
+      var saved = localStorage.getItem('lastNickname');
+      if (saved && !nick.value) nick.value = saved;
+      nick.addEventListener('change', function () {
+        try { localStorage.setItem('lastNickname', nick.value.trim()); } catch (e) {}
+      });
+    } catch (e) {}
+    update();
+  })();
+</script>
+</body>
+</html>

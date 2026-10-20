@@ -50,7 +50,7 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 
 ### การตัดสินใจ / จุดที่ต่างจากแผน (รับทราบ)
 
-1. **`design/home.html` ยังไม่มีในโปรเจกต์** → ดึง design tokens จากตารางหัวข้อ 9.0 ของ plan.md แทน (ค่าสี/เงา/รัศมี/ฟอนต์ครบตามตาราง) — เมื่อได้ไฟล์ต้นแบบจริง จะเทียบความเหมือนและปรับตอนพอร์ต `Home.tsx` ใน M2
+1. ~~**`design/home.html` ยังไม่มีในโปรเจกต์** → ใช้ tokens จากตารางหัวข้อ 9.0 แทน~~ → **อัปเดต:** ได้รับต้นแบบแล้ว (20/10/2026) ย้ายไป `design/home.html` ตรวจแล้ว tokens ตรงกับต้นแบบ **ทุกค่า** และปรับรายละเอียดคอมโพเนนต์เพิ่มให้ตรงต้นแบบ (ดูหัวข้อ "อัปเดต M0 รอบ 2")
 2. เลือก **Tailwind CSS v3.4** (ตามแผนที่อ้างถึง `tailwind.config`) ไม่ใช่ v4
 3. ใช้ **tsconfig ไฟล์เดียว** ไม่ใช้ project references — `typecheck` = `tsc --noEmit` (ง่ายกว่า ไม่กระทบแผน)
 4. เพิ่มไฟล์เกินโครงในแผนเล็กน้อย: `src/ui/common/families.ts` (ข้อมูลตระกูลฝั่ง UI), `FamilySymbol.tsx`, `src/__tests__/app-config.test.ts`, `.firebaserc`, `public/favicon.svg`
@@ -67,11 +67,25 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
   - `react-router` 6.x (moderate: open-redirect/SSR hydration — โปรเจกต์นี้เป็น SPA ไม่มี SSR; แผนล็อก v6 ไว้ การแก้ต้องข้ามเป็น v7 ซึ่งเป็น breaking change)
 - ตัวเลือกแก้ (`npm audit fix --force`) จะ **ดาวน์เกรด firebase ถึง v9 / อัป react-router เป็น v7** — ขัดกับแผน จึงยังไม่ทำ รอพิจารณาตอน M9
 
+### อัปเดต M0 รอบ 2 (20/10/2026) — รับต้นแบบ `design/home.html` + ค่า `.env`
+
+- ได้รับไฟล์ต้นแบบจากผู้ใช้ (วางไว้ที่รากชื่อ `home.html`) → **ย้ายไป `design/home.html` ตามแผนแล้ว** (ไฟล์นี้ห้ามแก้)
+- **ตรวจเทียบ tokens ทั้งหมด: ตรงกับที่วางไว้ใน M0 ทุกค่า** (สี 15 ตัว, `--radius-card` 14px, panel 18px, ปุ่ม/input 12px, กระดาน 24px, เงา hard/press) — ไม่ต้องแก้ค่าสีใด ๆ
+- ปรับรายละเอียดคอมโพเนนต์ให้ตรงต้นแบบเพิ่ม:
+  - `.stamp` → ไฮไลต์คำในหัวเรื่อง (พื้น accent ตัวอักษรขาว ขอบ 3px เอียง -2° เหมือนคำ "บอส" ในต้นแบบ) + ปรับหน้า Home ให้ใช้ hero แบบเดียวกับต้นแบบ (หัวเรื่อง/lead/ชิป/แบรนด์มาร์ก 6 สี)
+  - `.btn` → อักษร 18px, hover (light → gold, dark → #33304A), disabled มีเงา 2px, transition ตามต้นแบบ
+  - halftone ปรับเป็น 1.2px/1.3px, grain overlay ตามต้นแบบ (opacity 0.18, noise ย้อมสี ขนาด 220, z 100), ลิงก์สี accent + hover `#1C3F94`
+  - `FamilyCard` ตามต้นแบบ: กรอบขาวขอบ ink, หน้าการ์ดลายเฉียง, วงกลมสัญลักษณ์ขาวโปร่ง 0.92, ป้ายชื่อตระกูล (เหลืองใช้พื้นขาวโปร่ง+ตัวอักษร ink), ป้ายชื่อมุมบน/ล่าง (ซ่อนบนมือถือ), แถบริบบิ้น "ญาติ" เฉพาะการ์ดญาติ
+  - `Chip` (15px น้ำหนัก 500 ตามต้นแบบ), `Panel` (padding 20×22), เพิ่ม `shadow-card` ใน tailwind config
+- `.env` — ตรวจแล้ว: มีคีย์ครบทั้ง 5 ตัว และถูก `.gitignore` กันไว้ (ยืนยันด้วย `git check-ignore`)
+- ผลตรวจซ้ำหลังปรับ: `typecheck` ✅ / `lint` ✅ / `test` ✅ 3/3 / `build` ✅ (CSS 15.15 kB gzip 4.28, JS 174.03 kB gzip 57.71)
+
 ### งานค้าง / รอผู้ใช้
 
-- [ ] วางไฟล์ต้นแบบ `design/home.html` (index.html ที่ให้มา) — ต้องใช้ตอนพอร์ตหน้าแรกใน M2
-- [ ] ยืนยัน **Firebase project id จริง** เพื่อแทน demo project ใน `.firebaserc` (+ กรอก `.env.local` จาก `.env.example`)
-- [ ] โดเมน Vercel (ยังไม่ตัดสินใจ — ต้องก่อน M9)
+- [x] วางไฟล์ต้นแบบ — ✅ ได้รับแล้ว (ย้ายไป `design/home.html`, tokens ตรงกันทั้งหมด — ดูหัวข้อ "อัปเดต M0 รอบ 2")
+- [x] กรอกค่า Firebase ใน `.env` — ✅ ครบทั้ง 5 คีย์ และไม่หลุดขึ้น git
+- [ ] Firebase project id จริงใน `.firebaserc` (ตอนนี้เป็น demo project) — ใช้ตอนรัน Emulator (M3) และ Deploy (M9)
+- [ ] Deploy — ผู้ใช้เลือกทาง **GitHub** และจะ deploy ทีหลัง (รอสรุปวิธีตอน M9; ถ้าเป็น GitHub Pages ต้องปรับจาก `vercel.json`)
 - [x] Push ไป GitHub — ✅ สำเร็จ (commit `1cd12ed` → branch `main`, ตั้ง `origin` = `https://github.com/sirasakswnk/I-m-The-BOSS-BoardGame.git` แล้ว)
 
 ### ขั้นถัดไป — M1 Game Engine (ไม่มี UI / ไม่มี Firebase)

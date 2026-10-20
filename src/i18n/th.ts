@@ -14,6 +14,11 @@ export const th = {
     development: 'สถานะการพัฒนา',
   },
   home: {
+    heroBefore: 'ใครเป็น',
+    heroStamp: 'บอส',
+    heroAfter: 'ใครบลัฟ เดี๋ยวก็รู้',
+    heroLead:
+      'บอร์ดเกมต่อรองสำหรับแก๊งเพื่อน ไม่ต้องสมัคร ไม่ต้องลงแอป เปิด Discord แล้วเข้าห้องเดียวกัน',
     privacyChip: 'ไพ่และเงินของคุณ เพื่อนมองไม่เห็นบนจอ',
     demoRoomCta: 'เปิดห้องตัวอย่าง',
     familiesPreviewAria: 'ตัวอย่างการ์ดตระกูลทั้ง 6',
