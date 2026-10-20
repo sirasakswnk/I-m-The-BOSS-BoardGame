@@ -72,7 +72,7 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 - [ ] วางไฟล์ต้นแบบ `design/home.html` (index.html ที่ให้มา) — ต้องใช้ตอนพอร์ตหน้าแรกใน M2
 - [ ] ยืนยัน **Firebase project id จริง** เพื่อแทน demo project ใน `.firebaserc` (+ กรอก `.env.local` จาก `.env.example`)
 - [ ] โดเมน Vercel (ยังไม่ตัดสินใจ — ต้องก่อน M9)
-- [ ] สถานะการ push ไป GitHub: ดูท้ายหัวข้อนี้ (บันทึกหลัง commit)
+- [x] Push ไป GitHub — ✅ สำเร็จ (commit `1cd12ed` → branch `main`, ตั้ง `origin` = `https://github.com/sirasakswnk/I-m-The-BOSS-BoardGame.git` แล้ว)
 
 ### ขั้นถัดไป — M1 Game Engine (ไม่มี UI / ไม่มี Firebase)
 
