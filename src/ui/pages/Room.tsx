@@ -420,15 +420,27 @@ export function Room() {
     );
   }
 
+  const tableMode = Boolean(isMember && room.meta?.status === 'playing');
+
   return (
     <div className="min-h-dvh" data-testid="room-page">
-      <div className="grain-overlay" aria-hidden="true" />
-      <RoomHeader
-        canLeave={Boolean(isMember && room.meta?.status === 'lobby')}
-        leaving={leaving}
-        onLeave={() => void handleLeave()}
-      />
-      <main className="mx-auto w-full max-w-[1200px] px-4 pb-16">{renderContent()}</main>
+      {!tableMode && <div className="grain-overlay" aria-hidden="true" />}
+      {!tableMode && (
+        <RoomHeader
+          canLeave={Boolean(isMember && room.meta?.status === 'lobby')}
+          leaving={leaving}
+          onLeave={() => void handleLeave()}
+        />
+      )}
+      <main
+        className={
+          tableMode
+            ? 'mx-auto w-full max-w-[1280px] px-4 pb-8'
+            : 'mx-auto w-full max-w-[1200px] px-4 pb-16'
+        }
+      >
+        {renderContent()}
+      </main>
     </div>
   );
 }

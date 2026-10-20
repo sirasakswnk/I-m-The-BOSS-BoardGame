@@ -20,7 +20,20 @@ test('preview route shows every current screen without a live room', async ({ pa
   await nav.getByRole('link', { name: 'โต๊ะเกม' }).click();
   await expect(page.getByTestId('preview-game')).toBeVisible();
   await expect(page.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(5);
+  await expect(page.getByTestId('my-hand').locator('[data-card-id^="clan-"]')).toHaveCount(1);
+  await expect(page.getByTestId('my-hand').locator('[data-card-id^="travel-"]')).toHaveCount(1);
+  await expect(page.getByTestId('my-hand').locator('[data-card-id^="recruitment-"]')).toHaveCount(1);
+  await expect(page.getByTestId('my-hand').locator('[data-card-id^="stop-"]')).toHaveCount(1);
+  await expect(page.getByTestId('my-hand').locator('[data-card-id^="imTheBoss-"]')).toHaveCount(1);
   await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
+
+  await page.getByTestId('preview-state-dealOpen').click();
+  await expect(page.getByTestId('deal-panel')).toContainText('ล้มดีล');
+  await expect(page.getByTestId('lock-deal')).toBeDisabled();
+
+  await page.getByTestId('preview-state-afterMove').click();
+  await expect(page.getByTestId('game-room')).toContainText('หลังทอยเต๋า');
+  await expect(page.getByTestId('draw-cards')).toBeVisible();
 
   await nav.getByRole('link', { name: 'เลือกช่องเริ่ม' }).click();
   await expect(page.getByTestId('preview-setup')).toBeVisible();

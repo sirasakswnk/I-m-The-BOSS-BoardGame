@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate, useParams } from 'react-router-dom';
 
+import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
+import type { FamilyColor } from '@/engine/config/families';
 import { project } from '@/engine/project';
 import { applyAction } from '@/engine/reducer';
 import { createInitialState } from '@/engine/setup';
@@ -41,9 +43,33 @@ const PREVIEW_PLAYERS = [
   { uid: PREVIEW_OFFLINE, name: th.preview.mockPlayers.fourth },
 ];
 
-function buildPreviewGame(): { setup: FullGameState; turn: FullGameState } {
+function previewExclusions(state: FullGameState): FamilyColor[] {
+  const space = DEAL_BOARD_SPACES.find((entry) => entry.index === state.pawnSpace);
+  const boss = state.players.find((player) => player.uid === state.bossUid);
+  if (!space || !boss) return [];
+
+  const colors: FamilyColor[] = [];
+  for (const group of space.groups) {
+    const participants = boss.investors.filter(
+      (color) => group.colors.includes(color) && !state.onVacation.includes(color),
+    );
+    if (participants.length > group.pick) {
+      colors.push(...participants.slice(0, participants.length - group.pick));
+    }
+  }
+  return colors;
+}
+
+function buildPreviewGame(): {
+  setup: FullGameState;
+  turn: FullGameState;
+  afterMove: FullGameState;
+  dealOpen: FullGameState;
+  bossUid: string;
+  pickerUid: string;
+} {
   const started = applyAction(
-    createInitialState(20261020, PREVIEW_PLAYERS),
+    createInitialState(66, PREVIEW_PLAYERS),
     { type: 'START_GAME', uid: PREVIEW_HOST },
     PREVIEW_NOW,
   );
@@ -65,7 +91,41 @@ function buildPreviewGame(): { setup: FullGameState; turn: FullGameState } {
     throw new Error(`Preview SET_START_SPACE failed: ${picked.error}`);
   }
 
-  return { setup: started.state, turn: picked.state };
+  const bossUid = picked.state.bossUid;
+  if (!bossUid) {
+    throw new Error('Preview SET_START_SPACE did not select a boss');
+  }
+
+  const rolled = applyAction(
+    picked.state,
+    { type: 'ROLL_DICE', uid: bossUid },
+    PREVIEW_NOW + 2_000,
+  );
+  if ('error' in rolled) {
+    throw new Error(`Preview ROLL_DICE failed: ${rolled.error}`);
+  }
+
+  const opened = applyAction(
+    rolled.state,
+    {
+      type: 'OPEN_DEAL',
+      uid: bossUid,
+      excludeColors: previewExclusions(rolled.state),
+    },
+    PREVIEW_NOW + 3_000,
+  );
+  if ('error' in opened) {
+    throw new Error(`Preview OPEN_DEAL failed: ${opened.error}`);
+  }
+
+  return {
+    setup: started.state,
+    turn: picked.state,
+    afterMove: rolled.state,
+    dealOpen: opened.state,
+    bossUid,
+    pickerUid,
+  };
 }
 
 const PREVIEW_GAME = buildPreviewGame();
@@ -414,17 +474,57 @@ function PreviewStatus() {
   );
 }
 
+const PREVIEW_TABLE_STATES = ['turnStart', 'dealOpen', 'afterMove'] as const;
+type PreviewTableState = (typeof PREVIEW_TABLE_STATES)[number];
+
 function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
-  const state = mode === 'setup' ? PREVIEW_GAME.setup : PREVIEW_GAME.turn;
+  const showToast = useUiStore((state) => state.showToast);
+  const [tableState, setTableState] = useState<PreviewTableState>('turnStart');
+  const state =
+    mode === 'setup'
+      ? PREVIEW_GAME.setup
+      : tableState === 'afterMove'
+        ? PREVIEW_GAME.afterMove
+        : tableState === 'dealOpen'
+          ? PREVIEW_GAME.dealOpen
+          : PREVIEW_GAME.turn;
+  const viewerUid =
+    mode === 'setup'
+      ? (state.startPickerUid ?? PREVIEW_GAME.pickerUid)
+      : (state.bossUid ?? PREVIEW_GAME.bossUid);
   const projected = project(state);
-  const privateState = projected.private[PREVIEW_VIEWER] ?? null;
+  const privateState = projected.private[viewerUid] ?? null;
 
   return (
     <div>
       <p className="mt-3 text-center text-[13px] text-ink-soft">{th.preview.gameNote}</p>
+      {mode === 'game' && (
+        <div
+          className="mx-auto mb-3 flex w-fit flex-wrap items-center justify-center gap-1.5 rounded-full border-2 border-ink bg-white/70 p-1.5"
+          role="group"
+          aria-label={th.preview.gameStates.label}
+        >
+          {PREVIEW_TABLE_STATES.map((id) => (
+            <button
+              key={id}
+              type="button"
+              className={`rounded-full border-2 border-ink px-3 py-1.5 font-display text-[13px] font-bold transition-colors ${
+                tableState === id
+                  ? 'bg-ink text-paper'
+                  : 'bg-white text-ink hover:bg-gold'
+              }`}
+              data-testid={`preview-state-${id}`}
+              aria-pressed={tableState === id}
+              onClick={() => setTableState(id)}
+            >
+              {th.preview.gameStates[id]}
+            </button>
+          ))}
+        </div>
+      )}
       <GameRoom
         code={th.preview.mockRoomCode}
-        uid={PREVIEW_VIEWER}
+        uid={viewerUid}
         hostUid={PREVIEW_HOST}
         players={roomPlayersFromState(state)}
         publicState={projected.public}
@@ -432,6 +532,8 @@ function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
         loading={false}
         errorCode={null}
         onRetry={() => undefined}
+        onAction={() => showToast(th.preview.nonInteractive, 'info')}
+        showChrome={false}
       />
     </div>
   );

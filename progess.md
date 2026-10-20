@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 20 ต.ค. 2026 (M3)
+> อัปเดตล่าสุด: 20 ต.ค. 2026 (M4)
 
 ## สถานะ Milestone
 
@@ -11,7 +11,7 @@
 | M1 | Game Engine (pure TS + tests) | ✅ เสร็จ (20/10/2026) |
 | M2 | Firebase: Auth, Lobby, Presence, Home | ✅ เสร็จ (20/10/2026) |
 | M3 | Host Loop + Security Rules | ✅ เสร็จ (20/10/2026) |
-| M4 | Tabletop UI (Desktop) | ⬜ |
+| M4 | Tabletop UI (Desktop) | ✅ เสร็จ (20/10/2026) |
 | M5 | Offers & Deal Flow | ⬜ |
 | M6 | Action Cards & Interrupt Window | ⬜ |
 | M7 | End of Turn & Game End | ⬜ |
@@ -292,3 +292,67 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 ### ขั้นถัดไป
 
 Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำสั่ง
+
+---
+
+## M4 — Tabletop UI (Desktop) ✅ (20/10/2026)
+
+### สิ่งที่ทำ
+
+- เปลี่ยน `GameRoom` จากหน้าจอเริ่มเกมแบบง่ายเป็น **โต๊ะเจรจาเต็มรูปแบบ** ตามภาษาภาพของ `table.html` โดยซ่อน header ของห้องระหว่าง `playing` และใช้ top bar ของโต๊ะแทน
+- สร้างคอมโพเนนต์ใต้ `src/ui/table/` แยกความรับผิดชอบ: `TableScreen`, `TableTopBar`, `DealBoard`, `DealPanel`, `TableSeat`, `HandFan`, `GameLog`, `TableBits` และ helper บริสุทธิ์ใน `tableUtils.ts`
+- **กระดาน 16 ช่อง** แสดงหมายเลข, เงินปันผล, กลุ่มนักลงทุนที่ต้องการ, สีประจำช่อง, ช่องที่ปิดแล้วพร้อมเลขแผ่นดีล, ช่องปัจจุบัน, หมาก และ tooltip บน hover/focus
+- **ที่นั่ง 4–6 คน** หมุนตามผู้เล่นท้องถิ่น (ซ้าย/บน/ขวา) แสดงเงิน, นักลงทุน, สถานะพักร้อน, จำนวนการ์ดคว่ำ, host, boss และสถานะออนไลน์/ออฟไลน์
+- **มือผู้เล่น** เป็น fan การ์ดพร้อม hover/ลูกศรซ้าย–ขวา, ช่องการ์ด 12 ใบ และแสดงการ์ด 5 ชนิด: ญาติ, ส่งไปพักร้อน, ซื้อตัวนักลงทุน, หยุด!, แย่งเป็นบอส รวมถึงการ์ด wild และพื้นหน้านักลงทุนบนที่นั่ง
+- **แผงดีลปัจจุบัน** แสดงช่อง, มูลค่า, เงินปันผล, ส่วนแบ่ง, เงื่อนไขกลุ่ม, สถานะครบ/ขาด, ผู้เข้าร่วม, ข้อเสนอที่ถูกตอบรับ และปุ่มเปิด/ล้มดีล
+- **ตัวเลือกตระกูลเกินเงื่อนไข (overfill)** เป็น chip ในแผงดีล; ปุ่มเปิดดีลจะเปิดได้เมื่อเลือกตระกูลที่จะกันออกครบตามที่ engine ต้องใช้ และส่ง `excludeColors` ไปกับ `OPEN_DEAL`
+- **ทอยเต๋า/เดินหมาก/จั่ว 3 ใบ** ทำงานกับ engine จริงผ่าน `ROLL_DICE` และ `DRAW_CARDS`; เมื่อจั่วเสร็จ engine จบเทิร์นทันทีตามกติกา
+- **ตัวเลือกช่องเริ่มต้น** ใช้ร่วมกับ flow เริ่มเกมเดิม; ผู้เล่นที่ไม่ใช่ผู้เลือกจะเห็นสถานะรอ
+- **บันทึกเกม** แปลง event จาก engine เป็นข้อความไทยและแสดงรายการล่าสุด
+- เพิ่ม **preview states จาก engine จริง** (seed 66): `ต้นเทิร์น`, `เปิดดีล`, `หลังทอยเต๋า` พร้อมสลับ state; ปุ่มใน preview แสดง toast แบบไม่เขียน Firebase
+- เพิ่ม responsive fallback สำหรับช่วง 1024–1180px และหน้าจอแคบกว่า 1024px; งาน mobile polish ยังอยู่ใน M8
+- เพิ่ม unit tests ของ table helper และ e2e ของโต๊ะจริง
+
+### ไฟล์หลัก
+
+- `src/ui/table/TableScreen.tsx`, `DealBoard.tsx`, `DealPanel.tsx`, `TableSeat.tsx`, `HandFan.tsx`, `GameLog.tsx`, `TableTopBar.tsx`, `TableBits.tsx`
+- `src/ui/table/tableUtils.ts`, `tableUtils.test.ts`, `gameLogFormat.ts`
+- `src/ui/pages/GameRoom.tsx`, `Room.tsx`, `Preview.tsx`
+- `src/styles/global.css`, `src/i18n/th.ts`
+- `e2e/table.spec.ts`, `e2e/preview.spec.ts`
+- `review/m4/01-start-space.jpg`, `02-turn-start.jpg`, `03-after-move.jpg`, `04-deal-open.jpg`, `05-card-faces.jpg`
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน 126/126 tests (12 files)
+- `npm run test:rules`: ผ่าน 12/12 tests
+- `npm run build`: ผ่าน; มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
+- e2e ผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: **6/6 tests** ครอบคลุม lobby/start game, preview ทุกหน้าจอ, เทิร์นว่าง (เปิดดีล → ล้มดีล) และเทิร์นทอยเต๋า → จั่ว 3 ใบ
+- ตรวจภาพที่ 1440px และทดสอบ layout ที่ 1280/1024px
+
+### Definition of Done (M4)
+
+- [x] โต๊ะเกม desktop ใช้ภาษาภาพเดียวกับ `table.html`
+- [x] กระดาน 16 ช่องพร้อมช่องปิด/ช่องปัจจุบัน/หมาก/เงื่อนไขและเงินปันผล
+- [x] ที่นั่งผู้เล่นหมุนตามตัวเอง แสดงเงิน นักลงทุน สถานะพักร้อน และการ์ดคว่ำ
+- [x] มือของผู้เล่นเห็นเฉพาะตัวเอง พร้อมการ์ดครบ 5 ชนิดและการ์ดนักลงทุน
+- [x] แผงดีลปัจจุบัน + บันทึกเกม + top bar แสดงเฟส/เทิร์น/ดีลที่ปิด/บอส
+- [x] ผู้เล่นเลือกช่องเริ่มต้นและเห็นการอัปเดตของโต๊ะ
+- [x] ทอยเต๋า → เดินหมาก → เปิดดีล/จั่ว 3 ใบ ทำงานผ่าน UI จริง
+- [x] เทิร์นว่าง: เปิดดีลแล้วล้มดีลและจบเทิร์นผ่าน UI จริง
+- [x] มี screenshot ของหน้าจอหลักให้ตรวจก่อนเริ่ม M5
+- [x] ไม่แก้ไฟล์ prototype (`design/home.html`, `table.html`, `lobby.html`)
+- [x] ไม่เปลี่ยนกติกา engine; `LOCK_DEAL`/interrupt window และกติกาอื่นที่ lock ไว้ยังอยู่ครบ
+
+### ข้อจำกัด / รู้ไว้ก่อน M5
+
+- ปุ่ม **ยื่นข้อเสนอ**, **ลงการ์ด** และ **ล็อกดีล** ยัง disabled โดยตั้งใจ; งานจริงอยู่ใน M5/M6 (มี tooltip บอก)
+- แผงดีลเป็นพื้นที่ scroll ได้เมื่อมีข้อเสนอ/เงินปันผลจำนวนมาก; การจัดวางแบบละเอียดจะปรับอีกครั้งเมื่อ flow ข้อเสนอครบ
+- จอ ≤1023px ใช้ single-column fallback เพื่อไม่ให้แตก; mobile responsive เต็มรูปแบบอยู่ใน M8
+- Preview ใช้ผู้เล่น 4 คนและ seed 66 เพื่อให้เห็นการ์ดครบทุกชนิด; overfill picker ถูกทดสอบด้วย unit tests และ e2e เมื่อ engine สร้างสถานะนั้นจริง
+
+### ขั้นถัดไป
+
+Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอคำสั่ง
