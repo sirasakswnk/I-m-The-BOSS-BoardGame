@@ -86,7 +86,7 @@ function BoardCell({
                 count: space.requiredInvestors,
               })}
             </span>
-            <GroupSymbols groups={space.groups} size={isCurrent ? 15 : 14} />
+            <GroupSymbols groups={space.groups} size={isCurrent ? 17 : 16} />
           </div>
           {isCurrent && (
             <motion.div

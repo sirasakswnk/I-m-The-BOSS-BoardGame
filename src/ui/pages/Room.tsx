@@ -435,7 +435,7 @@ export function Room() {
       <main
         className={
           tableMode
-            ? 'mx-auto w-full max-w-[1280px] px-4 pb-8'
+            ? 'mx-auto w-full max-w-[1520px] px-4 pb-8'
             : 'mx-auto w-full max-w-[1200px] px-4 pb-16'
         }
       >

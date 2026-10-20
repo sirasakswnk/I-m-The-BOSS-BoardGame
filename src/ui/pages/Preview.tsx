@@ -148,10 +148,14 @@ function roomPlayersFromState(state: FullGameState): RoomPlayers {
   return players;
 }
 
-function PreviewToolbar() {
+function PreviewToolbar({ wide = false }: { wide?: boolean }) {
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper">
-      <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+      <div
+        className={`mx-auto flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 ${
+          wide ? 'max-w-[1520px]' : 'max-w-[1240px]'
+        }`}
+      >
         <Brand />
         <Chip tone="gold" className="px-2.5 py-1 text-[11px]">
           {th.preview.badge}
@@ -190,16 +194,21 @@ function PreviewToolbar() {
 }
 
 function PreviewFrame({ screen, children }: { screen: PreviewScreenId; children: ReactNode }) {
+  const wide = screen === 'game' || screen === 'setup';
+  const frameWidth = wide ? 'max-w-[1520px]' : 'max-w-[1200px]';
+
   return (
     <div className="min-h-dvh" data-testid={`preview-${screen}`}>
       <div className="grain-overlay" aria-hidden="true" />
-      <PreviewToolbar />
-      <div className="relative mx-auto w-full max-w-[1200px] px-4 pt-3">
+      <PreviewToolbar wide={wide} />
+      <div className={`relative mx-auto w-full px-4 pt-3 ${frameWidth}`}>
         <p className="text-center text-[13px] text-ink-soft">
           {th.preview.descriptions[screen]}
         </p>
       </div>
-      <main className="relative mx-auto w-full max-w-[1200px] px-4 pb-16">{children}</main>
+      <main className={`relative mx-auto w-full px-4 pb-16 ${frameWidth}`}>
+        {children}
+      </main>
     </div>
   );
 }

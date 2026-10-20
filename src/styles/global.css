@@ -548,7 +548,7 @@
 
 .table-screen {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1520px;
   margin: 0 auto;
 }
 
@@ -691,8 +691,8 @@
 
 .table-layout {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(560px, 760px) minmax(150px, 190px);
-  gap: 14px;
+  grid-template-columns: minmax(160px, 184px) minmax(0, 1080px) minmax(160px, 184px);
+  gap: 16px;
   align-items: start;
   justify-content: center;
 }
@@ -719,7 +719,7 @@
 
 .table-board {
   width: 100%;
-  max-width: 760px;
+  max-width: 1080px;
   padding: 10px;
   border: 3px solid var(--ink);
   border-radius: 24px;
@@ -730,8 +730,9 @@
 .table-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-template-rows: repeat(5, 104px);
+  grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: 6px;
+  aspect-ratio: 1.45 / 1;
 }
 
 .table-deal-slot {
@@ -1213,14 +1214,14 @@
 
 .table-cell-top b {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .table-cell-top span {
   color: var(--ink-soft);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -1250,7 +1251,7 @@
 }
 
 .table-cell.is-current .table-cell-top b {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .table-cell.is-closed {
@@ -1322,7 +1323,7 @@
   border-right: 1px solid rgba(29, 27, 46, 0.35);
   color: var(--ink);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2268,7 +2269,8 @@ button.table-family-chip:hover:not(:disabled) {
   }
 
   .table-grid {
-    grid-template-rows: repeat(5, 98px);
+    grid-template-rows: repeat(5, 108px);
+    aspect-ratio: auto;
   }
 
   .table-mine {
