@@ -6,7 +6,7 @@ coverage
 !.env.example
 *.local
 .firebase/
-firebase-debug.log*
+*-debug.log*
 playwright-report/
 test-results/
 .DS_Store

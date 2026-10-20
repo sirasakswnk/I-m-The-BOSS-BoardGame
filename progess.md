@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 20 ต.ค. 2026
+> อัปเดตล่าสุด: 20 ต.ค. 2026 (M2)
 
 ## สถานะ Milestone
 
@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | M0 | Scaffold (Vite + React + TS + Tailwind + design tokens) | ✅ เสร็จ (20/10/2026) |
 | M1 | Game Engine (pure TS + tests) | ✅ เสร็จ (20/10/2026) |
-| M2 | Firebase: Auth, Lobby, Presence, Home | ⬜ |
+| M2 | Firebase: Auth, Lobby, Presence, Home | ✅ เสร็จ (20/10/2026) |
 | M3 | Host Loop + Security Rules | ⬜ |
 | M4 | Tabletop UI (Desktop) | ⬜ |
 | M5 | Offers & Deal Flow | ⬜ |
@@ -162,3 +162,70 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 - Lobby: join/leave/seat/reassign, presence ด้วย `onDisconnect`, sync ผ่าน RTDB
 - หน้า Home/Room ตาม `design/home.html` + ข้อความจาก `src/i18n/th.ts`
 - ยังใช้ `database.rules.json` แบบ deny-all ชั่วคราว; กฎจริง + host loop อยู่ใน M3
+
+---
+
+## M2 — Firebase: Auth, Lobby, Presence, Home ✅ (20/10/2026)
+
+### สิ่งที่ทำ
+
+- **Firebase/Auth** — `src/net/firebase.ts` initializes Firebase lazily (อ่าน env ตอนเรียกครั้งแรก), ตรวจว่ามีครบ 5 คีย์, ใช้ Anonymous Auth ร่วมกันผ่าน promise เดียว, และเชื่อม Emulator เฉพาะ `import.meta.env.DEV && VITE_USE_EMULATORS === 'true'` (production build จึงไม่ต่อ Emulator แม้ `.env.local` จะเปิด flag)
+- **Room code / nickname** — `src/net/roomCode.ts`: รหัส 5 หลัก `10000–99999` (ไม่ขึ้นต้นด้วย 0), สุ่มด้วย `crypto.getRandomValues` + rejection sampling, normalize ชื่อ (trim/ยุบช่องว่าง), จำกัด 16 ตัวอักษร, เติม ` 2`, ` 3` แบบ case-insensitive เมื่อชื่อซ้ำ, และเลือกที่นั่งว่างต่ำสุด
+- **Room service** — `src/net/rooms.ts`: `createRoom`, `joinRoom`, `leaveRoom`, `peekRoom`, `subscribeRoom`, `ensurePresence`, `markRoomOffline`, `findRejoinRoom`, `getRoomUrl`, `copyText` + `RoomServiceError` ที่ map เป็นรหัสข้อความใน `th.errors`
+- **Persistence/state** — `storage.ts` เก็บ `lastNickname`/`lastRoomCode`; `roomStore.ts` เก็บ uid, auth state, snapshot `meta`/`players`; `uiStore.ts` + `Toast` สำหรับข้อความแจ้งผล; `useAnonymousAuth` และ `useRoom` ผูก Firebase กับ React
+- **Home** — port จาก `design/home.html`: สร้างห้อง, join ด้วยรหัส, preview ชื่อจริง/ชื่อซ้ำ/ห้องเต็ม/เริ่มแล้ว/จบแล้ว/เป็นสมาชิกอยู่แล้ว, banner “ห้อง … ยังรอ …” สำหรับกลับเข้าโต๊ะ, prefill `?room={code}`, ปุ่ม copy/status ต่าง ๆ และแจ้ง error ผ่าน toast
+- **Room/Lobby** — ผู้เล่น 6 ที่นั่ง + สถานะ online/offline, ป้ายเจ้าของห้อง/“คุณ”, ชวนเพื่อนด้วยรหัสและลิงก์ `/{code}`, copy link, leave (host โอนให้ผู้เล่น connected ที่นั่งต่ำสุด; คนสุดท้ายออกแล้วลบห้อง), หน้า join จาก invite link, และ status pages: loading / invalid code / not found / full / playing / finished / error
+- **Start game** — แสดงปุ่ม “เริ่มเกม” พร้อมเงื่อนไข 3–6 คน แต่ยังไม่เริ่มจริง (disable/hint) เพราะ host loop อยู่ใน M3
+- **UI/i18n/theme** — เพิ่ม `Brand`, `TextInput`, `Pawn`, `Toast`; ขยาย `th.ts` ครบทุกข้อความ UI; เพิ่ม `.text-input`, `.field-label`, `.fan`, `.track`, `.toast` ใน `global.css`; ทุกข้อความ UI ยังอยู่ใน `src/i18n/th.ts`
+- **Emulator/test setup** — `firebase.emulator.json` (auth 9099 / database 9000 / ui 4000) + `database.rules.emulator.json` แบบ permissive สำหรับ dev เท่านั้น; `npm run emulators` ใช้ config นี้; `.env.example` เพิ่ม `VITE_USE_EMULATORS=false`; `.env.local` (gitignored) เปิด flag ระหว่างทดสอบ
+- **Playwright** — เพิ่ม `@playwright/test` + `playwright.config.ts` + `e2e/lobby.spec.ts` (2 tests) เพื่อตรวจ DoD M2 จริงในเบราว์เซอร์ Chrome
+
+### ผลการตรวจสอบ (Definition of Done ของ M2)
+
+| คำสั่ง / รายการ | ผลลัพธ์ |
+| --- | --- |
+| `npm run typecheck` | ✅ ผ่าน (รวม `e2e` + `playwright.config.ts` แล้ว) |
+| `npm run lint` | ✅ ผ่าน (ไม่มี error/warning) |
+| `npm run test` | ✅ ผ่าน **114/114 tests** (11 files) |
+| `npm run test:e2e` | ✅ ผ่าน **2/2 tests** (Chrome, ใช้ Firebase Emulator) |
+| `npm run build` | ✅ ผ่าน — JS 446.18 kB (gzip 137.11 kB), CSS 24.72 kB (gzip 6.26 kB) |
+| ตรวจภาพ desktop 1440px / mobile 390px | ✅ Home, join view และ lobby เรียงตัวถูก, ไม่มี overflow แนวนอน |
+
+**ตรวจตาม DoD M2 แล้ว:**
+
+- เปิด 3 browser contexts (anonymous uid คนละคน) เข้าห้องเดียวกันได้ — ผ่านใน e2e
+- refresh แล้วกลับที่นั่งเดิม (Firebase Auth persistence + uid เดิม) — ผ่านใน e2e
+- ปิดแท็บแล้วอีกฝั่งเห็นเป็น offline ผ่าน `onDisconnect` — ผ่านใน e2e
+- ชื่อซ้ำถูกต่อท้าย ` 2` ทั้งใน preview ก่อน join และชื่อจริงหลัง join — ผ่านใน e2e
+- host ออกจาก lobby คนสุดท้าย → ลบห้อง และเปิดรหัสเดิมแล้วเห็น “ไม่พบห้องนี้” — ผ่านใน e2e
+- กลับหน้าแรกแล้วมี banner กลับเข้าโต๊ะ พร้อมรหัสห้อง — ผ่านใน e2e
+- join จาก invite link `/{code}` และ copy invite link ลง clipboard — ผ่านใน e2e
+
+### การตัดสินใจ / ASSUMPTION (M2)
+
+1. **รหัสห้อง** — 5 หลักและไม่ขึ้นต้นด้วย 0 ตาม plan; ใช้ crypto + rejection sampling; createRoom retry สูงสุด 10 ครั้งถ้า transaction ชนรหัส (`CODE_RETRY`)
+2. **ชื่อซ้ำ** — เติม ` 2`, ` 3`, … โดยเทียบแบบ case-insensitive และตัด stem ให้ชื่อสุดท้ายไม่เกิน 16 ตัวอักษร; Home preview ใช้ `dedupeNickname` ตัวเดียวกับ service เพื่อให้เห็นชื่อจริงก่อนกด join
+3. **Invite link** — ใช้ path `/{code}` (ไม่ใช้ query) และอ่าน `?room={code}` เป็น prefill บน Home; `getRoomUrl` เคารพ `BASE_URL` เพื่อรองรับ deploy แบบ subpath ใน M9
+4. **Data exposure** — M2 อ่านเฉพาะ `rooms/{code}/meta` และ `rooms/{code}/players`; ไม่แตะ `private` หรือ `hostState` (ยังไม่มีใน M2) และ projection ของเกมจะเริ่ม M3
+5. **Host transfer** — host ออกจาก lobby แล้วโอนให้ผู้เล่นที่ connected ก่อน; ถ้าไม่มี connected เลยให้ที่นั่งต่ำสุด; ถ้าไม่มีใครเหลือให้ลบ `rooms/{code}` ทั้งห้อง
+6. **Start game** — ปุ่มเริ่มเกมยังไม่ทำงานจริงใน M2 (disabled เมื่อยังไม่ครบ 3 คน; เมื่อครบแล้วกดได้แต่แจ้งว่ารอ M3); ไม่มี host loop/state machine ของเกมใน M2
+7. **Presence** — `ensurePresence` ลงทะเบียน `onDisconnect` (connected=false, lastSeen=serverTimestamp) และ cleanup ตอนออกจากหน้าแบบ debounce 150 ms เพื่อไม่ให้ React StrictMode ยกเลิก handler ที่เพิ่งลงทะเบียน; เป็น best-effort ถ้าเน็ตขาดจะฟื้นเมื่อกลับเข้า room
+8. **Host ที่ offline** — M2 ยังไม่ auto-migrate host เมื่อ host หลุด; แสดงป้าย host offline และให้ host กลับมาเอง (auto-migrate/host-only skip อยู่ใน M3/M9)
+9. **Leave** — leave ได้เฉพาะ lobby; host ที่ออกก่อนจะโอนสิทธิ์; ผู้เล่นทั่วไปลบเฉพาะ record ของตัวเอง; การออกกลางเกมจะล็อกใน M3+
+10. **Production rules** — `database.rules.json` ยังเป็น deny-all; `database.rules.emulator.json` เปิดกว้างเฉพาะ Emulator. M3 ต้องเขียน rules จริงและเพิ่ม `test:rules` ครอบคลุม create/join/leave/host-transfer/root-delete และกันการแย่งที่นั่ง
+11. **Project binding** — `.firebaserc` ยังเป็น `demo-im-the-boss-deal` สำหรับ Emulator แต่ `.env` ชี้ project `i-m-the-boss`; ก่อน deploy ต้องตัดสินใจ/ผูก project จริงและเปิด Anonymous Auth ใน Firebase Console (M3/M9)
+12. **Playwright ก่อนกำหนด** — ติดตั้ง `@playwright/test` ตั้งแต่ M2 เพื่อใช้ตรวจ DoD (แผนเดิมระบุ M5); `test:e2e` ต้องรัน `npm run emulators` ไว้อีก terminal เพราะ Playwright start เฉพาะ Vite dev server
+
+### งานค้าง / ความเสี่ยงที่รับรู้
+
+- [ ] M3: host loop, `private`/`hostState`, security rules จริง + `test:rules`, เริ่มเกมจาก lobby
+- [ ] M3 rules ต้องอนุญาต self-delete ตอน leave, host transfer, root delete และจัดการ race ของการ join พร้อมกัน (M2 ใช้ read-then-set; ยังไม่ transactional ทุกกรณี)
+- [ ] ตัดสินใจ Firebase project จริง + เปิด Anonymous Auth สำหรับ production
+- [ ] Bundle โตขึ้นเป็น ~446 kB เพราะ Firebase SDK — พิจารณา code-split/optimize ตอน M9
+- [ ] Host offline auto-migration / host-only recovery controls ตาม plan M3/M9
+
+### ขั้นถัดไป — M3 Host Loop + Security Rules
+
+- สร้าง `hostState`/`private` ตาม data model และ host loop ที่เรียก engine reducer/validators
+- เริ่มเกมจริงจาก lobby (อย่างน้อย 3 คน), แจกบทบาท/ไพ่ และ sync state แบบ project ตาม viewer
+- เขียน `database.rules.json` จริง + ชุด `test:rules` ตามหัวข้อ 6 และ DoD M3

@@ -14,7 +14,7 @@ interface FamilyCardProps {
 /**
  * Family card based on design/home.html: 104x146 desktop / 58x84 mobile,
  * white frame with ink border, striped family-colored face, emblem in a white
- * circle, name pill and corner labels. The `clan` variant adds the "ญาติ" ribbon.
+ * circle, name pill and corner labels. The `clan` variant adds the clan ribbon.
  */
 export function FamilyCard({ family, variant = 'investor', className }: FamilyCardProps) {
   const meta = FAMILY_BY_ID[family];
