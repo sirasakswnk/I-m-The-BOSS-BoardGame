@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 20 ต.ค. 2026 (M2)
+> อัปเดตล่าสุด: 20 ต.ค. 2026 (M3)
 
 ## สถานะ Milestone
 
@@ -10,7 +10,7 @@
 | M0 | Scaffold (Vite + React + TS + Tailwind + design tokens) | ✅ เสร็จ (20/10/2026) |
 | M1 | Game Engine (pure TS + tests) | ✅ เสร็จ (20/10/2026) |
 | M2 | Firebase: Auth, Lobby, Presence, Home | ✅ เสร็จ (20/10/2026) |
-| M3 | Host Loop + Security Rules | ⬜ |
+| M3 | Host Loop + Security Rules | ✅ เสร็จ (20/10/2026) |
 | M4 | Tabletop UI (Desktop) | ⬜ |
 | M5 | Offers & Deal Flow | ⬜ |
 | M6 | Action Cards & Interrupt Window | ⬜ |
@@ -224,8 +224,71 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 - [ ] Bundle โตขึ้นเป็น ~446 kB เพราะ Firebase SDK — พิจารณา code-split/optimize ตอน M9
 - [ ] Host offline auto-migration / host-only recovery controls ตาม plan M3/M9
 
-### ขั้นถัดไป — M3 Host Loop + Security Rules
+## M3 — Host Loop + Security Rules ✅ (20/10/2026)
 
-- สร้าง `hostState`/`private` ตาม data model และ host loop ที่เรียก engine reducer/validators
-- เริ่มเกมจริงจาก lobby (อย่างน้อย 3 คน), แจกบทบาท/ไพ่ และ sync state แบบ project ตาม viewer
-- เขียน `database.rules.json` จริง + ชุด `test:rules` ตามหัวข้อ 6 และ DoD M3
+### สิ่งที่ทำ
+
+- **Host loop** — `src/net/host/hostLoop.ts` écoute `rooms/{code}/actions`, queue actions, เรียก engine `applyAction`/`tick`, เขียน `public`, `private/{uid}`, `hostState` ด้วย multi-path update, ลบ action ที่ประมวลผลแล้ว และเขียน rejection ไปที่ `public/rejections/{uid}`
+- **Start game** — host ใช้ transaction เปลี่ยน `meta/status` จาก `lobby` → `playing` ก่อนอ่านรายชื่อ เพื่อ freeze สมาชิก lobby กันคน join/leave แข่งกับจังหวะเริ่ม, กัน start ซ้ำ, แล้วสร้าง `FullGameState` จากผู้เล่นเรียงตาม `joinedAt`, แจกไพ่/เขียน projection ให้ทุกคน
+- **Host authorization** — บังคับ host-only สำหรับ `START_GAME`, `SKIP_DISCONNECTED_BOSS`, `REMATCH`, `REASSIGN_SEAT`; engine ยังคง pure และไม่รู้จัก Firebase
+- **Server clock** — `src/net/clock.ts` sync `.info/serverTimeOffset` เพื่อใช้ deadline ของ interrupt window (เตรียมต่อ M6)
+- **RTDB normalization** — `src/net/gameState.ts` เติม empty arrays/objects ที่ Realtime Database ตัดทิ้ง (เช่น `closedSpaces: []`, `deal: null`) ก่อนส่งเข้า engine/UI
+- **Minimal in-game view** — `src/ui/pages/GameRoom.tsx` แสดงเฟส, บอส, ดีลที่ปิด, หมาก, กองจั่ว/กองทิ้ง, ผู้เล่น, นักลงทุน, จำนวนการ์ด, ไพ่และเงินเฉพาะตัวเอง และตัวเลือกช่องเริ่มต้น 1–16
+- **Security rules** — `database.rules.json` ใช้จริง: meta/players อ่านได้เมื่อ auth, public อ่านได้เฉพาะสมาชิก, private อ่านได้เฉพาะเจ้าของ/host, hostState เฉพาะ host, actions เขียนได้เฉพาะ self และ host เท่านั้นที่อ่าน/ลบได้; รองรับ create/join/leave, presence, host transfer, room deletion
+- **Rules tests** — `tests/rules/security.test.ts` 12 tests ครอบคลุม auth, lobby create/join, presence, host ownership, game status, public/private/hostState, actions และ room deletion
+- **E2E** — เพิ่ม test เริ่มเกม 3 คน, ตรวจว่าทุกคนเห็นไพ่ 5 ใบของตัวเอง, ตรวจ privacy note และเลือกช่องเริ่มต้นแล้วทุกคนเห็น phase เปลี่ยนเป็น `turnStart`
+- **Emulator** — `firebase.emulator.json` เปลี่ยนมาใช้ `database.rules.json` จริง; ลบ `database.rules.emulator.json` แบบ permissive ที่ไม่ใช้แล้ว
+- **Progress** — อัปเดต `progess.md` เป็น M3
+
+### ไฟล์ที่สร้าง/แก้
+
+- `src/net/host/hostLoop.ts` — host loop, action queue, start game, projection writes, rejection, tick
+- `src/net/useHostLoop.ts` — React hook สำหรับเปิด/ปิด host loop ตามเจ้าของห้อง
+- `src/net/actions.ts` — `sendAction`/`sendStartGame` เขียน action พร้อม uid และ server timestamp
+- `src/net/clock.ts` — server time offset จาก RTDB
+- `src/net/gameState.ts` — normalize `hostState`/`public`/`private` หลังอ่านจาก RTDB
+- `src/net/gameTypes.ts` — types ของ stored action, rejection และ snapshot
+- `src/net/useGameState.ts` — subscribe public, private ของตัวเอง และ rejection feedback
+- `src/ui/pages/GameRoom.tsx` — หน้าจอเกมขั้นต้นสำหรับ M3
+- `src/ui/pages/Room.tsx` — เปิด host loop, game state, start button จริง และแสดง GameRoom
+- `src/i18n/th.ts` — ข้อความเกม, การ์ด, rejection reasons และสถานะเริ่มเกม
+- `src/net/rooms.ts` — export `asRoomError` ให้ชั้น action/game ใช้ mapping เดียวกัน
+- `database.rules.json` — security rules จริงสำหรับ M3
+- `tests/rules/security.test.ts` — rules tests 12 tests
+- `e2e/lobby.spec.ts` — เพิ่ม e2e เริ่มเกม/ไพ่ส่วนตัว/เลือกช่องเริ่มต้น
+- `firebase.emulator.json` — ใช้ production rules ใน emulator
+- `vitest.rules.config.ts`, `package.json`, `package-lock.json` — rules test config และ `@firebase/rules-unit-testing` (dev dependency)
+- `src/ui/pages/Home.tsx`, `src/ui/common/FamilyCard.tsx` — งานปรับการ์ดหน้า Home ที่ค้างจาก M2 (ชื่อตระกูลสีขาวทั้งหมด, เอา ribbon “ญาติ” ออกจาก fan) รวมใน commit M3
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน 114/114 tests (11 files)
+- `npm run test:rules`: ผ่าน 12/12 tests
+- `npm run build`: ผ่าน — JS 507.38 kB (gzip 153.77 kB), CSS 26.44 kB (gzip 6.52 kB); มี warning bundle ใหญ่กว่า 500 kB
+- e2e (รันผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`): ผ่าน 3/3 tests
+
+### Definition of Done (M3)
+
+- [x] rules tests ผ่านทั้งหมด (12/12)
+- [x] ผู้เล่น 3 คนเริ่มเกมจาก lobby ได้จริง
+- [x] ทุกคนเห็นไพ่ในมือของตัวเอง 5 ใบ และ UI/DB แยก private ตาม uid
+- [x] DevTools/rules ป้องกันการอ่าน `private` ของคนอื่น (host อ่านได้ตาม authoritative design)
+- [x] host loop เขียน state/projection และลบ action หลังประมวลผล
+- [x] rejection feedback ไปที่ `public/rejections/{uid}`
+- [x] e2e เริ่มเกม + เลือกช่องเริ่มต้นผ่าน
+
+### ASSUMPTION / ปัญหา / สิ่งที่ต้องให้ผู้ใช้ตัดสินใจ
+
+- **RTDB rules ไม่มี `numChildren()`/`size()`** จึงบังคับเพดาน 6 คนและ seat uniqueness ใน rules โดยตรงไม่ได้; ตอนนี้ `rooms.ts` เป็นผู้บังคับเพดาน และ rules ตรวจแค่ seat อยู่ 0–5. ถ้าต้องการบังคับที่ rules จริง ๆ ต้องเปลี่ยน schema เป็น seat slots หรือใช้ Cloud Function
+- **Empty arrays/objects** — RTDB ตัด `[]`/`{}` ทิ้ง จึงต้อง normalize ก่อนใช้ engine/UI; ถ้าเพิ่ม field ใหม่ใน state ต้องอัปเดต `gameState.ts` ด้วย
+- **Host เป็นผู้เขียน private ของทุกคน** — ผู้เล่นอื่นอ่าน private คนอื่นไม่ได้ แต่ host อ่านได้ตาม authoritative design; ไม่มี server-side secret ต่อ host
+- **`public/rejections`** อยู่ใต้ `public` ที่สมาชิกทุกคนอ่านได้; rejection ไม่ใช่ข้อมูลลับ จึงยอมรับได้ใน M3
+- **Dependency เพิ่ม** — `@firebase/rules-unit-testing` เป็น dev dependency สำหรับ Firebase Emulator rules tests; ไม่ได้อยู่ใน runtime bundle
+- **E2E command** — `npm run test:e2e` ยังต้องมี emulator รันอยู่; การรันที่ใช้ตรวจ M3 ห่อด้วย `firebase emulators:exec` เพื่อให้ start/stop อัตโนมัติ
+- **M3 UI ยังเป็นขั้นต้น** — โต๊ะเกมเต็มรูปแบบ, board 16 ช่อง, hand/seat/log และ interaction หลักเป็นงาน M4
+
+### ขั้นถัดไป
+
+Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำสั่ง

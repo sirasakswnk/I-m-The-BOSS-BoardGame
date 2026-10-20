@@ -42,6 +42,58 @@ test('host leaving an empty lobby deletes the room', async ({ browser }: { brows
   }
 });
 
+test('host starts a three-player game and every player sees only their own hand', async ({
+  browser,
+}: {
+  browser: Browser;
+}) => {
+  const hostContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const thirdContext = await browser.newContext();
+  const host = await hostContext.newPage();
+  const guest = await guestContext.newPage();
+  const third = await thirdContext.newPage();
+
+  try {
+    const code = await createRoom(host, 'Host');
+    await joinFromInvite(guest, code, 'Guest');
+    await joinFromInvite(third, code, 'Third');
+    await expect(host.getByTestId(/^player-/)).toHaveCount(3);
+    await expect(host.getByTestId('start-game')).toBeEnabled();
+
+    await host.getByTestId('start-game').click();
+
+    const pages = [host, guest, third];
+    for (const page of pages) {
+      await expect(page.getByTestId('game-room')).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(5);
+      await expect(page.getByTestId('game-room')).toContainText('เห็นเฉพาะคุณเท่านั้น');
+    }
+
+    await expect(host.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
+    await expect(guest.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
+
+    for (const page of pages) {
+      if (await page.getByTestId('start-space-1').isVisible()) {
+        await page.getByTestId('start-space-1').click();
+        break;
+      }
+    }
+
+    for (const page of pages) {
+      await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น', {
+        timeout: 20_000,
+      });
+    }
+  } finally {
+    await Promise.allSettled([
+      hostContext.close(),
+      guestContext.close(),
+      thirdContext.close(),
+    ]);
+  }
+});
+
 test('three anonymous tabs join, refresh, dedupe names and show offline', async ({
   browser,
 }: {

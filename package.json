@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rules": "firebase emulators:exec --only database \"vitest run --config vitest.rules.config.ts --passWithNoTests\"",
+    "test:rules": "firebase emulators:exec --only database \"vitest run --config vitest.rules.config.ts\"",
     "emulators": "firebase emulators:start --config firebase.emulator.json --only database,auth",
     "test:e2e": "playwright test"
   },
@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/react": "^18.3.31",

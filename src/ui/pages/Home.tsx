@@ -266,7 +266,7 @@ export function Home() {
           <div className="fan" aria-hidden="true">
             {FAMILY_PRESENTATION.map((family) => (
               <div key={family.id} className="fan-card">
-                <FamilyCard family={family.id} variant="clan" />
+                <FamilyCard family={family.id} />
               </div>
             ))}
           </div>

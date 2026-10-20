@@ -51,7 +51,10 @@ function firebaseErrorCode(error: unknown): string {
   return '';
 }
 
-function asRoomError(error: unknown, fallback: RoomErrorCode = 'NETWORK_ERROR'): RoomServiceError {
+export function asRoomError(
+  error: unknown,
+  fallback: RoomErrorCode = 'NETWORK_ERROR',
+): RoomServiceError {
   if (error instanceof RoomServiceError) return error;
 
   const code = firebaseErrorCode(error);

@@ -19,7 +19,6 @@ interface FamilyCardProps {
 export function FamilyCard({ family, variant = 'investor', className }: FamilyCardProps) {
   const meta = FAMILY_BY_ID[family];
   const isLightFace = meta.textOnFace === 'ink';
-  const faceTextClass = isLightFace ? 'text-ink' : 'text-white';
 
   return (
     <div
@@ -30,12 +29,16 @@ export function FamilyCard({ family, variant = 'investor', className }: FamilyCa
         style={{ backgroundColor: `var(${meta.cssVar})` }}
       >
         <span
-          className={`absolute left-2 top-1.5 font-display text-[13px] font-bold leading-none max-md:hidden ${faceTextClass}`}
+          className={`absolute left-2 top-1.5 font-display text-[13px] font-bold leading-none text-white max-md:hidden ${
+            isLightFace ? 'rounded bg-ink/[0.45] px-1' : ''
+          }`}
         >
           {th.families[family]}
         </span>
         <span
-          className={`absolute bottom-1.5 right-2 rotate-180 font-display text-[13px] font-bold leading-none max-md:hidden ${faceTextClass}`}
+          className={`absolute bottom-1.5 right-2 rotate-180 font-display text-[13px] font-bold leading-none text-white max-md:hidden ${
+            isLightFace ? 'rounded bg-ink/[0.45] px-1' : ''
+          }`}
         >
           {th.families[family]}
         </span>
@@ -50,8 +53,8 @@ export function FamilyCard({ family, variant = 'investor', className }: FamilyCa
         </span>
 
         <span
-          className={`rounded-full px-2.5 font-display text-[17px] font-bold max-md:px-1.5 max-md:text-[11px] ${
-            isLightFace ? 'bg-white/45' : 'bg-ink/[0.18]'
+          className={`rounded-full px-2.5 font-display text-[17px] font-bold text-white max-md:px-1.5 max-md:text-[11px] ${
+            isLightFace ? 'bg-ink/[0.45]' : 'bg-ink/[0.18]'
           }`}
         >
           {th.families[family]}

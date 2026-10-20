@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { th } from '@/i18n/th';
+import { sendStartGame } from '@/net/actions';
 import {
   copyText,
   ensurePresence,
@@ -30,6 +31,8 @@ import {
   setLastNickname,
   setLastRoomCode,
 } from '@/net/storage';
+import { useActionFeedback, useGameState } from '@/net/useGameState';
+import { useHostLoop } from '@/net/useHostLoop';
 import { useRoom } from '@/net/useRoom';
 import { useUiStore } from '@/store/uiStore';
 import { Brand } from '@/ui/common/Brand';
@@ -37,6 +40,7 @@ import { Button } from '@/ui/common/Button';
 import { Chip } from '@/ui/common/Chip';
 import { Panel } from '@/ui/common/Panel';
 import { TextInput } from '@/ui/common/TextInput';
+import { GameRoom } from '@/ui/pages/GameRoom';
 
 function errorCodeOf(error: unknown): RoomErrorCode {
   return error instanceof RoomServiceError ? error.code : 'UNKNOWN';
@@ -184,6 +188,7 @@ export function Room() {
   );
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [starting, setStarting] = useState(false);
   const offlineTimer = useRef<number | null>(null);
 
   const uid = room.uid;
@@ -200,6 +205,34 @@ export function Room() {
   const inviteUrl = code ? getRoomUrl(code) : '';
   const isLoading =
     room.loading || (!room.meta && !room.errorCode && !room.authErrorCode);
+
+  useHostLoop(codeIsValid ? code : '', room.uid, Boolean(room.uid && isHost && room.meta));
+
+  const game = useGameState(
+    codeIsValid ? code : '',
+    room.uid,
+    Boolean(room.uid && isMember && room.meta?.status === 'playing'),
+  );
+
+  useActionFeedback(
+    codeIsValid ? code : '',
+    room.uid,
+    isMember,
+    (reason) => {
+      setStarting(false);
+      showToast(th.rejections[reason] ?? th.rejections.INVALID_ACTION, 'error');
+    },
+  );
+
+  useEffect(() => {
+    if (room.meta?.status === 'playing') setStarting(false);
+  }, [room.meta?.status]);
+
+  useEffect(() => {
+    if (!starting) return;
+    const timer = window.setTimeout(() => setStarting(false), 10000);
+    return () => window.clearTimeout(timer);
+  }, [starting]);
 
   useEffect(() => {
     if (nicknameValid) setLastNickname(normalizedNickname);
@@ -260,6 +293,17 @@ export function Room() {
       showToast(th.errors[errorCodeOf(error)], 'error');
     } finally {
       setLeaving(false);
+    }
+  }
+
+  async function handleStart() {
+    if (!uid || !isHost || starting || playerCount < 3) return;
+    setStarting(true);
+    try {
+      await sendStartGame(code, uid);
+    } catch (error) {
+      setStarting(false);
+      showToast(th.errors[errorCodeOf(error)], 'error');
     }
   }
 
@@ -351,14 +395,28 @@ export function Room() {
     }
 
     if (room.meta.status === 'playing') {
+      if (!isMember || !uid) {
+        return (
+          <RoomStatus
+            title={th.room.startedTitle}
+            description={th.room.startedDescription}
+            code={code}
+            onBack={() => navigate('/')}
+          />
+        );
+      }
+
       return (
-        <RoomStatus
-          title={th.room.startedTitle}
-          description={
-            isMember ? th.room.startedMemberDescription : th.room.startedDescription
-          }
+        <GameRoom
           code={code}
-          onBack={() => navigate('/')}
+          uid={uid}
+          hostUid={hostUid ?? null}
+          players={room.players}
+          publicState={game.publicState}
+          privateState={game.privateState}
+          loading={game.loading}
+          errorCode={game.errorCode}
+          onRetry={reload}
         />
       );
     }
@@ -489,17 +547,22 @@ export function Room() {
                 <Button
                   variant="gold"
                   className="self-start"
-                  disabled={!isHost || playerCount < 3}
-                  onClick={() => showToast(th.room.startM3Hint)}
+                  data-testid="start-game"
+                  aria-busy={starting}
+                  disabled={!isHost || playerCount < 3 || starting}
+                  onClick={() => void handleStart()}
                 >
-                  {th.common.startGame}
+                  {starting && (
+                    <Loader2 size={17} className="animate-spin" aria-hidden="true" />
+                  )}
+                  {starting ? th.room.starting : th.common.startGame}
                 </Button>
                 <p className="text-[14px] text-ink-soft">
                   {!isHost
                     ? th.room.startWaitingHint
                     : playerCount < 3
                       ? th.room.startNeedPlayers
-                      : th.room.startM3Hint}
+                      : th.room.startReadyHint}
                 </p>
               </div>
               <Button
