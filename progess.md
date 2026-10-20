@@ -158,7 +158,7 @@ Node v24.20.0 (ตามหัวข้อ 12) | React 18.3.1 | react-router-dom
 
 ### ขั้นถัดไป — M2 Firebase: Auth, Lobby, Presence, Home
 
-- Firebase Anonymous Auth + สร้าง/เข้าร่วมห้องด้วยรหัส 6 ตัว
+- Firebase Anonymous Auth + สร้าง/เข้าร่วมห้องด้วยรหัส 5 หลัก (ไม่ขึ้นต้นด้วย 0)
 - Lobby: join/leave/seat/reassign, presence ด้วย `onDisconnect`, sync ผ่าน RTDB
 - หน้า Home/Room ตาม `design/home.html` + ข้อความจาก `src/i18n/th.ts`
 - ยังใช้ `database.rules.json` แบบ deny-all ชั่วคราว; กฎจริง + host loop อยู่ใน M3
