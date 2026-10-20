@@ -92,7 +92,12 @@ export function InvestorTile({ color, vacation = false }: InvestorTileProps) {
   return (
     <div
       className={`table-investor ${vacation ? 'is-vacation' : ''}`}
-      style={{ '--c': `var(${meta.cssVar})` } as CSSProperties}
+      style={
+        {
+          '--c': `var(${meta.cssVar})`,
+          '--on': color === 'yellow' ? 'var(--ink)' : 'var(--white)',
+        } as CSSProperties
+      }
       title={title}
       aria-label={title}
     >
@@ -118,14 +123,21 @@ interface CardBacksProps {
 /** A small stack of face-down influence cards. */
 export function CardBacks({ count }: CardBacksProps) {
   const label = th.game.handCount.replace('{count}', String(count));
+  const shown = Math.min(6, count);
   return (
     <div className="table-backs" title={label} aria-label={label}>
-      <span className="table-back-stack" aria-hidden="true">
-        {Array.from({ length: Math.min(3, count) }).map((_, index) => (
+      <span
+        className="table-back-stack"
+        style={{ width: `${16 + Math.max(0, shown - 1) * 9}px` }}
+        aria-hidden="true"
+      >
+        {Array.from({ length: shown }).map((_, index) => (
           <span key={index} className="table-back" style={{ left: `${index * 9}px` }} />
         ))}
       </span>
-      <span className="table-backs-count">×{count}</span>
+      <span className="table-backs-count">
+        {count > 6 ? `+${count - 6} ` : ''}×{count}
+      </span>
     </div>
   );
 }
@@ -198,21 +210,22 @@ export function GroupSymbols({
 
   return (
     <span className={`table-req-groups ${className ?? ''}`} aria-label={label}>
-      {groups.map((group, index) => (
-        <span key={index} className="table-req-group">
-          {showPick && group.pick < group.colors.length && (
-            <span className="table-req-pick">{group.pick}</span>
-          )}
-          {group.colors.map((color) => (
-            <FamilySymbol
-              key={color}
-              shape={FAMILY_BY_ID[color].symbol}
-              size={size}
-              style={{ color: `var(${FAMILY_BY_ID[color].cssVar})` }}
-            />
-          ))}
-        </span>
-      ))}
+      {groups.map((group, index) => {
+        const isPick = group.pick < group.colors.length;
+        return (
+          <span key={index} className={`table-req-group ${isPick ? 'is-pick' : ''}`}>
+            {showPick && isPick && <span className="table-req-pick">{group.pick}</span>}
+            {group.colors.map((color) => (
+              <FamilySymbol
+                key={color}
+                shape={FAMILY_BY_ID[color].symbol}
+                size={size}
+                style={{ color: `var(${FAMILY_BY_ID[color].cssVar})` }}
+              />
+            ))}
+          </span>
+        );
+      })}
     </span>
   );
 }

@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { Handshake, Loader2 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 
 import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
@@ -232,8 +232,7 @@ function TurnPanel({
   return (
     <div className="table-deal-body">
       <p className="table-deal-eyebrow">
-        {phaseLabel(publicState)}
-        <span>· {th.game.turn.replace('{turn}', String(publicState.turnNumber))}</span>
+        {th.game.turn.replace('{turn}', String(publicState.turnNumber))}
       </p>
       <div className="table-deal-title-row">
         <h2>{title}</h2>
@@ -329,11 +328,16 @@ function DealSegments({
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {segments.map((segment, index) => {
-        const backgroundColor = segment.color
-          ? `var(${FAMILY_BY_ID[segment.color].cssVar})`
-          : 'var(--gold)';
+        const isBoss = segment.kind === 'boss';
+        const backgroundColor = isBoss
+          ? 'var(--gold)'
+          : segment.color
+            ? `var(${FAMILY_BY_ID[segment.color].cssVar})`
+            : 'var(--gold)';
         const color =
-          segment.color === 'yellow' || !segment.color ? 'var(--ink)' : 'var(--white)';
+          isBoss || segment.color === 'yellow' || !segment.color
+            ? 'var(--ink)'
+            : 'var(--white)';
         return (
           <span
             key={index}
@@ -388,14 +392,11 @@ function OpenDealPanel({
 
   return (
     <div className="table-deal-body">
-      <p className="table-deal-eyebrow">{phaseLabel(publicState)}</p>
       <div className="table-deal-head">
-        <div>
-          <h2>{text(th.game.table.dealTitle, { space: deal.space })}</h2>
-          <div className="table-deal-badges">
-            <span>{text(th.game.table.tile, { tile: deal.tileNumber })}</span>
-            <span>{text(th.game.table.perDividend, { value })}</span>
-          </div>
+        <h2>{text(th.game.table.dealTitle, { space: deal.space })}</h2>
+        <div className="table-deal-badges">
+          <span>{text(th.game.table.tile, { tile: deal.tileNumber })}</span>
+          <span>{text(th.game.table.perDividend, { value })}</span>
         </div>
         {deal.locked && <span className="table-deal-stamp">{th.game.table.lockStamp}</span>}
       </div>
@@ -419,7 +420,10 @@ function OpenDealPanel({
       <div className="table-deal-req-list">
         {progress.map((entry, index) => (
           <div key={index} className={`table-deal-req-row is-${entry.status}`}>
-            <GroupSymbols groups={[entry.group]} size={16} />
+            <GroupSymbols groups={[entry.group]} size={17} />
+            <span className="table-deal-choose">
+              {text(th.game.table.groupPick, { count: entry.group.pick })}
+            </span>
             <span className={`table-deal-status is-${entry.status}`}>
               {entry.status === 'complete' && th.game.table.groupComplete}
               {entry.status === 'missing' &&
@@ -459,7 +463,11 @@ function OpenDealPanel({
       )}
 
       {offerCount === 0 && !deal.locked && (
-        <p className="table-deal-note">{th.game.table.waitingOffers}</p>
+        <div className="table-deal-pending">
+          <Handshake size={20} strokeWidth={2} aria-hidden="true" />
+          <span>{th.game.table.waitingOffers}</span>
+          <span className="table-deal-pending-chip">{th.game.table.waitingChip}</span>
+        </div>
       )}
 
       {publicState.window ? (

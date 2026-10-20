@@ -15,7 +15,7 @@ import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { GameLog } from './GameLog';
 import { HandFan } from './HandFan';
-import { FamilyChip } from './TableBits';
+import { InvestorTile } from './TableBits';
 import { MySeat, TableSeat } from './TableSeat';
 import {
   getClosedTileMap,
@@ -311,12 +311,7 @@ function UnclaimedPanel({
       {colors.length > 0 ? (
         <div className="table-unclaimed-investors">
           {colors.map((color) => (
-            <FamilyChip
-              key={color}
-              color={color}
-              muted={onVacation.includes(color)}
-              suffix={onVacation.includes(color) ? th.game.onVacation : undefined}
-            />
+            <InvestorTile key={color} color={color} vacation={onVacation.includes(color)} />
           ))}
         </div>
       ) : (

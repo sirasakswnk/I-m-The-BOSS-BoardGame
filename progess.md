@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 20 ต.ค. 2026 (M4)
+> อัปเดตล่าสุด: 21 ต.ค. 2026 (M4 visual parity)
 
 ## สถานะ Milestone
 
@@ -295,7 +295,7 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 
 ---
 
-## M4 — Tabletop UI (Desktop) ✅ (20/10/2026)
+## M4 — Tabletop UI (Desktop) ✅ (20/10/2026, visual parity 21/10/2026)
 
 ### สิ่งที่ทำ
 
@@ -313,6 +313,14 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 - เพิ่ม **preview states จาก engine จริง** (seed 66): `ต้นเทิร์น`, `เปิดดีล`, `หลังทอยเต๋า` พร้อมสลับ state; ปุ่มใน preview แสดง toast แบบไม่เขียน Firebase
 - เพิ่ม responsive fallback สำหรับช่วง 1024–1180px และหน้าจอแคบกว่า 1024px; งาน mobile polish ยังอยู่ใน M8
 - เพิ่ม unit tests ของ table helper และ e2e ของโต๊ะจริง
+- **Visual parity pass (21/10/2026)** — เก็บรายละเอียดและ texture ให้ตรง `table.html` มากขึ้น:
+  - เพิ่ม texture จุดบนผ้า/โซนมือ, เส้น grid บนกระดาน, ลายทแยงบนแผงดีล และ hard ink shadow ให้ทุกพื้นผิว
+  - ช่องปกติโปร่งแสงพร้อมเลข mono ขนาดใหญ่และ dividend chip; เฉพาะช่องปัจจุบันจึงแสดงกลุ่มเงื่อนไขแบบ inline, ช่องปิดใช้พื้น ink + เลขช่อง/เลขแผ่น/✓ ซ้อนกลาง, หมากและวงแหวนน้ำเงินอยู่บนช่องปัจจุบัน, tooltip เงื่อนไขทำงานด้วย hover/focus
+  - แผงดีลจัดหัวเรื่องกับ badge inline, ส่วนแบ่ง 30px (บอสสีทอง/เจ้าของสีตระกูล), แถวเงื่อนไข 13px, label “เลือก N”, แถวข้อเสนอรอแบบ dashed พร้อม chip “รอข้อเสนอ”, ปุ่มขนาดใหญ่ และ reserve ที่ว่างสำหรับ stamp
+  - ที่นั่ง/แผงข้างโปร่งแสงขอบ ink, crown ไม่มี badge วงกลม, investor เป็น mini card, มีป้ายการ์ดคว่ำ/พักร้อน และ chip เงินส่วนตัวแบบล็อก
+  - มือการ์ดใช้ overlap 44px, การ์ด 92×130, compact label ฝั่งซ้าย, ไอคอน action สีตามต้นฉบับ, tag ญาติ, ตราตระกูล 24px และเรียงชนิดการ์ด (ญาติ → พักร้อน → หยุด → ซื้อตัว → แย่งบอส) เพื่อให้การ์ดบอสใบขวาสุดเห็นเต็มใบ; hover ดันการ์ดข้างเคียง 26px
+  - top bar แสดงรหัสห้อง/เฟส/ดีลที่ปิด/บอส/เทิร์น และ pip ของผู้เล่นตามภาษาภาพต้นฉบับ
+  - ตรวจ deal panel ไม่มี internal scroll ที่ 1440/1280/1024px (376/376, 310/310, 324/324)
 
 ### ไฟล์หลัก
 
@@ -325,13 +333,13 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 
 ### ผลการรันคำสั่ง
 
-- `npm run typecheck`: ผ่าน
-- `npm run lint`: ผ่าน
+- `npm run typecheck`: ผ่าน (หลัง visual parity pass)
+- `npm run lint`: ผ่าน (หลัง visual parity pass)
 - `npm run test`: ผ่าน 126/126 tests (12 files)
 - `npm run test:rules`: ผ่าน 12/12 tests
 - `npm run build`: ผ่าน; มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
-- e2e ผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: **6/6 tests** ครอบคลุม lobby/start game, preview ทุกหน้าจอ, เทิร์นว่าง (เปิดดีล → ล้มดีล) และเทิร์นทอยเต๋า → จั่ว 3 ใบ
-- ตรวจภาพที่ 1440px และทดสอบ layout ที่ 1280/1024px
+- e2e ผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: **6/6 tests** ครอบคลุม lobby/start game, preview ทุกหน้าจอ, เทิร์นว่าง (เปิดดีล → ล้มดีล) และเทิร์นทอยเต๋า → จั่ว 3 ใบ (รันหลัง visual parity pass)
+- ตรวจภาพที่ 1440px, deal panel ไม่มี internal scroll ที่ 1440/1280/1024px และ refresh screenshot หลักทั้ง 5 รูปเมื่อ 21/10/2026
 
 ### Definition of Done (M4)
 
@@ -343,7 +351,7 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 - [x] ผู้เล่นเลือกช่องเริ่มต้นและเห็นการอัปเดตของโต๊ะ
 - [x] ทอยเต๋า → เดินหมาก → เปิดดีล/จั่ว 3 ใบ ทำงานผ่าน UI จริง
 - [x] เทิร์นว่าง: เปิดดีลแล้วล้มดีลและจบเทิร์นผ่าน UI จริง
-- [x] มี screenshot ของหน้าจอหลักให้ตรวจก่อนเริ่ม M5
+- [x] มี screenshot ของหน้าจอหลักให้ตรวจก่อนเริ่ม M5 (refresh 21/10/2026)
 - [x] ไม่แก้ไฟล์ prototype (`design/home.html`, `table.html`, `lobby.html`)
 - [x] ไม่เปลี่ยนกติกา engine; `LOCK_DEAL`/interrupt window และกติกาอื่นที่ lock ไว้ยังอยู่ครบ
 
@@ -353,6 +361,7 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 - แผงดีลเป็นพื้นที่ scroll ได้เมื่อมีข้อเสนอ/เงินปันผลจำนวนมาก; การจัดวางแบบละเอียดจะปรับอีกครั้งเมื่อ flow ข้อเสนอครบ
 - จอ ≤1023px ใช้ single-column fallback เพื่อไม่ให้แตก; mobile responsive เต็มรูปแบบอยู่ใน M8
 - Preview ใช้ผู้เล่น 4 คนและ seed 66 เพื่อให้เห็นการ์ดครบทุกชนิด; overfill picker ถูกทดสอบด้วย unit tests และ e2e เมื่อ engine สร้างสถานะนั้นจริง
+- ช่องปิดจะแสดงหลัง engine ส่ง event `dealResolved`; preview ทั้ง 3 state ยังอยู่ก่อนปิดดีล จึงไม่เห็นช่องปิดใน screenshot ชุดนี้ (สไตล์ช่องปิดพร้อมแล้ว)
 
 ### ขั้นถัดไป
 

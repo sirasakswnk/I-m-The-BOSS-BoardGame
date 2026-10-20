@@ -79,15 +79,27 @@ function BoardCell({
             <b>{space.index}</b>
             <span>×{space.dividends}</span>
           </div>
-          <div className="table-req">
-            <span className="table-space-needs">
-              {fill(th.game.table.spaceNeeds, {
-                space: space.index,
-                count: space.requiredInvestors,
-              })}
-            </span>
-            <GroupSymbols groups={space.groups} size={isCurrent ? 17 : 16} />
-          </div>
+          {isCurrent ? (
+            <div className="table-req">
+              <span className="table-space-needs">
+                {fill(th.game.table.spaceNeeds, {
+                  space: space.index,
+                  count: space.requiredInvestors,
+                })}
+              </span>
+              <GroupSymbols groups={space.groups} size={17} />
+            </div>
+          ) : (
+            <div className="table-cell-tooltip" aria-hidden="true">
+              <strong>
+                {fill(th.game.table.spaceNeeds, {
+                  space: space.index,
+                  count: space.requiredInvestors,
+                })}
+              </strong>
+              <GroupSymbols groups={space.groups} size={17} />
+            </div>
+          )}
           {isCurrent && (
             <motion.div
               layoutId="table-pawn"

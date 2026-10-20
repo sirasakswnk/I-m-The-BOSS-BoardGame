@@ -42,18 +42,33 @@ function cardAriaLabel(card: InfluenceCard): string {
   }
 }
 
-function ActionIcon({ kind }: { kind: InfluenceCard['kind'] }) {
+function ActionIcon({ kind, size = 34 }: { kind: InfluenceCard['kind']; size?: number }) {
   switch (kind) {
     case 'travel':
-      return <Plane size={31} strokeWidth={2.2} />;
+      return <Plane size={size} strokeWidth={2.2} />;
     case 'recruitment':
-      return <Coins size={31} strokeWidth={2.2} />;
+      return <Coins size={size} strokeWidth={2.2} />;
     case 'stop':
-      return <Ban size={31} strokeWidth={2.5} />;
+      return <Ban size={size} strokeWidth={2.5} />;
     case 'imTheBoss':
-      return <Crown size={31} strokeWidth={2.2} />;
+      return <Crown size={size} strokeWidth={2.2} />;
     case 'clan':
       return null;
+  }
+}
+
+function shortLabel(card: InfluenceCard): string {
+  switch (card.kind) {
+    case 'clan':
+      return th.families[card.color];
+    case 'travel':
+      return th.game.table.handShortTravel;
+    case 'recruitment':
+      return th.game.table.handShortRecruitment;
+    case 'stop':
+      return th.game.table.handShortStop;
+    case 'imTheBoss':
+      return th.game.table.handShortBoss;
   }
 }
 
@@ -102,7 +117,7 @@ function HandCard({
   neededColors: Set<FamilyColor>;
   registerRef: (index: number, node: HTMLDivElement | null) => void;
 }) {
-  const step = count > 1 ? Math.min(4.2, 42 / (count - 1)) : 0;
+  const step = count > 1 ? Math.min(4.2, 40 / (count - 1)) : 0;
   const rotation = (index - (count - 1) / 2) * step;
   const stateClass = cardStateClass(card, phase, windowOpen, neededColors);
   const isClan = card.kind === 'clan';
@@ -122,32 +137,46 @@ function HandCard({
       tabIndex={0}
       aria-label={cardAriaLabel(card)}
     >
+      <span className={`table-hand-cn is-${card.kind}`} aria-hidden="true">
+        {isClan ? (
+          <FamilySymbol
+            shape={meta!.symbol}
+            size={16}
+            style={{ color: `var(${meta!.cssVar})` }}
+          />
+        ) : (
+          <ActionIcon kind={card.kind} size={18} />
+        )}
+      </span>
+      <span className="table-hand-cl" aria-hidden="true">
+        {shortLabel(card)}
+      </span>
       <div
         className={`table-card-face ${isClan ? 'is-clan stripes' : 'is-action'}`}
         style={clanStyle}
       >
         {isClan ? (
           <>
-            <span
-              className="table-card-family"
-              style={{ backgroundColor: 'rgba(29, 27, 46, 0.68)' }}
-            >
-              {th.families[card.color]}
-            </span>
             <span className="table-card-clan-tag">{th.card.clanTag}</span>
             <span className="table-card-clan-emblem">
               <FamilySymbol
                 shape={meta!.symbol}
-                size={34}
+                size={24}
                 style={{ color: `var(${meta!.cssVar})` }}
               />
             </span>
-            <span className="table-card-clan-name">{th.families[card.color]}</span>
+            <span
+              className={`table-card-clan-name ${
+                card.color === 'yellow' ? 'is-light' : ''
+              }`}
+            >
+              {th.families[card.color]}
+            </span>
           </>
         ) : (
           <>
             <span className="table-card-strip" style={actionStripStyle(card)} aria-hidden="true" />
-            <span className="table-card-icon">
+            <span className={`table-card-icon is-${card.kind}`}>
               <ActionIcon kind={card.kind} />
             </span>
             <span className="table-card-name">{th.card[card.kind]}</span>
@@ -190,9 +219,20 @@ function HandCard({
   );
 }
 
+const HAND_KIND_ORDER: Record<InfluenceCard['kind'], number> = {
+  clan: 0,
+  travel: 1,
+  stop: 2,
+  recruitment: 3,
+  imTheBoss: 4,
+};
+
 export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps) {
   const refs = useRef<Array<HTMLDivElement | null>>([]);
-  const overlap = cards.length <= 6 ? 12 : cards.length <= 9 ? 24 : 36;
+  const overlap = 44;
+  const orderedCards = [...cards].sort(
+    (left, right) => HAND_KIND_ORDER[left.kind] - HAND_KIND_ORDER[right.kind],
+  );
 
   function registerRef(index: number, node: HTMLDivElement | null) {
     refs.current[index] = node;
@@ -204,8 +244,8 @@ export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps
     if (current === -1) return;
     const next =
       event.key === 'ArrowLeft'
-        ? (current - 1 + cards.length) % cards.length
-        : (current + 1) % cards.length;
+        ? (current - 1 + orderedCards.length) % orderedCards.length
+        : (current + 1) % orderedCards.length;
     refs.current[next]?.focus();
     event.preventDefault();
   }
@@ -219,15 +259,15 @@ export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps
       style={{ '--hand-overlap': `-${overlap}px` } as CSSProperties}
       onKeyDown={handleKeyDown}
     >
-      {cards.length === 0 ? (
+      {orderedCards.length === 0 ? (
         <span className="table-hand-empty">{th.game.noCards}</span>
       ) : (
-        cards.map((card, index) => (
+        orderedCards.map((card, index) => (
           <HandCard
             key={card.id}
             card={card}
             index={index}
-            count={cards.length}
+            count={orderedCards.length}
             phase={phase}
             windowOpen={windowOpen}
             neededColors={neededColors}

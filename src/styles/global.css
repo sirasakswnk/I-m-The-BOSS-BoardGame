@@ -584,14 +584,14 @@
 .table-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 4px 10px;
+  gap: 6px;
+  min-height: 34px;
+  padding: 3px 10px;
   border: 1.5px solid rgba(29, 27, 46, 0.35);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
+  background: transparent;
   color: var(--ink);
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -615,16 +615,16 @@
 .table-pips {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 
 .table-pips i {
   display: block;
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
-  background: transparent;
+  width: 12px;
+  height: 20px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background: var(--white);
 }
 
 .table-pips i.is-done {
@@ -633,6 +633,7 @@
 
 .table-pips i.is-check {
   border-style: dashed;
+  background: var(--gold);
 }
 
 .table-pips i.is-last {
@@ -640,6 +641,7 @@
 }
 
 .table-pips i.is-done.is-last {
+  border-style: solid;
   background: var(--ink);
 }
 
@@ -654,16 +656,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1.5px solid var(--ink);
-  border-radius: 9px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
   background: var(--white);
   color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 600;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 2px 0 var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
 }
 
 .table-top-btn:hover {
@@ -678,15 +681,15 @@
 
 .table-felt {
   margin-top: 2px;
-  padding: 20px 16px 24px;
+  padding: 22px 16px 26px;
   border: 3px solid var(--ink);
   border-radius: 28px;
   background-color: #dcc08a;
-  background-image: radial-gradient(rgba(29, 27, 46, 0.08) 1.1px, transparent 1.2px);
-  background-size: 12px 12px;
+  background-image: radial-gradient(rgba(29, 27, 46, 0.115) 1.2px, transparent 1.3px);
+  background-size: 14px 14px;
   box-shadow:
-    inset 0 0 0 6px rgba(255, 255, 255, 0.18),
-    0 6px 0 rgba(29, 27, 46, 0.16);
+    inset 0 0 0 6px rgba(255, 255, 255, 0.22),
+    3px 3px 0 var(--ink);
 }
 
 .table-layout {
@@ -723,8 +726,12 @@
   padding: 10px;
   border: 3px solid var(--ink);
   border-radius: 24px;
-  background: var(--paper);
-  box-shadow: 0 5px 0 rgba(29, 27, 46, 0.2);
+  background-color: var(--board);
+  background-image:
+    linear-gradient(rgba(29, 27, 46, 0.085) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 27, 46, 0.085) 1px, transparent 1px);
+  background-size: 28px 28px;
+  box-shadow: 6px 7px 0 var(--ink);
 }
 
 .table-grid {
@@ -748,13 +755,16 @@
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 12px 16px;
   border: 3px solid var(--ink);
   border-radius: 16px;
-  background: var(--paper);
-  box-shadow:
-    inset 0 0 0 3px rgba(255, 255, 255, 0.45),
-    var(--shadow-hard);
+  background-color: var(--white);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(29, 27, 46, 0.03) 0 6px,
+    transparent 6px 12px
+  );
+  box-shadow: var(--shadow-hard);
   scrollbar-width: thin;
   scrollbar-color: rgba(29, 27, 46, 0.35) transparent;
 }
@@ -762,16 +772,16 @@
 .table-deal-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 9px;
   min-height: 100%;
 }
 
 .table-deal-body h2 {
   margin: 0;
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 17px;
+  font-size: clamp(23px, 1.94vw, 28px);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .table-deal-eyebrow {
@@ -780,26 +790,26 @@
   gap: 4px;
   margin: 0;
   color: var(--ink-soft);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .table-deal-copy {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
 .table-deal-waiting {
   margin: 0;
-  padding: 6px 8px;
-  border: 1px dashed rgba(29, 27, 46, 0.45);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--ink-soft);
-  font-size: 11px;
-  line-height: 1.35;
+  padding: 7px 10px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: #fff0d6;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 .table-deal-title-row {
@@ -811,38 +821,38 @@
 
 .table-your-turn {
   flex: none;
-  padding: 1px 6px;
+  padding: 1px 8px;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   background: var(--gold);
   color: var(--ink);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .table-space-summary {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 5px 7px;
-  border: 1.5px solid rgba(29, 27, 46, 0.45);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.58);
+  gap: 5px;
+  padding: 7px 10px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: #fff0d6;
 }
 
 .table-space-summary-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .table-space-summary-head strong {
   color: var(--ink);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .table-space-pawn {
@@ -859,16 +869,17 @@
 .table-dice-copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  font-size: 10.5px;
   color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .table-dice-copy strong {
   color: var(--ink);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .table-turn-actions {
@@ -886,7 +897,7 @@
 .table-start-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
+  gap: 4px;
   margin-top: 3px;
 }
 
@@ -896,14 +907,14 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  height: 38px;
+  height: 42px;
   overflow: hidden;
   border: 1.5px solid var(--ink);
   border-radius: 8px;
   background: var(--white);
   color: var(--ink);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   box-shadow: 0 2px 0 var(--ink);
 }
@@ -979,76 +990,84 @@
 .table-deal-head {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-right: 62px;
 }
 
 .table-deal-badges {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
-  margin-top: 2px;
+  margin: 0;
 }
 
 .table-deal-badges span {
-  padding: 1px 6px;
-  border: 1px solid var(--line);
+  padding: 1px 8px;
+  border: 1.5px solid var(--ink);
   border-radius: 999px;
   background: var(--white);
   color: var(--ink-soft);
-  font-size: 9px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .table-deal-stamp {
   position: absolute;
-  top: -2px;
-  right: 0;
-  padding: 2px 7px;
-  transform: rotate(5deg);
-  border: 2px solid var(--red);
-  border-radius: 6px;
+  top: -14px;
+  right: -10px;
+  padding: 1px 9px;
+  transform: rotate(8deg);
+  border: 3px solid #a62a2a;
+  border-radius: 8px;
   background: rgba(255, 246, 230, 0.92);
-  color: var(--red);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 246, 230, 0.92),
+    inset 0 0 0 3px #a62a2a;
+  color: #a62a2a;
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 20px;
   font-weight: 800;
+  line-height: 1.25;
 }
 
 .table-deal-money {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
 }
 
 .table-deal-money strong {
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: clamp(32px, 2.8vw, 40px);
+  font-weight: 600;
   line-height: 1;
 }
 
 .table-deal-money span {
   color: var(--ink-soft);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .table-deal-segments {
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .table-deal-seg {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 20px;
+  height: 30px;
   overflow: hidden;
-  padding: 0 2px;
-  border: 1.5px solid var(--ink);
-  border-radius: 4px;
-  font-size: 8.5px;
+  padding: 0 3px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   text-overflow: ellipsis;
@@ -1064,22 +1083,61 @@
 .table-deal-req-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 2px 5px;
-  border: 1px solid rgba(29, 27, 46, 0.3);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.45);
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .table-deal-req-row .table-req-groups {
   justify-content: flex-start;
+  min-width: 74px;
+}
+
+.table-deal-choose {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .table-deal-status {
   flex: none;
-  font-size: 10px;
-  font-weight: 700;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table-deal-pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 2px dashed var(--ink);
+  border-radius: 10px;
+  background: #fff0d6;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.table-deal-pending svg {
+  flex: none;
+}
+
+.table-deal-pending-chip {
+  flex: none;
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
   white-space: nowrap;
 }
 
@@ -1096,37 +1154,41 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 3px;
-  min-height: 18px;
+  gap: 4px;
+  min-height: 20px;
+}
+
+.table-deal-participants .table-family-chip {
+  font-size: 12px;
 }
 
 .table-deal-excluded {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   color: var(--ink-soft);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .table-deal-note {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 9.5px;
+  font-size: 13px;
   line-height: 1.3;
 }
 
 .table-deal-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-top: auto;
 }
 
 .table-deal-actions .table-btn {
   flex: 1;
   min-width: 0;
-  height: 40px;
-  font-size: 12px;
+  height: 48px;
+  font-size: 16px;
 }
 
 .table-discard-list,
@@ -1181,12 +1243,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   overflow: visible;
-  padding: 13px 8px 7px;
-  border: 1.5px solid rgba(29, 27, 46, 0.58);
+  padding: 5px 6px;
+  border: 1.5px solid rgba(29, 27, 46, 0.3);
   border-radius: 10px;
-  background: #f8e9cb;
+  background: rgba(255, 255, 255, 0.35);
   color: var(--ink);
   transition:
     background 0.16s ease,
@@ -1197,42 +1259,62 @@
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 8px;
-  border-radius: 8px 8px 0 0;
-  border-bottom: 1.5px solid rgba(29, 27, 46, 0.5);
+  height: 9px;
+  border-radius: 7px 7px 0 0;
+  border-bottom: 2px solid var(--ink);
   background: var(--st, var(--line));
+}
+
+.table-cell.is-quiet {
+  gap: 0;
+  padding: 15px 10px 6px;
+  cursor: help;
 }
 
 .table-cell-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 4px;
   width: 100%;
   line-height: 1;
 }
 
+.table-cell.is-quiet .table-cell-top {
+  width: auto;
+  justify-content: center;
+  gap: 8px;
+}
+
 .table-cell-top b {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .table-cell-top span {
-  color: var(--ink-soft);
+  padding: 0 4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--gold);
+  color: var(--ink);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.25;
 }
 
-.table-cell.is-quiet {
-  cursor: help;
+.table-cell.is-quiet .table-cell-top b {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.table-cell.is-quiet .table-cell-top span {
+  font-size: 17px;
 }
 
 .table-cell.is-quiet:hover {
   z-index: 20;
-  background: #ffefc8;
-  box-shadow: 0 0 0 2px rgba(43, 89, 195, 0.3);
 }
 
 .table-cell.is-quiet:focus-visible {
@@ -1243,23 +1325,23 @@
 
 .table-cell.is-current {
   z-index: 3;
-  border-color: var(--ink);
-  background: #fff1c9;
-  box-shadow:
-    0 0 0 3px var(--gold),
-    0 4px 0 rgba(29, 27, 46, 0.26);
+  padding: 15px 8px 6px;
+  border: 3px solid var(--ink);
+  background: var(--gold);
+  box-shadow: 0 0 0 3px var(--accent);
 }
 
 .table-cell.is-current .table-cell-top b {
-  font-size: 20px;
+  font-size: 17px;
 }
 
 .table-cell.is-closed {
+  gap: 0;
   border-color: var(--ink);
   background: var(--ink);
   color: var(--gold);
   transform: rotate(var(--closed-rot, -2deg));
-  box-shadow: 3px 4px 0 rgba(29, 27, 46, 0.28);
+  box-shadow: 3px 4px 0 rgba(29, 27, 46, 0.35);
 }
 
 .table-cell.is-closed::before {
@@ -1267,20 +1349,19 @@
 }
 
 .table-cell-index {
-  position: absolute;
-  top: 5px;
-  left: 7px;
-  color: rgba(255, 224, 138, 0.68);
+  color: inherit;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: 0.7;
 }
 
 .table-cell-tile {
   color: var(--gold);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
 }
 
 .table-cell-check {
@@ -1288,7 +1369,7 @@
   border: 1.5px solid var(--gold);
   border-radius: 999px;
   color: var(--gold);
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.2;
 }
 
@@ -1300,72 +1381,57 @@
   width: 100%;
 }
 
+.table-cell.is-current .table-req {
+  margin-top: 1px;
+}
+
 .table-req-groups {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .table-req-group {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 3px;
-  border: 1px dashed rgba(29, 27, 46, 0.38);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.45);
+  gap: 1px;
+}
+
+.table-req-group.is-pick {
+  padding: 1px 3px 1px 2px;
+  border: 1.5px dashed var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
 }
 
 .table-req-pick {
-  padding-right: 2px;
-  border-right: 1px solid rgba(29, 27, 46, 0.35);
+  margin: 0 2px 0 1px;
   color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .table-space-needs {
   display: none;
   color: var(--ink);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.table-cell.is-quiet .table-req {
-  position: static;
-  z-index: auto;
-  display: flex;
-  width: 100%;
-  max-width: none;
-  padding: 0;
-  transform: none;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.table-cell.is-quiet .table-space-needs {
-  display: none;
-}
-
-.table-cell.is-quiet .table-req-group {
-  background: rgba(255, 255, 255, 0.45);
-}
-
-.table-cell.is-quiet::after {
-  content: attr(aria-label);
+.table-cell-tooltip {
   position: absolute;
-  z-index: 40;
   top: calc(100% + 4px);
   left: 50%;
+  z-index: 40;
   display: none;
+  flex-direction: column;
+  gap: 5px;
   width: max-content;
-  max-width: 240px;
+  max-width: 260px;
   padding: 7px 9px;
   transform: translateX(-50%);
   border: 2px solid var(--ink);
@@ -1373,46 +1439,62 @@
   background: var(--white);
   box-shadow: var(--shadow-hard);
   color: var(--ink);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
   text-align: left;
-  white-space: normal;
 }
 
-.table-cell.is-quiet:hover::after,
-.table-cell.is-quiet:focus::after,
-.table-cell.is-quiet:focus-visible::after {
-  display: block;
+.table-cell-tooltip strong {
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.table-cell.is-right::after {
+.table-cell-tooltip .table-req {
+  align-items: flex-start;
+  width: auto;
+}
+
+.table-cell-tooltip .table-req-groups {
+  justify-content: flex-start;
+}
+
+.table-cell.is-quiet:hover .table-cell-tooltip,
+.table-cell.is-quiet:focus .table-cell-tooltip,
+.table-cell.is-quiet:focus-visible .table-cell-tooltip {
+  display: flex;
+}
+
+.table-cell.is-right .table-cell-tooltip {
   right: 0;
   left: auto;
   transform: none;
 }
 
-.table-cell.is-left::after {
+.table-cell.is-left .table-cell-tooltip {
   left: 0;
   transform: none;
 }
 
-.table-cell.is-bottom::after {
+.table-cell.is-bottom .table-cell-tooltip {
   top: auto;
   bottom: calc(100% + 4px);
 }
 
 .table-pawn {
   position: absolute;
-  top: -20px;
-  right: -5px;
+  top: -18px;
+  right: -6px;
   z-index: 30;
   filter: drop-shadow(1px 2px 0 rgba(29, 27, 46, 0.25));
 }
 
 .table-pawn-svg {
-  width: 30px;
-  height: 36px;
+  width: 32px;
+  height: 37px;
 }
 
 /* Seats ------------------------------------------------------------- */
@@ -1421,18 +1503,18 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
-  padding: 8px 10px;
-  border: 1.5px solid rgba(29, 27, 46, 0.45);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.38);
+  padding: 7px 9px;
+  border: 1.5px solid rgba(29, 27, 46, 0.28);
+  border-radius: 14px;
+  background: transparent;
   color: var(--ink);
 }
 
 .table-seat.is-boss {
-  border-color: var(--ink);
-  background: rgba(255, 224, 138, 0.45);
+  border-color: rgba(29, 27, 46, 0.5);
+  background: rgba(255, 224, 138, 0.4);
 }
 
 .table-seat.is-side {
@@ -1465,17 +1547,12 @@
 
 .table-crown {
   position: absolute;
-  top: -12px;
-  right: 8px;
+  top: -14px;
+  right: 10px;
   z-index: 4;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
 }
 
 .table-seat-head {
@@ -1495,33 +1572,21 @@
   height: 28px;
   border: 2px solid var(--ink);
   border-radius: 50%;
-  background: var(--white);
+  background: var(--paper-deep);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
 }
 
 .table-seat-no {
-  position: absolute;
-  right: -5px;
-  bottom: -5px;
-  min-width: 12px;
-  padding: 0 2px;
-  border: 1px solid var(--paper);
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 8px;
-  line-height: 1.25;
-  text-align: center;
+  display: none;
 }
 
 .table-seat-name {
   overflow: hidden;
   max-width: 100px;
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -1529,14 +1594,14 @@
 }
 
 .table-you {
-  padding: 1px 6px;
+  padding: 0 8px;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   background: var(--accent);
   color: var(--white);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 .table-host-key {
@@ -1551,9 +1616,9 @@
 
 .table-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
-  border: 1.5px solid var(--ink);
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--ink);
   border-radius: 50%;
 }
 
@@ -1589,29 +1654,27 @@
 .table-backs {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 }
 
 .table-back-stack {
   position: relative;
   display: block;
-  width: 30px;
-  height: 25px;
+  height: 24px;
 }
 
 .table-back {
   position: absolute;
   top: 0;
   display: block;
-  width: 18px;
-  height: 24px;
-  transform: rotate(-4deg);
-  border: 1.5px solid var(--ink);
+  width: 16px;
+  height: 22px;
+  border: 2px solid var(--ink);
   border-radius: 4px;
   background-color: var(--accent);
   background-image: repeating-linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.18) 0 3px,
+    rgba(255, 255, 255, 0.25) 0 3px,
     transparent 3px 6px
   );
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
@@ -1620,7 +1683,7 @@
 .table-backs-count {
   color: var(--ink-soft);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -1634,14 +1697,14 @@
 .table-offer {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   max-width: 100%;
-  padding: 1px 5px;
-  border: 1px solid rgba(29, 27, 46, 0.35);
+  padding: 2px 7px;
+  border: 1.5px solid rgba(29, 27, 46, 0.35);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
-  font-size: 9.5px;
+  font-size: 12.5px;
   line-height: 1.3;
 }
 
@@ -1668,12 +1731,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px 2px 5px;
+  padding: 2px 8px 2px 6px;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   background: var(--ink);
   color: var(--white);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
@@ -1713,46 +1776,45 @@ button.table-family-chip:hover:not(:disabled) {
   width: 40px;
   height: 54px;
   padding: 2px;
-  border: 1.5px solid var(--ink);
-  border-radius: 7px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
   background: var(--white);
-  box-shadow: 1px 2px 0 rgba(29, 27, 46, 0.25);
+  box-shadow: 2px 3px 0 rgba(29, 27, 46, 0.85);
 }
 
 .table-investor-face {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   height: 100%;
   overflow: hidden;
   border-radius: 5px;
   background-color: var(--c);
+  color: var(--on, var(--white));
 }
 
 .table-investor-symbol {
   display: grid;
   place-items: center;
-  width: 23px;
-  height: 23px;
-  border: 1px solid var(--ink);
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--ink);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
 }
 
 .table-investor-name {
-  position: absolute;
-  right: 1px;
-  bottom: 2px;
-  left: 1px;
   overflow: hidden;
+  max-width: 100%;
   padding: 0 1px;
-  border-radius: 3px;
-  background: rgba(29, 27, 46, 0.7);
-  color: var(--white);
-  font-size: 8px;
+  color: inherit;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 9px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1760,35 +1822,41 @@ button.table-family-chip:hover:not(:disabled) {
 
 .table-investor-vacation {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: -8px;
+  right: -8px;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 15px;
-  height: 15px;
-  border: 1px solid var(--ink);
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--ink);
   border-radius: 50%;
   background: var(--gold);
   color: var(--ink);
 }
 
+.table-investor.is-vacation {
+  transform: rotate(9deg);
+  opacity: 0.6;
+  box-shadow: none;
+}
+
 .table-investor.is-vacation .table-investor-face {
-  filter: grayscale(0.55);
-  opacity: 0.82;
+  filter: grayscale(0.5);
+  opacity: 1;
 }
 
 .table-panel {
-  padding: 9px 11px;
-  border: 1.5px solid rgba(29, 27, 46, 0.45);
-  border-radius: 12px;
-  background: rgba(255, 250, 240, 0.78);
+  padding: 10px 12px;
+  border: 1.5px solid rgba(29, 27, 46, 0.28);
+  border-radius: 14px;
+  background: transparent;
 }
 
 .table-panel h3 {
-  margin: 0 0 5px;
+  margin: 0 0 6px;
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -1796,7 +1864,7 @@ button.table-family-chip:hover:not(:disabled) {
 .table-panel-hint {
   margin: 6px 0 0;
   color: var(--ink-soft);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -1813,19 +1881,19 @@ button.table-family-chip:hover:not(:disabled) {
 }
 
 .table-deck-chips span {
-  padding: 2px 7px;
-  border: 1px solid rgba(29, 27, 46, 0.35);
+  padding: 3px 8px;
+  border: 1.5px solid rgba(29, 27, 46, 0.35);
   border-radius: 999px;
-  background: var(--white);
+  background: transparent;
   color: var(--ink-soft);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 
 .table-log ol {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   max-height: 176px;
   margin: 0;
   overflow-y: auto;
@@ -1835,11 +1903,11 @@ button.table-family-chip:hover:not(:disabled) {
 }
 
 .table-log li {
-  padding-bottom: 4px;
-  border-bottom: 1px dashed rgba(29, 27, 46, 0.22);
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
   color: var(--ink-soft);
-  font-size: 10.5px;
-  line-height: 1.35;
+  font-size: 12.5px;
+  line-height: 1.3;
 }
 
 .table-log li:first-child {
@@ -1852,15 +1920,17 @@ button.table-family-chip:hover:not(:disabled) {
 .table-mine {
   position: relative;
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr) 160px;
+  grid-template-columns: 200px minmax(0, 1fr) 160px;
   align-items: center;
   gap: 12px;
-  min-height: 150px;
+  min-height: 190px;
   margin: 84px 0 14px;
-  padding: 18px 18px 12px;
+  padding: 14px 16px;
   border: 3px solid var(--ink);
-  border-radius: 20px;
-  background: var(--paper-deep);
+  border-radius: 22px;
+  background-color: var(--paper-deep);
+  background-image: radial-gradient(rgba(29, 27, 46, 0.115) 1.2px, transparent 1.3px);
+  background-size: 14px 14px;
   box-shadow: var(--shadow-hard);
 }
 
@@ -1879,25 +1949,28 @@ button.table-family-chip:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 5px;
+  gap: 6px;
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .table-my-money strong {
   color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 18px;
-  font-weight: 800;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 26px;
+  font-weight: 600;
 }
 
 .table-private-chip {
-  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
   border: 1.5px solid var(--ink);
   border-radius: 999px;
-  background: var(--white);
+  background: var(--gold);
   color: var(--ink);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1905,8 +1978,8 @@ button.table-family-chip:hover:not(:disabled) {
 .table-hand {
   position: absolute;
   top: -58px;
-  right: 196px;
-  left: 240px;
+  right: 188px;
+  left: 228px;
   z-index: 3;
   display: flex;
   align-items: flex-start;
@@ -1927,14 +2000,14 @@ button.table-family-chip:hover:not(:disabled) {
   flex: 0 0 auto;
   width: 92px;
   height: 130px;
-  margin-left: var(--hand-overlap, -36px);
+  margin-left: var(--hand-overlap, -44px);
   padding: 4px;
   transform: translateY(var(--lift, 0px)) rotate(var(--r, 0deg));
-  transform-origin: 50% 200%;
+  transform-origin: 50% 220%;
   border: 2px solid var(--ink);
   border-radius: 11px;
   background: var(--white);
-  box-shadow: 2px 3px 0 rgba(29, 27, 46, 0.3);
+  box-shadow: 2px 3px 0 rgba(29, 27, 46, 0.85);
   cursor: pointer;
   outline: none;
   pointer-events: auto;
@@ -1949,18 +2022,63 @@ button.table-family-chip:hover:not(:disabled) {
   margin-left: 0;
 }
 
+.table-hand-cn {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.table-hand-cl {
+  position: absolute;
+  top: 32px;
+  left: 6px;
+  z-index: 4;
+  overflow: hidden;
+  max-width: 54px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
 .table-hand-card:hover,
 .table-hand-card:focus-visible {
   z-index: 20;
-  transform: translateY(-40px) rotate(0deg) scale(1.06);
+  transform: translateY(-38px) rotate(0deg) scale(1.08);
   opacity: 1;
   filter: none;
-  box-shadow: 4px 7px 0 rgba(29, 27, 46, 0.28);
+  box-shadow: 3px 6px 0 rgba(29, 27, 46, 0.85);
 }
 
 .table-hand-card:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+.table-hand-card:hover + .table-hand-card {
+  translate: 26px 0;
+}
+
+.table-hand-card:has(+ .table-hand-card:hover) {
+  translate: -26px 0;
 }
 
 .table-hand-card.is-up {
@@ -1993,57 +2111,43 @@ button.table-family-chip:hover:not(:disabled) {
   justify-content: center;
   height: 100%;
   overflow: hidden;
-  border: 1px solid rgba(29, 27, 46, 0.45);
+  border: 1.5px solid rgba(29, 27, 46, 0.55);
   border-radius: 7px;
 }
 
 .table-card-face.is-clan {
-  justify-content: flex-start;
-  gap: 5px;
-  padding: 26px 4px 22px;
+  gap: 4px;
+  padding: 0 4px;
   background-color: var(--c);
 }
 
 .table-card-face.is-action {
   justify-content: flex-start;
-  padding: 22px 5px 22px;
+  padding: 20px 5px 16px;
   background: var(--paper);
-}
-
-.table-card-family {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  z-index: 2;
-  padding: 1px 4px;
-  border-radius: 4px;
-  color: var(--white);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.1;
 }
 
 .table-card-clan-tag {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 48px;
+  left: 5px;
   z-index: 2;
-  padding: 1px 3px;
-  border: 1px solid var(--ink);
-  border-radius: 4px;
+  padding: 0 4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
   background: var(--gold);
   color: var(--ink);
-  font-size: 8px;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.3;
 }
 
 .table-card-clan-emblem {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border: 2px solid var(--ink);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
@@ -2051,46 +2155,63 @@ button.table-family-chip:hover:not(:disabled) {
 
 .table-card-clan-name {
   overflow: hidden;
-  max-width: 70px;
+  max-width: 76px;
   margin-top: 6px;
-  padding: 1px 7px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: rgba(29, 27, 46, 0.55);
+  background: rgba(29, 27, 46, 0.2);
   color: var(--white);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.table-card-clan-name.is-light {
+  color: var(--ink);
 }
 
 .table-card-strip {
   position: absolute;
   inset: 0 0 auto;
-  height: 14px;
+  height: 11px;
   border-bottom: 1.5px solid var(--ink);
 }
 
 .table-card-icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   margin-top: 2px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: var(--white);
   color: var(--ink);
+}
+
+.table-card-icon.is-travel svg,
+.table-card-icon.is-recruitment svg,
+.table-card-icon.is-imTheBoss svg,
+.table-hand-cn.is-travel svg,
+.table-hand-cn.is-recruitment svg,
+.table-hand-cn.is-imTheBoss svg {
+  fill: var(--gold);
+  stroke: var(--ink);
+}
+
+.table-card-icon.is-stop svg,
+.table-hand-cn.is-stop svg {
+  fill: #a62a2a;
+  stroke: var(--white);
 }
 
 .table-card-name {
   margin-top: 5px;
   color: var(--ink);
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.05;
   text-align: center;
 }
 
@@ -2117,69 +2238,83 @@ button.table-family-chip:hover:not(:disabled) {
 .table-card-sub {
   margin-top: 2px;
   color: var(--ink-soft);
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.2;
   text-align: center;
+}
+
+.table-hand-card:hover .table-hand-cn,
+.table-hand-card:hover .table-hand-cl,
+.table-hand-card:focus-visible .table-hand-cn,
+.table-hand-card:focus-visible .table-hand-cl {
+  opacity: 0;
 }
 
 .table-lip {
   position: absolute;
   top: 40px;
-  right: 196px;
+  right: 188px;
   bottom: 0;
-  left: 240px;
+  left: 228px;
   z-index: 12;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 27px 16px 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 8px;
   border: 3px solid var(--ink);
   border-bottom: 0;
-  border-radius: 0 0 15px 15px;
-  background: var(--paper-deep);
+  border-radius: 16px 16px 0 0;
+  background: #e8cf9c;
+  text-align: center;
   pointer-events: none;
 }
 
 .table-lip-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .table-lip-head span {
   color: var(--ink-soft);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .table-slots {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  justify-content: center;
+  gap: 4px;
 }
 
 .table-slots i {
   display: block;
-  width: 12px;
-  height: 8px;
-  border: 1px solid rgba(29, 27, 46, 0.35);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.5);
+  width: 18px;
+  height: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background: transparent;
 }
 
 .table-slots i.is-filled {
-  border-color: var(--ink);
-  background: var(--accent);
+  background: var(--ink);
+}
+
+.table-slots i:not(.is-filled) {
+  border-style: dashed;
+  opacity: 0.5;
 }
 
 .table-lip small {
-  margin-top: auto;
+  margin: 0;
   color: var(--ink-soft);
-  font-size: 9.5px;
+  font-size: 12px;
 }
 
 .table-actions {
@@ -2193,9 +2328,9 @@ button.table-family-chip:hover:not(:disabled) {
 
 .table-actions .table-btn {
   width: 100%;
-  height: 46px;
+  height: 48px;
   padding: 0 10px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 /* Dice -------------------------------------------------------------- */
@@ -2262,10 +2397,124 @@ button.table-family-chip:hover:not(:disabled) {
 
 /* Responsive fallback; the polished mobile layout is M8. ------------- */
 
+@media (max-width: 1350px) and (min-width: 1181px) {
+  .table-deal {
+    padding: 10px 14px;
+  }
+
+  .table-deal-body {
+    gap: 6px;
+  }
+
+  .table-deal-head {
+    padding-right: 48px;
+  }
+
+  .table-deal-badges span {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .table-deal-money strong {
+    font-size: 34px;
+  }
+
+  .table-deal-money span {
+    font-size: 12px;
+  }
+
+  .table-deal-seg {
+    height: 26px;
+    font-size: 13px;
+  }
+
+  .table-deal-req-row {
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .table-deal-req-row .table-req-groups {
+    min-width: 74px;
+  }
+
+  .table-deal-choose,
+  .table-deal-status {
+    font-size: 12px;
+  }
+
+  .table-deal-pending {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .table-deal-actions .table-btn {
+    height: 42px;
+    font-size: 14px;
+  }
+}
+
 @media (max-width: 1180px) {
   .table-layout {
     grid-template-columns: minmax(140px, 165px) minmax(520px, 1fr) minmax(140px, 165px);
     gap: 10px;
+  }
+
+  .table-deal {
+    padding: 8px 10px;
+  }
+
+  .table-deal-body {
+    gap: 5px;
+  }
+
+  .table-deal-head {
+    padding-right: 40px;
+  }
+
+  .table-deal-body h2 {
+    font-size: 22px;
+  }
+
+  .table-deal-badges span {
+    padding: 0 6px;
+    font-size: 11.5px;
+  }
+
+  .table-deal-money strong {
+    font-size: 30px;
+  }
+
+  .table-deal-money span {
+    font-size: 11.5px;
+  }
+
+  .table-deal-seg {
+    height: 24px;
+    font-size: 11.5px;
+  }
+
+  .table-deal-req-row {
+    gap: 4px;
+    font-size: 11.5px;
+  }
+
+  .table-deal-req-row .table-req-groups {
+    min-width: 60px;
+  }
+
+  .table-deal-choose,
+  .table-deal-status {
+    font-size: 11px;
+  }
+
+  .table-deal-pending {
+    padding: 4px 6px;
+    font-size: 11.5px;
+  }
+
+  .table-deal-actions .table-btn {
+    height: 40px;
+    font-size: 13px;
   }
 
   .table-grid {

@@ -1,4 +1,4 @@
-import { Check, Crown, KeyRound } from 'lucide-react';
+import { Check, Crown, KeyRound, Lock } from 'lucide-react';
 
 import type { FamilyColor } from '@/engine/config/families';
 import type { PublicOffer } from '@/engine/types';
@@ -229,7 +229,10 @@ export function MySeat({
         <strong>
           {money} {th.game.million}
         </strong>
-        <span className="table-private-chip">{th.game.myHandPrivate}</span>
+        <span className="table-private-chip">
+          <Lock size={12} strokeWidth={2.2} aria-hidden="true" />
+          {th.game.myHandPrivate}
+        </span>
       </div>
     </div>
   );
