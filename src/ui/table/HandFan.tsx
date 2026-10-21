@@ -42,7 +42,7 @@ function cardAriaLabel(card: InfluenceCard): string {
   }
 }
 
-function ActionIcon({ kind, size = 34 }: { kind: InfluenceCard['kind']; size?: number }) {
+function ActionIcon({ kind, size = 46 }: { kind: InfluenceCard['kind']; size?: number }) {
   switch (kind) {
     case 'travel':
       return <Plane size={size} strokeWidth={2.2} />;
@@ -141,11 +141,11 @@ function HandCard({
         {isClan ? (
           <FamilySymbol
             shape={meta!.symbol}
-            size={16}
+            size={20}
             style={{ color: `var(${meta!.cssVar})` }}
           />
         ) : (
-          <ActionIcon kind={card.kind} size={18} />
+          <ActionIcon kind={card.kind} size={20} />
         )}
       </span>
       <span className="table-hand-cl" aria-hidden="true">
@@ -161,7 +161,7 @@ function HandCard({
             <span className="table-card-clan-emblem">
               <FamilySymbol
                 shape={meta!.symbol}
-                size={24}
+                size={32}
                 style={{ color: `var(${meta!.cssVar})` }}
               />
             </span>
@@ -229,7 +229,7 @@ const HAND_KIND_ORDER: Record<InfluenceCard['kind'], number> = {
 
 export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps) {
   const refs = useRef<Array<HTMLDivElement | null>>([]);
-  const overlap = 44;
+  const overlap = 52;
   const orderedCards = [...cards].sort(
     (left, right) => HAND_KIND_ORDER[left.kind] - HAND_KIND_ORDER[right.kind],
   );

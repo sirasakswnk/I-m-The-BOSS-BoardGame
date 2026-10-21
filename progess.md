@@ -318,7 +318,8 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
   - ช่องปกติโปร่งแสงพร้อมเลข mono ขนาดใหญ่และ dividend chip; เฉพาะช่องปัจจุบันจึงแสดงกลุ่มเงื่อนไขแบบ inline, ช่องปิดใช้พื้น ink + เลขช่อง/เลขแผ่น/✓ ซ้อนกลาง, หมากและวงแหวนน้ำเงินอยู่บนช่องปัจจุบัน, tooltip เงื่อนไขทำงานด้วย hover/focus
   - แผงดีลจัดหัวเรื่องกับ badge inline, ส่วนแบ่ง 30px (บอสสีทอง/เจ้าของสีตระกูล), แถวเงื่อนไข 13px, label “เลือก N”, แถวข้อเสนอรอแบบ dashed พร้อม chip “รอข้อเสนอ”, ปุ่มขนาดใหญ่ และ reserve ที่ว่างสำหรับ stamp
   - ที่นั่ง/แผงข้างโปร่งแสงขอบ ink, crown ไม่มี badge วงกลม, investor เป็น mini card, มีป้ายการ์ดคว่ำ/พักร้อน และ chip เงินส่วนตัวแบบล็อก
-  - มือการ์ดใช้ overlap 44px, การ์ด 92×130, compact label ฝั่งซ้าย, ไอคอน action สีตามต้นฉบับ, tag ญาติ, ตราตระกูล 24px และเรียงชนิดการ์ด (ญาติ → พักร้อน → หยุด → ซื้อตัว → แย่งบอส) เพื่อให้การ์ดบอสใบขวาสุดเห็นเต็มใบ; hover ดันการ์ดข้างเคียง 26px
+  - มือการ์ดขยายเป็น **112×160** ตาม `table (1).html` v6 (overlap 52px), padding 5/radius 14, face radius 9, action icon 46px, ตราตระกูล 52px/ไอคอน 32px, compact circle 30px/ไอคอน 20px, compact label 13px, tag ญาติ 12px, ชื่อการ์ด 18px (ญาติ)/15px (action), sub 13px และ strip 14px; ปรับเฉพาะระยะ hand/mine/lip ให้การ์ดใหญ่พอดีโดยไม่แตะองค์ประกอบอื่น
+  - คง compact label ฝั่งซ้าย, ไอคอน action สีตามต้นฉบับ, tag ญาติ และการเรียงชนิดการ์ด (ญาติ → พักร้อน → หยุด → ซื้อตัว → แย่งบอส) เพื่อให้การ์ดบอสใบขวาสุดเห็นเต็มใบ; hover ดันการ์ดข้างเคียง 26px
   - top bar แสดงรหัสห้อง/เฟส/ดีลที่ปิด/บอส/เทิร์น และ pip ของผู้เล่นตามภาษาภาพต้นฉบับ
   - ตรวจ deal panel ไม่มี internal scroll ที่ 1440/1280/1024px (376/376, 310/310, 324/324)
 
@@ -333,13 +334,13 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 
 ### ผลการรันคำสั่ง
 
-- `npm run typecheck`: ผ่าน (หลัง visual parity pass)
-- `npm run lint`: ผ่าน (หลัง visual parity pass)
+- `npm run typecheck`: ผ่าน (หลัง hand-card enlargement)
+- `npm run lint`: ผ่าน (หลัง hand-card enlargement)
 - `npm run test`: ผ่าน 126/126 tests (12 files)
 - `npm run test:rules`: ผ่าน 12/12 tests
 - `npm run build`: ผ่าน; มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
-- e2e ผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: **6/6 tests** ครอบคลุม lobby/start game, preview ทุกหน้าจอ, เทิร์นว่าง (เปิดดีล → ล้มดีล) และเทิร์นทอยเต๋า → จั่ว 3 ใบ (รันหลัง visual parity pass)
-- ตรวจภาพที่ 1440px, deal panel ไม่มี internal scroll ที่ 1440/1280/1024px และ refresh screenshot หลักทั้ง 5 รูปเมื่อ 21/10/2026
+- e2e ผ่าน `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: **6/6 tests** ครอบคลุม lobby/start game, preview ทุกหน้าจอ, เทิร์นว่าง (เปิดดีล → ล้มดีล) และเทิร์นทอยเต๋า → จั่ว 3 ใบ (รันหลัง hand-card enlargement)
+- ตรวจภาพที่ 1440px, deal panel ไม่มี internal scroll ที่ 1440/1280/1024px, การ์ดชุดใหญ่ไม่ทับกระดาน และ refresh screenshot หลักทั้ง 5 รูปเมื่อ 21/10/2026
 
 ### Definition of Done (M4)
 
@@ -360,6 +361,7 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 - ปุ่ม **ยื่นข้อเสนอ**, **ลงการ์ด** และ **ล็อกดีล** ยัง disabled โดยตั้งใจ; งานจริงอยู่ใน M5/M6 (มี tooltip บอก)
 - แผงดีลเป็นพื้นที่ scroll ได้เมื่อมีข้อเสนอ/เงินปันผลจำนวนมาก; การจัดวางแบบละเอียดจะปรับอีกครั้งเมื่อ flow ข้อเสนอครบ
 - จอ ≤1023px ใช้ single-column fallback เพื่อไม่ให้แตก; mobile responsive เต็มรูปแบบอยู่ใน M8
+- การ์ดมือ 112×160 ใช้ overlap 52px คงที่; มือ 12 ใบที่ความกว้าง ≤1180px อาจแน่นหรือล้นกรอบ จะทำ overlap responsive ใน M8
 - Preview ใช้ผู้เล่น 4 คนและ seed 66 เพื่อให้เห็นการ์ดครบทุกชนิด; overfill picker ถูกทดสอบด้วย unit tests และ e2e เมื่อ engine สร้างสถานะนั้นจริง
 - ช่องปิดจะแสดงหลัง engine ส่ง event `dealResolved`; preview ทั้ง 3 state ยังอยู่ก่อนปิดดีล จึงไม่เห็นช่องปิดใน screenshot ชุดนี้ (สไตล์ช่องปิดพร้อมแล้ว)
 
