@@ -101,6 +101,7 @@ export function InvestorTile({ color, vacation = false }: InvestorTileProps) {
       }
       title={title}
       aria-label={title}
+      data-family={color}
     >
       <div className="table-investor-face stripes">
         <span className="table-investor-symbol">

@@ -1,6 +1,6 @@
-import { Check, Crown, KeyRound, Lock } from 'lucide-react';
+import { Check, Crown, KeyRound, Lock, Undo2 } from 'lucide-react';
 
-import type { FamilyColor } from '@/engine/config/families';
+import { FAMILY_ORDER, type FamilyColor } from '@/engine/config/families';
 import type { PublicOffer } from '@/engine/types';
 import { th } from '@/i18n/th';
 import { FAMILY_BY_ID } from '@/ui/common/families';
@@ -22,7 +22,22 @@ interface TableSeatProps {
   offers?: Partial<Record<FamilyColor, PublicOffer>>;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   valuePerDividend?: number;
+  canManageOffers?: boolean;
+  offersPending?: boolean;
+  offerActionState?: (
+    color: FamilyColor,
+    offer: PublicOffer,
+  ) => { disabled: boolean; title: string };
+  onAcceptOffer?: (uid: string, color: FamilyColor) => void;
+  onUnacceptOffer?: (color: FamilyColor) => void;
   variant: 'top' | 'side';
+}
+
+function format(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
 }
 
 function avatarLetter(name: string): string {
@@ -43,14 +58,31 @@ function OfferBubbles({
   offers,
   acceptedOffers,
   uid,
+  name,
   valuePerDividend,
+  canManageOffers = false,
+  offersPending = false,
+  offerActionState,
+  onAcceptOffer,
+  onUnacceptOffer,
 }: {
   offers?: Partial<Record<FamilyColor, PublicOffer>>;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   uid: string;
+  name: string;
   valuePerDividend?: number;
+  canManageOffers?: boolean;
+  offersPending?: boolean;
+  offerActionState?: (
+    color: FamilyColor,
+    offer: PublicOffer,
+  ) => { disabled: boolean; title: string };
+  onAcceptOffer?: (uid: string, color: FamilyColor) => void;
+  onUnacceptOffer?: (color: FamilyColor) => void;
 }) {
-  const entries = Object.entries(offers ?? {}) as Array<[FamilyColor, PublicOffer]>;
+  const entries = (Object.entries(offers ?? {}) as Array<[FamilyColor, PublicOffer]>).sort(
+    ([left], [right]) => FAMILY_ORDER.indexOf(left) - FAMILY_ORDER.indexOf(right),
+  );
   if (entries.length === 0) return null;
 
   return (
@@ -64,8 +96,9 @@ function OfferBubbles({
                 String(offer.amount * valuePerDividend),
               )
             : null;
-        return (
-          <div key={color} className={`table-offer ${accepted ? 'is-accepted' : ''}`}>
+        const actionState = canManageOffers ? offerActionState?.(color, offer) : undefined;
+        const content = (
+          <>
             <FamilySymbol
               shape={FAMILY_BY_ID[color].symbol}
               size={13}
@@ -74,7 +107,61 @@ function OfferBubbles({
             <span>{th.game.table.offerBubble.replace('{amount}', String(offer.amount))}</span>
             {offer.source === 'hand' && <em>{th.game.table.fromHand}</em>}
             {value && <small>{value}</small>}
-            {accepted && <Check size={12} strokeWidth={3} aria-hidden="true" />}
+            {accepted && !canManageOffers && (
+              <Check size={12} strokeWidth={3} aria-hidden="true" />
+            )}
+            {canManageOffers &&
+              (accepted ? (
+                <Undo2 size={12} strokeWidth={3} aria-hidden="true" />
+              ) : (
+                <Check size={12} strokeWidth={3} aria-hidden="true" />
+              ))}
+          </>
+        );
+        const actionLabel = accepted
+          ? format(th.game.table.unacceptOfferAria, { color: th.families[color] })
+          : format(th.game.table.acceptOfferAria, {
+              color: th.families[color],
+              name,
+              amount: offer.amount,
+            });
+
+        if (
+          canManageOffers &&
+          (accepted ? Boolean(onUnacceptOffer) : Boolean(onAcceptOffer))
+        ) {
+          return (
+            <button
+              key={color}
+              type="button"
+              className={`table-offer is-action ${accepted ? 'is-accepted' : ''}`}
+              data-testid={
+                accepted ? `unaccept-offer-${color}` : `accept-offer-${uid}-${color}`
+              }
+              data-offer-color={color}
+              data-offer-uid={uid}
+              disabled={
+                offersPending || (!accepted && Boolean(actionState?.disabled))
+              }
+              title={
+                accepted
+                  ? th.game.table.unacceptOffer
+                  : (actionState?.title ?? th.game.table.acceptOffer)
+              }
+              aria-label={actionLabel}
+              onClick={() => {
+                if (accepted) onUnacceptOffer?.(color);
+                else onAcceptOffer?.(uid, color);
+              }}
+            >
+              {content}
+            </button>
+          );
+        }
+
+        return (
+          <div key={color} className={`table-offer ${accepted ? 'is-accepted' : ''}`}>
+            {content}
           </div>
         );
       })}
@@ -96,6 +183,11 @@ export function TableSeat({
   offers,
   acceptedOffers,
   valuePerDividend,
+  canManageOffers,
+  offersPending,
+  offerActionState,
+  onAcceptOffer,
+  onUnacceptOffer,
   variant,
 }: TableSeatProps) {
   const seatLabel = th.game.table.seatAria.replace('{seat}', String(seat + 1));
@@ -148,7 +240,13 @@ export function TableSeat({
           offers={offers}
           acceptedOffers={acceptedOffers}
           uid={uid}
+          name={name}
           valuePerDividend={valuePerDividend}
+          canManageOffers={canManageOffers}
+          offersPending={offersPending}
+          offerActionState={offerActionState}
+          onAcceptOffer={onAcceptOffer}
+          onUnacceptOffer={onUnacceptOffer}
         />
       </div>
     </div>
@@ -165,6 +263,8 @@ interface MySeatProps {
   investors: FamilyColor[];
   onVacation: FamilyColor[];
   money: number;
+  moneyDelta?: number | null;
+  moneyDeltaKey?: number;
 }
 
 export function MySeat({
@@ -177,6 +277,8 @@ export function MySeat({
   investors,
   onVacation,
   money,
+  moneyDelta = null,
+  moneyDeltaKey,
 }: MySeatProps) {
   const seatLabel = th.game.table.seatAria.replace('{seat}', String(seat + 1));
 
@@ -226,9 +328,21 @@ export function MySeat({
 
       <div className="table-my-money">
         <span>{th.game.money}</span>
-        <strong>
+        <strong data-testid="my-money">
           {money} {th.game.million}
         </strong>
+        {moneyDelta !== null && (
+          <span
+            key={moneyDeltaKey}
+            className={`table-money-delta ${moneyDelta < 0 ? 'is-loss' : 'is-gain'}`}
+            data-testid="money-delta"
+            role="status"
+          >
+            {moneyDelta < 0
+              ? format(th.game.table.moneyLoss, { amount: Math.abs(moneyDelta) })
+              : format(th.game.table.moneyGain, { amount: moneyDelta })}
+          </span>
+        )}
         <span className="table-private-chip">
           <Lock size={12} strokeWidth={2.2} aria-hidden="true" />
           {th.game.myHandPrivate}

@@ -1696,6 +1696,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
+  font-family: inherit;
   font-size: 12.5px;
   line-height: 1.3;
 }
@@ -1703,6 +1704,27 @@
 .table-offer.is-accepted {
   border-color: var(--green);
   background: #e2f0df;
+}
+
+.table-offer.is-action {
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-offer.is-action:hover:not(:disabled) {
+  background: var(--gold);
+}
+
+.table-offer.is-action:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.table-offer.is-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .table-offer em {
@@ -1715,6 +1737,521 @@
   color: var(--ink-soft);
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 8.5px;
+}
+
+/* Modal shell -------------------------------------------------------- */
+
+.app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 24px;
+  background: rgba(29, 27, 46, 0.62);
+  backdrop-filter: blur(2px);
+}
+
+.app-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: min(860px, calc(100dvh - 48px));
+  overflow: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  outline: none;
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(29, 27, 46, 0.1) 1.2px, transparent 1.3px);
+  background-size: 14px 14px;
+  box-shadow: 8px 9px 0 rgba(29, 27, 46, 0.9);
+  animation: app-modal-pop 0.2s ease-out;
+}
+
+@keyframes app-modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-modal-head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px 12px;
+  border-bottom: 3px solid var(--ink);
+  background: var(--gold);
+}
+
+.app-modal-title {
+  min-width: 0;
+}
+
+.app-modal-title h2 {
+  margin: 0;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.app-modal-eyebrow {
+  margin: 0 0 2px;
+  color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-modal-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.app-modal-close:hover {
+  background: var(--paper-deep);
+}
+
+.app-modal-close:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.app-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 27, 46, 0.35) transparent;
+}
+
+.app-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(29, 27, 46, 0.25);
+}
+
+.app-modal-actions .table-btn {
+  min-width: 140px;
+}
+
+.table-modal-hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.table-modal-error {
+  min-height: 1.2em;
+  margin: -4px 0 0;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Offer modal -------------------------------------------------------- */
+
+.table-source-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.table-source-tab {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-source-tab:hover:not(:disabled) {
+  background: var(--paper-deep);
+}
+
+.table-source-tab.is-active {
+  background: var(--gold);
+}
+
+.table-source-tab:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.table-source-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.table-offer-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 82px;
+  padding: 10px;
+  border: 2px dashed rgba(29, 27, 46, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.table-offer-grid-cards {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.table-offer-pick {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-offer-pick:hover:not(:disabled) {
+  background: rgba(255, 224, 138, 0.45);
+}
+
+.table-offer-pick.is-selected {
+  border-color: var(--ink);
+  background: var(--white);
+  box-shadow: 0 3px 0 var(--ink);
+  transform: translateY(-2px);
+}
+
+.table-offer-pick:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.table-offer-pick:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.table-offer-pick-card {
+  padding: 5px;
+}
+
+.table-offer-empty {
+  margin: 0;
+  padding: 18px;
+  border: 2px dashed rgba(29, 27, 46, 0.25);
+  border-radius: 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.table-offer-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.table-offer-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.table-offer-selection-label,
+.table-offer-amount label {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.table-offer-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+}
+
+.table-offer-selected strong {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.table-offer-selected em,
+.table-my-offer-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e2f0df;
+  color: var(--green);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.table-offer-selection-empty {
+  min-height: 30px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.table-offer-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.table-amount-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-amount-stepper input {
+  width: 58px;
+  height: 36px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  appearance: textfield;
+}
+
+.table-amount-stepper input::-webkit-outer-spin-button,
+.table-amount-stepper input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.table-icon-btn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-icon-btn:hover:not(:disabled) {
+  background: var(--gold);
+}
+
+.table-icon-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.table-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.table-icon-btn.is-danger:hover:not(:disabled) {
+  background: #f2c9c6;
+}
+
+.table-offer-amount-hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+
+.table-offer-edit-hint {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table-my-offers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 2px dashed rgba(29, 27, 46, 0.25);
+}
+
+.table-my-offers h3 {
+  margin: 0;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.table-my-offers ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.table-my-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1.5px solid rgba(29, 27, 46, 0.25);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+
+.table-my-offer.is-accepted {
+  border-color: var(--green);
+  background: rgba(226, 240, 223, 0.6);
+}
+
+.table-my-offer strong {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.table-my-offer > span {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+.table-my-offer em {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.table-my-offer-state,
+.table-my-offer-actions {
+  margin-left: auto;
+}
+
+.table-my-offer-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.table-my-offers-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.table-placed-clans {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.table-placed-clan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.table-deal-capacity {
+  margin: -3px 0 0;
+  color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  text-align: right;
+}
+
+.table-deal-hint {
+  margin: -5px 0 0;
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.table-deal-actions.is-three .table-btn {
+  padding: 0 7px;
+  font-size: 13px;
 }
 
 /* Family chips, investor minis, panels ------------------------------- */
@@ -1949,6 +2486,7 @@ button.table-family-chip:hover:not(:disabled) {
 }
 
 .table-my-money {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -1962,6 +2500,43 @@ button.table-family-chip:hover:not(:disabled) {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 26px;
   font-weight: 600;
+}
+
+.table-money-delta {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 var(--ink);
+  pointer-events: none;
+  animation: table-money-fly 2.8s ease-out both;
+}
+
+.table-money-delta.is-loss {
+  background: #f2c9c6;
+}
+
+@keyframes table-money-fly {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.84);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
 }
 
 .table-private-chip {
@@ -2869,6 +3444,43 @@ button.table-family-chip:hover:not(:disabled) {
 
   .table-actions .table-btn {
     flex: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .app-modal {
+    width: 100%;
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -5px 0 rgba(29, 27, 46, 0.9);
+  }
+
+  .app-modal-head {
+    padding: 12px 14px 10px;
+  }
+
+  .app-modal-title h2 {
+    font-size: 23px;
+  }
+
+  .app-modal-body {
+    padding: 12px 14px 16px;
+  }
+
+  .table-offer-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-modal-actions .table-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 13px;
   }
 }
 

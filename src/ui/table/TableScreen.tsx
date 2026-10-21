@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { HAND_LIMIT } from '@/engine/config/rules';
 import type { FamilyColor } from '@/engine/config/families';
-import type { PrivateState, PublicState } from '@/engine/types';
+import type { PrivateState, PublicOffer, PublicState } from '@/engine/types';
 import { th } from '@/i18n/th';
 import type { ActionIntent } from '@/net/actions';
 import { sendAction } from '@/net/actions';
@@ -12,10 +12,12 @@ import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/ui/common/Button';
 import { CardBack } from '@/ui/common/influence';
 
+import { ClanPlaceModal } from './ClanPlaceModal';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { GameLog } from './GameLog';
 import { HandFan } from './HandFan';
+import { OfferModal, type OfferInput } from './OfferModal';
 import { InvestorTile } from './TableBits';
 import { MySeat, TableSeat } from './TableSeat';
 import {
@@ -55,16 +57,35 @@ export function TableScreen({
   const showToast = useUiStore((state) => state.showToast);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [exclusions, setExclusions] = useState<FamilyColor[]>([]);
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [clanModalOpen, setClanModalOpen] = useState(false);
+  const [moneyDelta, setMoneyDelta] = useState<number | null>(null);
+  const [moneyDeltaKey, setMoneyDeltaKey] = useState(0);
+  const previousMoneyRef = useRef(privateState.money);
 
   useEffect(() => {
-    setPendingAction(null);
     setExclusions([]);
   }, [
     publicState.phase,
     publicState.turnNumber,
     publicState.bossUid,
     publicState.deal?.space,
+  ]);
+
+  useEffect(() => {
+    setPendingAction(null);
+  }, [
+    publicState.phase,
+    publicState.turnNumber,
+    publicState.bossUid,
+    publicState.deal?.space,
     publicState.deal?.locked,
+    publicState.deal?.offers,
+    publicState.deal?.acceptedOffers,
+    publicState.deal?.bossClans,
+    publicState.window,
+    privateState.hand.length,
+    privateState.money,
   ]);
 
   useEffect(() => {
@@ -72,6 +93,29 @@ export function TableScreen({
     const timer = window.setTimeout(() => setPendingAction(null), 6000);
     return () => window.clearTimeout(timer);
   }, [pendingAction]);
+
+  useEffect(() => {
+    if (
+      publicState.phase !== 'dealOpen' ||
+      !publicState.deal ||
+      publicState.deal.locked ||
+      publicState.window
+    ) {
+      setOfferModalOpen(false);
+      setClanModalOpen(false);
+    }
+  }, [publicState.phase, publicState.deal, publicState.window]);
+
+  useEffect(() => {
+    const previous = previousMoneyRef.current;
+    previousMoneyRef.current = privateState.money;
+    if (previous === privateState.money) return;
+
+    setMoneyDelta(privateState.money - previous);
+    setMoneyDeltaKey((current) => current + 1);
+    const timer = window.setTimeout(() => setMoneyDelta(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [privateState.money]);
 
   async function act(key: string, intent: ActionIntent): Promise<void> {
     if (onAction) {
@@ -123,6 +167,50 @@ export function TableScreen({
     void act('draw', { type: 'DRAW_CARDS' });
   }
 
+  function handleSubmitOffer(offer: OfferInput): void {
+    void act(`offer:${offer.color}`, {
+      type: 'SUBMIT_OFFER',
+      color: offer.color,
+      source: offer.source,
+      cardId: offer.cardId,
+      amount: offer.amount,
+    });
+  }
+
+  function handleWithdrawOffer(color: FamilyColor): void {
+    void act(`offer:withdraw:${color}`, {
+      type: 'WITHDRAW_OFFER',
+      color,
+    });
+  }
+
+  function handleAcceptOffer(targetUid: string, color: FamilyColor): void {
+    void act(`offer:accept:${color}`, {
+      type: 'ACCEPT_OFFER',
+      color,
+      targetUid,
+    });
+  }
+
+  function handleUnacceptOffer(color: FamilyColor): void {
+    void act(`offer:unaccept:${color}`, {
+      type: 'UNACCEPT_OFFER',
+      color,
+    });
+  }
+
+  function handlePlaceClan(cardId: string): void {
+    void act(`clan:${cardId}`, {
+      type: 'BOSS_ADD_CLAN',
+      cardId,
+    });
+  }
+
+  function handleLockDeal(): void {
+    if (publicState.bossUid !== uid) return;
+    void act('lock', { type: 'LOCK_DEAL' });
+  }
+
   const closedTiles = getClosedTileMap(publicState.log);
   const layout = getSeatLayout(players, uid);
   const hasTop = layout.top.length > 0;
@@ -131,30 +219,99 @@ export function TableScreen({
   const myName = me?.name ?? th.common.you;
   const mySeat = me?.seat ?? 0;
   const myInvestors = publicState.tableInvestors[uid] ?? [];
-  const dealValue = publicState.deal
-    ? getDealTileValue(publicState.deal.tileNumber)
-    : undefined;
+  const deal = publicState.deal;
+  const dealValue = deal ? getDealTileValue(deal.tileNumber) : undefined;
+  const dealParticipation = deal
+    ? getDealParticipation(
+        deal,
+        publicState.bossUid,
+        publicState.tableInvestors,
+        publicState.onVacation,
+      )
+    : null;
+  const requiredColors = deal
+    ? new Set<FamilyColor>(
+        deal.requirements.groups.flatMap((group) => group.colors),
+      )
+    : new Set<FamilyColor>();
   const neededColors = new Set<FamilyColor>();
-  if (publicState.deal) {
-    const participation = getDealParticipation(
-      publicState.deal,
-      publicState.bossUid,
-      publicState.tableInvestors,
-      publicState.onVacation,
-    );
-    const required = new Set(
-      publicState.deal.requirements.groups.flatMap((group) => group.colors),
-    );
-    for (const color of required) {
+  if (deal && dealParticipation) {
+    for (const color of requiredColors) {
       if (
-        !participation.allColors.has(color) &&
-        !publicState.deal.excludedColors.includes(color) &&
+        !dealParticipation.allColors.has(color) &&
+        !deal.excludedColors.includes(color) &&
         !publicState.onVacation.includes(color)
       ) {
         neededColors.add(color);
       }
     }
   }
+
+  const canManageOffers = Boolean(
+    deal &&
+      publicState.bossUid === uid &&
+      publicState.phase === 'dealOpen' &&
+      !deal.locked &&
+      !publicState.window,
+  );
+  const acceptedTotal =
+    dealParticipation?.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0) ?? 0;
+  const offerActionState =
+    canManageOffers && deal && dealParticipation
+      ? (color: FamilyColor, offer: PublicOffer): { disabled: boolean; title: string } => {
+          if (!requiredColors.has(color)) {
+            return { disabled: true, title: th.game.table.offerNotRequired };
+          }
+          if (dealParticipation.bossFree.includes(color)) {
+            return { disabled: true, title: th.game.table.offerColorTaken };
+          }
+          const currentUid = deal.acceptedOffers[color];
+          const currentAmount = currentUid
+            ? (deal.offers[currentUid]?.[color]?.amount ?? 0)
+            : 0;
+          const capacity = deal.requirements.dividends - (acceptedTotal - currentAmount);
+          if (offer.amount > capacity) {
+            return { disabled: true, title: th.game.table.offerTooLarge };
+          }
+          return { disabled: false, title: th.game.table.acceptOffer };
+        }
+      : undefined;
+  const canOffer =
+    publicState.phase === 'dealOpen' &&
+    Boolean(deal) &&
+    !deal?.locked &&
+    !publicState.window &&
+    publicState.bossUid !== uid;
+  let offerDisabledTitle: string | undefined;
+  if (publicState.bossUid === uid) {
+    offerDisabledTitle = th.game.table.bossCannotOffer;
+  } else if (!deal || publicState.phase !== 'dealOpen') {
+    offerDisabledTitle = th.game.table.offerNoDeal;
+  } else if (deal.locked || publicState.window) {
+    offerDisabledTitle = th.game.table.offerLocked;
+  }
+  const acceptedOfferColors = new Set<FamilyColor>(
+    (Object.keys(deal?.acceptedOffers ?? {}) as FamilyColor[]).filter((color) =>
+      Boolean(deal?.acceptedOffers[color]),
+    ),
+  );
+  const bossInvestors = publicState.bossUid
+    ? (publicState.tableInvestors[publicState.bossUid] ?? [])
+    : [];
+  const canPlaceClan = Boolean(
+    deal &&
+      privateState.hand.some(
+        (card) =>
+          card.kind === 'clan' &&
+          requiredColors.has(card.color) &&
+          !deal.bossClans.includes(card.color) &&
+          !acceptedOfferColors.has(card.color) &&
+          !(
+            bossInvestors.includes(card.color) &&
+            !publicState.onVacation.includes(card.color)
+          ),
+      ),
+  );
 
   const renderSeat = (entry: SeatEntry, variant: 'top' | 'side') => {
     const player = entry.player;
@@ -174,6 +331,11 @@ export function TableScreen({
         offers={publicState.deal?.offers[entry.uid]}
         acceptedOffers={publicState.deal?.acceptedOffers}
         valuePerDividend={dealValue}
+        canManageOffers={canManageOffers}
+        offersPending={pendingAction !== null}
+        offerActionState={offerActionState}
+        onAcceptOffer={handleAcceptOffer}
+        onUnacceptOffer={handleUnacceptOffer}
         variant={variant}
       />
     );
@@ -225,6 +387,9 @@ export function TableScreen({
                 onRollDice={handleRollDice}
                 onDrawCards={handleDrawCards}
                 onPickStart={handlePickStart}
+                onLockDeal={handleLockDeal}
+                onPlaceClan={() => setClanModalOpen(true)}
+                canPlaceClan={canPlaceClan}
               />
             </DealBoard>
           </div>
@@ -250,6 +415,8 @@ export function TableScreen({
           investors={myInvestors}
           onVacation={publicState.onVacation}
           money={privateState.money}
+          moneyDelta={moneyDelta}
+          moneyDeltaKey={moneyDeltaKey}
         />
 
         <HandFan
@@ -280,8 +447,10 @@ export function TableScreen({
           <Button
             variant="light"
             className="table-btn"
-            disabled
-            title={th.game.table.offerComingSoon}
+            data-testid="offer-open"
+            disabled={!canOffer || pendingAction !== null}
+            title={offerDisabledTitle}
+            onClick={() => setOfferModalOpen(true)}
           >
             {th.game.table.offer}
           </Button>
@@ -295,6 +464,37 @@ export function TableScreen({
           </Button>
         </div>
       </section>
+
+      {offerModalOpen &&
+        deal &&
+        !deal.locked &&
+        !publicState.window &&
+        publicState.bossUid !== uid && (
+          <OfferModal
+            uid={uid}
+            publicState={publicState}
+            privateState={privateState}
+            pendingAction={pendingAction}
+            onClose={() => setOfferModalOpen(false)}
+            onSubmit={handleSubmitOffer}
+            onWithdraw={handleWithdrawOffer}
+          />
+        )}
+
+      {clanModalOpen &&
+        deal &&
+        publicState.bossUid === uid &&
+        !deal.locked &&
+        !publicState.window && (
+          <ClanPlaceModal
+            uid={uid}
+            publicState={publicState}
+            privateState={privateState}
+            pendingAction={pendingAction}
+            onClose={() => setClanModalOpen(false)}
+            onPlace={handlePlaceClan}
+          />
+        )}
     </>
   );
 }

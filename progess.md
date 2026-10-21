@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 21 ต.ค. 2026 (M4 visual parity)
+> อัปเดตล่าสุด: 21 ต.ค. 2026 (M5 offers & deal flow)
 
 ## สถานะ Milestone
 
@@ -12,7 +12,7 @@
 | M2 | Firebase: Auth, Lobby, Presence, Home | ✅ เสร็จ (20/10/2026) |
 | M3 | Host Loop + Security Rules | ✅ เสร็จ (20/10/2026) |
 | M4 | Tabletop UI (Desktop) | ✅ เสร็จ (20/10/2026) |
-| M5 | Offers & Deal Flow | ⬜ |
+| M5 | Offers & Deal Flow | ✅ เสร็จ (21/10/2026) |
 | M6 | Action Cards & Interrupt Window | ⬜ |
 | M7 | End of Turn & Game End | ⬜ |
 | M8 | Mobile Responsive | ⬜ |
@@ -415,3 +415,68 @@ Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอค�
 ### ขั้นถัดไป
 
 Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอคำสั่ง
+
+---
+
+## M5 — Offers & Deal Flow ✅ (21/10/2026)
+
+### สิ่งที่ทำ
+
+- เพิ่ม `Modal` กลางสำหรับโต๊ะ: portal, focus trap, ปิดด้วย Escape/คลิก backdrop, ล็อก scroll และคืน focus ให้ปุ่มที่เปิด modal
+- เพิ่ม `OfferModal` สำหรับยื่นข้อเสนอจากนักลงทุนหน้าตักหรือการ์ดญาติในมือ เลือกสี/จำนวนได้ จำกัดจำนวนไม่เกิน dividend ของดีล และแสดงรายการข้อเสนอของตัวเอง
+- ข้อเสนอจากนักลงทุนหน้าตักแก้จำนวนหรือถอนได้ก่อนบอสรับ; ข้อเสนอจากการ์ดญาติถอนได้ (การ์ดกลับเข้ามือ) แต่แก้จำนวนไม่ได้หลังยื่น
+- เพิ่ม offer bubble ที่ที่นั่งผู้เล่น รองรับหลายข้อเสนอต่อคน; บอสกดรับ/ยกเลิกข้อเสนอได้จาก bubble พร้อมสถานะ accepted และการ์ดที่ถูกใช้
+- เพิ่ม `ClanPlaceModal` ให้บอสเลือกการ์ดญาติที่ไม่ซ้ำสีกับนักลงทุน/ข้อเสนอที่รับแล้วและยังอยู่ในเงื่อนไขดีล; ปุ่มวางการ์ดจะเปิดเฉพาะเมื่อมีใบที่วางได้
+- เพิ่มแถบความจุ `รับแล้ว N/D ส่วน` ตาม dividend ของดีล, คำใบ้การรับข้อเสนอสำหรับบอส และปุ่ม `ล็อกดีล` ที่เปิดเมื่อผู้เข้าร่วมครบตามเงื่อนไขเท่านั้น
+- เพิ่ม animation เงินส่วนตัว (`money-delta`) แสดงเฉพาะเจ้าของ state; รองรับ `prefers-reduced-motion`
+- ปรับ state การรอ action ของโต๊ะให้ reset เมื่อ phase/turn/boss/deal space เปลี่ยน และเมื่อ offers, accepted offers, boss clans, lock/window, ขนาดมือ หรือเงินเปลี่ยน
+- เพิ่ม e2e 3 ผู้เล่นปิดดีลแรก: เริ่มช่อง 3, ยื่นข้อเสนอจากนักลงทุนหน้าตัก, บอสรับ, ยกเลิกหนึ่งรายการแล้วรับใหม่, ล็อก, resolve และตรวจเงินบอส/ผู้เสนอตาม engine
+- ไม่แก้ `src/engine/` หรือ security rules; ใช้ action `SUBMIT_OFFER`, `WITHDRAW_OFFER`, `ACCEPT_OFFER`, `UNACCEPT_OFFER`, `BOSS_ADD_CLAN`, `LOCK_DEAL` ที่มีอยู่
+
+### ไฟล์ที่สร้าง/แก้
+
+- `src/ui/common/Modal.tsx` — accessible modal shell
+- `src/ui/table/OfferModal.tsx` — ตัวแก้ไข/จัดการข้อเสนอจากโต๊ะและมือ
+- `src/ui/table/ClanPlaceModal.tsx` — UI วางการ์ดญาติของบอส
+- `src/ui/table/TableScreen.tsx` — wiring, validation, pending state, money delta
+- `src/ui/table/TableSeat.tsx` — offer bubbles, boss accept/unaccept
+- `src/ui/table/DealPanel.tsx` — capacity, clan button, lock button/hint
+- `src/ui/table/TableBits.tsx` — `data-family` ของ investor tile
+- `src/ui/table/tableUtils.ts` — ใช้ helper ที่มีอยู่; ไม่เปลี่ยนกติกา
+- `src/i18n/th.ts` — ข้อความ offer/deal/modal/money
+- `src/styles/global.css` — modal, offer, clan, money animation
+- `e2e/table.spec.ts` — helper `startSpace`, offer/accept helpers และ e2e ปิดดีลแรก
+- `review/m5/01-offer-modal.png`, `02-boss-clan-modal.png`, `03-boss-offers.png`, `04-boss-accepted.png`, `05-money-animation.png` — ภาพตรวจ UI
+- `progess.md` — บันทึกสถานะ M5
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน **131/131 tests** (13 files)
+- `npm run build`: ผ่าน; มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
+- `npm run test:rules`: ผ่าน **12/12 tests**
+- `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: ผ่าน **7/7 tests** (เพิ่ม deal-close e2e)
+- ตรวจภาพ UI ที่ 1440px: offer modal, clan modal, boss offer bubbles, accepted state และ private money delta
+
+### Definition of Done (M5)
+
+- [x] Offer modal และ offer bubble รองรับหลายข้อเสนอต่อคน
+- [x] บอสรับและยกเลิกข้อเสนอได้
+- [x] บอสวางการ์ดญาติในดีลได้
+- [x] ล็อกดีล, resolve และ animation เงินส่วนตัวทำงาน
+- [x] e2e 3 ผู้เล่นปิดดีลแรกสำเร็จ
+- [x] เงินบอสและเงินผู้เสนอถูกต้องตาม engine
+- [x] e2e ผ่านครบ
+
+### ASSUMPTION / ข้อจำกัด
+
+- ข้อเสนอจากการ์ดญาติยัง **แก้จำนวนหลังยื่นไม่ได้** เพราะ public projection ไม่ส่ง `card.id`; ผู้เล่นถอนเพื่อรับการ์ดคืนแล้วยื่นใหม่ได้ ส่วนข้อเสนอจากนักลงทุนหน้าตักแก้จำนวนได้
+- ปุ่มรับข้อเสนอของบอสจะ disabled สำหรับสีที่ไม่ต้องใช้ สีที่บอสเข้าร่วมแล้ว หรือข้อเสนอที่จะทำให้ส่วนแบ่งเกิน dividend
+- การวางการ์ดญาติตรวจจาก state ฝั่ง UI ให้ตรงกับเงื่อนไข engine; modal วางการ์ดในภาพ review สร้างจาก `/preview/game` (seed 66) เพราะการ์ดในมือของเกม e2e ไม่รับประกันว่าจะมีใบที่วางได้
+- เงินใน animation อ่านจาก `PrivateState` เท่านั้น จึงไม่รั่วไปยังผู้เล่นคนอื่น
+- ไม่มีการเปลี่ยนกติกา การเงิน หรือ action ใดใน `src/engine/`
+
+### ขั้นถัดไป
+
+Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** — รอคำสั่ง

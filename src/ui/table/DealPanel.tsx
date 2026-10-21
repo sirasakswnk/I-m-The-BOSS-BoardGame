@@ -22,6 +22,7 @@ import {
   getPlayerName,
   getRemainingExclusionNeed,
   getSpaceStripe,
+  isDealComplete,
   isExclusionPlanValid,
 } from './tableUtils';
 
@@ -37,6 +38,9 @@ interface DealPanelProps {
   onRollDice: () => void;
   onDrawCards: () => void;
   onPickStart: (space: number) => void;
+  onLockDeal: () => void;
+  onPlaceClan: () => void;
+  canPlaceClan: boolean;
 }
 
 function text(template: string, values: Record<string, string | number>): string {
@@ -360,9 +364,19 @@ function OpenDealPanel({
   publicState,
   pendingAction,
   onFailDeal,
+  onLockDeal,
+  onPlaceClan,
+  canPlaceClan,
 }: Pick<
   DealPanelProps,
-  'uid' | 'players' | 'publicState' | 'pendingAction' | 'onFailDeal'
+  | 'uid'
+  | 'players'
+  | 'publicState'
+  | 'pendingAction'
+  | 'onFailDeal'
+  | 'onLockDeal'
+  | 'onPlaceClan'
+  | 'canPlaceClan'
 >) {
   const deal = publicState.deal;
   if (!deal) {
@@ -385,6 +399,11 @@ function OpenDealPanel({
   const value = getDealTileValue(deal.tileNumber);
   const total = value * deal.requirements.dividends;
   const segments = getDealSegments(deal, participation);
+  const acceptedTotal = participation.accepted.reduce(
+    (sum, entry) => sum + entry.offer.amount,
+    0,
+  );
+  const dealComplete = isDealComplete(deal, participation.allColors);
   const offerCount = Object.values(deal.offers).reduce(
     (sum, offers) => sum + Object.keys(offers ?? {}).length,
     0,
@@ -416,6 +435,17 @@ function OpenDealPanel({
         segments={segments}
         dividends={deal.requirements.dividends}
       />
+
+      <p className="table-deal-capacity" data-testid="deal-capacity">
+        {text(th.game.table.acceptedDividends, {
+          accepted: acceptedTotal,
+          total: deal.requirements.dividends,
+        })}
+      </p>
+
+      {isBoss && offerCount > 0 && !deal.locked && (
+        <p className="table-deal-hint">{th.game.table.offerActionHint}</p>
+      )}
 
       <div className="table-deal-req-list">
         {progress.map((entry, index) => (
@@ -476,7 +506,21 @@ function OpenDealPanel({
         <p className="table-deal-waiting">{th.game.table.lockedWaiting}</p>
       ) : isBoss ? (
         <>
-          <div className="table-deal-actions">
+          <div className="table-deal-actions is-three">
+            <Button
+              variant="light"
+              className="table-btn"
+              data-testid="place-clan-open"
+              disabled={pendingAction !== null || !canPlaceClan}
+              title={
+                !canPlaceClan
+                  ? th.game.table.placeClanEmpty
+                  : th.game.table.placeClanHint
+              }
+              onClick={onPlaceClan}
+            >
+              {th.game.table.placeClan}
+            </Button>
             <Button
               variant="light"
               className="table-btn"
@@ -491,10 +535,11 @@ function OpenDealPanel({
               variant="dark"
               className="table-btn"
               data-testid="lock-deal"
-              disabled
-              title={th.game.table.lockComingSoon}
+              disabled={pendingAction !== null || !dealComplete}
+              title={!dealComplete ? th.game.table.lockIncomplete : undefined}
+              onClick={onLockDeal}
             >
-              {th.game.table.lock}
+              <LoadingLabel loading={pendingAction === 'lock'} label={th.game.table.lock} />
             </Button>
           </div>
         </>
@@ -567,6 +612,9 @@ export function DealPanel({
   onRollDice,
   onDrawCards,
   onPickStart,
+  onLockDeal,
+  onPlaceClan,
+  canPlaceClan,
 }: DealPanelProps) {
   return (
     <section
@@ -603,6 +651,9 @@ export function DealPanel({
           publicState={publicState}
           pendingAction={pendingAction}
           onFailDeal={onFailDeal}
+          onLockDeal={onLockDeal}
+          onPlaceClan={onPlaceClan}
+          canPlaceClan={canPlaceClan}
         />
       )}
       {publicState.phase === 'turnEndDiscard' && (
