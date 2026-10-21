@@ -5,6 +5,7 @@ import { project } from '../project';
 import {
   clanCard,
   getPlayer,
+  imTheBossCard,
   ok,
   openDealAt,
   setHand,
@@ -60,6 +61,7 @@ describe('projection privacy', () => {
     const pending = projected.public.pendingCards[0];
     expect(pending).toBeDefined();
     expect(pending).not.toHaveProperty('cards');
+    expect(pending).not.toHaveProperty('stoppedBy');
     expect(pending?.target).toEqual({ kind: 'investor', uid: 'p1', color: 'green' });
 
     expect(projected.public).not.toHaveProperty('deck');
@@ -80,6 +82,23 @@ describe('projection privacy', () => {
     expect(projected.public.handCounts.p2).toBe(getPlayer(played, 'p2').hand.length);
     expect(projected.private.p2.hand.map((card) => card.id)).not.toContain(offerClan.id);
     expect(projected.private.p3.hand.map((card) => card.id)).not.toContain(travel.id);
+  });
+
+  it('omits optional pending fields from RTDB-shaped public state', () => {
+    const state = startGame(3, 152);
+    const bossCard = imTheBossCard();
+    setHand(state, 'p2', [bossCard]);
+    const opened = openDealAt(state, 'p1', 8);
+    const played = ok(
+      opened,
+      { type: 'PLAY_IM_THE_BOSS', uid: 'p2', cardId: bossCard.id },
+      3300,
+    ).state;
+
+    const pending = project(played).public.pendingCards[0];
+    expect(pending).toBeDefined();
+    expect(pending).not.toHaveProperty('target');
+    expect(pending).not.toHaveProperty('stoppedBy');
   });
 
   it('exposes final scores only at game over', () => {

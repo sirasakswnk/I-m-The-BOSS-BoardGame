@@ -73,13 +73,18 @@ export function project(state: FullGameState): ProjectedState {
     };
   }
 
-  const pendingCards: PublicPendingCard[] = state.pendingCards.map((pending) => ({
-    id: pending.id,
-    kind: pending.kind,
-    playerUid: pending.playerUid,
-    target: pending.target,
-    stoppedBy: pending.stoppedBy,
-  }));
+  const pendingCards: PublicPendingCard[] = state.pendingCards.map((pending) => {
+    // RTDB rejects writes that contain `undefined`, so optional fields must be
+    // omitted rather than carried as keys with undefined values.
+    const publicPending: PublicPendingCard = {
+      id: pending.id,
+      kind: pending.kind,
+      playerUid: pending.playerUid,
+    };
+    if (pending.target) publicPending.target = pending.target;
+    if (pending.stoppedBy) publicPending.stoppedBy = pending.stoppedBy;
+    return publicPending;
+  });
 
   const publicState: PublicState = {
     phase: state.phase,

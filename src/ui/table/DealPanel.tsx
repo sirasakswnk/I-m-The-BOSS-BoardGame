@@ -10,6 +10,7 @@ import { Button } from '@/ui/common/Button';
 import { FAMILY_BY_ID } from '@/ui/common/families';
 
 import { DiceFace, FamilyChip, GroupSymbols } from './TableBits';
+import { PendingQueue } from './PendingQueue';
 import {
   getBossAutoJoinColors,
   getCurrentSpace,
@@ -443,6 +444,11 @@ function OpenDealPanel({
         })}
       </p>
 
+      <PendingQueue
+        players={players}
+        pendingCards={publicState.pendingCards}
+      />
+
       {isBoss && offerCount > 0 && !deal.locked && (
         <p className="table-deal-hint">{th.game.table.offerActionHint}</p>
       )}
@@ -492,7 +498,7 @@ function OpenDealPanel({
         </div>
       )}
 
-      {offerCount === 0 && !deal.locked && (
+      {offerCount === 0 && !deal.locked && !publicState.window && (
         <div className="table-deal-pending">
           <Handshake size={20} strokeWidth={2} aria-hidden="true" />
           <span>{th.game.table.waitingOffers}</span>

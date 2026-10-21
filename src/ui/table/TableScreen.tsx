@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { HAND_LIMIT } from '@/engine/config/rules';
@@ -6,17 +7,21 @@ import type { PrivateState, PublicOffer, PublicState } from '@/engine/types';
 import { th } from '@/i18n/th';
 import type { ActionIntent } from '@/net/actions';
 import { sendAction } from '@/net/actions';
+import { startServerClockSync } from '@/net/clock';
 import { RoomServiceError } from '@/net/rooms';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/ui/common/Button';
 import { CardBack } from '@/ui/common/influence';
 
+import { ActionCardModal } from './ActionCardModal';
+import { hasPlayableAction, getWindowPassInfo } from './actionUtils';
 import { ClanPlaceModal } from './ClanPlaceModal';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { GameLog } from './GameLog';
 import { HandFan } from './HandFan';
+import { InterruptBar } from './InterruptBar';
 import { OfferModal, type OfferInput } from './OfferModal';
 import { InvestorTile } from './TableBits';
 import { MySeat, TableSeat } from './TableSeat';
@@ -59,9 +64,16 @@ export function TableScreen({
   const [exclusions, setExclusions] = useState<FamilyColor[]>([]);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const [clanModalOpen, setClanModalOpen] = useState(false);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
   const [moneyDelta, setMoneyDelta] = useState<number | null>(null);
   const [moneyDeltaKey, setMoneyDeltaKey] = useState(0);
   const previousMoneyRef = useRef(privateState.money);
+  const previewMode = onAction !== undefined;
+
+  useEffect(() => {
+    if (previewMode) return;
+    return startServerClockSync();
+  }, [previewMode]);
 
   useEffect(() => {
     setExclusions([]);
@@ -105,6 +117,12 @@ export function TableScreen({
       setClanModalOpen(false);
     }
   }, [publicState.phase, publicState.deal, publicState.window]);
+
+  useEffect(() => {
+    if (publicState.phase !== 'dealOpen' || !publicState.deal) {
+      setActionModalOpen(false);
+    }
+  }, [publicState.phase, publicState.deal]);
 
   useEffect(() => {
     const previous = previousMoneyRef.current;
@@ -313,6 +331,49 @@ export function TableScreen({
       ),
   );
 
+  const canPlayCard = Boolean(
+    deal &&
+      publicState.phase === 'dealOpen' &&
+      hasPlayableAction(publicState, uid, privateState.hand),
+  );
+  let playDisabledTitle: string | undefined;
+  if (!deal || publicState.phase !== 'dealOpen') {
+    playDisabledTitle = th.game.table.playNoDeal;
+  } else if (!canPlayCard) {
+    playDisabledTitle = th.game.table.playNone;
+  }
+
+  const passInfo = getWindowPassInfo(publicState);
+  const windowTrigger = publicState.window?.triggeredBy === uid;
+  const hasPassedWindow = passInfo?.passedUids.includes(uid) ?? false;
+  const canPass = Boolean(publicState.window && !windowTrigger && !hasPassedWindow);
+  let passDisabledTitle: string | undefined;
+  if (!publicState.window) {
+    passDisabledTitle = th.game.table.passNoWindow;
+  } else if (windowTrigger) {
+    passDisabledTitle = th.game.table.passTrigger;
+  } else if (hasPassedWindow) {
+    passDisabledTitle = th.game.table.passAlready;
+  }
+
+  const canCancelLock = Boolean(
+    publicState.window && deal?.locked && publicState.bossUid === uid,
+  );
+
+  function handlePlayAction(intent: ActionIntent): void {
+    void act(`action:${intent.type}`, intent);
+  }
+
+  function handlePassWindow(): void {
+    if (!canPass) return;
+    void act('pass', { type: 'PASS_WINDOW' });
+  }
+
+  function handleCancelLock(): void {
+    if (!canCancelLock) return;
+    void act('cancel-lock', { type: 'CANCEL_LOCK' });
+  }
+
   const renderSeat = (entry: SeatEntry, variant: 'top' | 'side') => {
     const player = entry.player;
     return (
@@ -343,6 +404,21 @@ export function TableScreen({
 
   return (
     <>
+      {publicState.window && (
+        <InterruptBar
+          uid={uid}
+          players={players}
+          publicState={publicState}
+          pendingAction={pendingAction}
+          canPlayCard={canPlayCard}
+          playDisabledTitle={playDisabledTitle}
+          canCancelLock={canCancelLock}
+          onPlayCard={() => setActionModalOpen(true)}
+          onPass={handlePassWindow}
+          onCancelLock={handleCancelLock}
+        />
+      )}
+
       <div className="table-felt">
         <div className="table-layout">
           {hasTop && (
@@ -457,10 +533,27 @@ export function TableScreen({
           <Button
             variant="dark"
             className="table-btn"
-            disabled
-            title={th.game.table.playComingSoon}
+            data-testid="play-card-open"
+            disabled={!canPlayCard || pendingAction !== null}
+            title={playDisabledTitle ?? th.game.table.playHint}
+            onClick={() => setActionModalOpen(true)}
           >
             {th.game.table.playCard}
+          </Button>
+          <Button
+            variant="light"
+            className="table-btn"
+            data-testid="table-pass"
+            disabled={!canPass || pendingAction !== null}
+            title={passDisabledTitle}
+            onClick={handlePassWindow}
+          >
+            {pendingAction === 'pass' && (
+              <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+            )}
+            {hasPassedWindow
+              ? th.game.table.interrupt.passed
+              : th.game.table.interrupt.pass}
           </Button>
         </div>
       </section>
@@ -495,6 +588,18 @@ export function TableScreen({
             onPlace={handlePlaceClan}
           />
         )}
+
+      {actionModalOpen && deal && publicState.phase === 'dealOpen' && (
+        <ActionCardModal
+          uid={uid}
+          players={players}
+          publicState={publicState}
+          privateState={privateState}
+          pendingAction={pendingAction}
+          onClose={() => setActionModalOpen(false)}
+          onSubmit={handlePlayAction}
+        />
+      )}
     </>
   );
 }

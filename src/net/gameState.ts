@@ -66,7 +66,7 @@ function normalizeWindow(raw: unknown): InterruptWindowState | null {
 
 function normalizePending(raw: unknown): PendingCardState {
   const pending = asRecord(raw);
-  return {
+  const normalized: PendingCardState = {
     id: asString(pending.id),
     seq: asNumber(pending.seq),
     kind:
@@ -77,12 +77,17 @@ function normalizePending(raw: unknown): PendingCardState {
         : 'travel',
     playerUid: asString(pending.playerUid),
     cards: asArray<InfluenceCard>(pending.cards),
-    target: isRecord(pending.target)
-      ? (pending.target as unknown as PendingCardState['target'])
-      : undefined,
     ts: asNumber(pending.ts),
-    stoppedBy: typeof pending.stoppedBy === 'string' ? pending.stoppedBy : undefined,
   };
+  // Keep optional fields absent, not `undefined`: the host writes this object
+  // back to RTDB and Firebase rejects undefined values.
+  if (isRecord(pending.target)) {
+    normalized.target = pending.target as unknown as PendingCardState['target'];
+  }
+  if (typeof pending.stoppedBy === 'string') {
+    normalized.stoppedBy = pending.stoppedBy;
+  }
+  return normalized;
 }
 
 function normalizeDeal(raw: unknown): DealState | null {

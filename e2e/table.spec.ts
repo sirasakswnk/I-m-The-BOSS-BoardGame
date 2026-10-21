@@ -123,6 +123,120 @@ async function acceptOffer(page: Page, color: string): Promise<void> {
   });
 }
 
+/**
+ * Hands are random, so tests select the first card the UI says is legal. A
+ * recruitment play needs three cards; the modal grid exposes enough state to
+ * click the whole triptych before choosing a target.
+ */
+async function playAnyAction(
+  pages: Page[],
+  preferNonStop = false,
+): Promise<Page | null> {
+  for (const page of pages) {
+    const open = page.getByTestId('play-card-open');
+    if ((await open.count()) === 0) continue;
+    if (!(await open.isVisible().catch(() => false))) continue;
+    if (await open.isDisabled().catch(() => true)) continue;
+
+    await open.click();
+    const modal = page.getByTestId('action-card-modal');
+    try {
+      await modal.waitFor({ state: 'visible', timeout: 2_000 });
+    } catch {
+      continue;
+    }
+
+    const cards = modal.locator('[data-action-kind]:not([disabled])');
+    const kinds = await cards.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-action-kind')),
+    );
+    const order = kinds.map((kind, index) => ({ kind, index }));
+    if (preferNonStop) {
+      order.sort(
+        (left, right) =>
+          Number(left.kind === 'stop') - Number(right.kind === 'stop'),
+      );
+    }
+    for (const { kind, index } of order) {
+      const card = cards.nth(index);
+      await card.click();
+
+      if (kind === 'recruitment') {
+        const parts = modal.locator(
+          '[data-action-kind="recruitment"]:not([disabled])',
+        );
+        const partCount = await parts.count();
+        for (let part = 0; part < partCount; part += 1) {
+          const choice = parts.nth(part);
+          if ((await choice.getAttribute('aria-pressed')) !== 'true') {
+            await choice.click();
+          }
+        }
+      }
+
+      const targets = modal.locator(
+        '[data-testid^="action-target-"]:not([disabled])',
+      );
+      if ((await targets.count()) > 0) {
+        await targets.first().click();
+      }
+
+      const submit = modal.getByTestId('action-submit');
+      if (await submit.isEnabled()) {
+        const logBefore = await page
+          .getByTestId('game-log')
+          .innerText()
+          .catch(() => '');
+        await submit.click();
+        await expect(modal).toHaveCount(0, { timeout: 5_000 });
+
+        for (let wait = 0; wait < 50; wait += 1) {
+          const toast = page.locator('.toast-error');
+          if ((await toast.count()) > 0) {
+            throw new Error(
+              `Action ${kind ?? 'unknown'} was rejected: ${await toast.first().innerText()}`,
+            );
+          }
+          const logNow = await page
+            .getByTestId('game-log')
+            .innerText()
+            .catch(() => null);
+          if (logNow !== null && logNow !== logBefore) {
+            return page;
+          }
+          await page.waitForTimeout(100);
+        }
+
+        throw new Error(
+          `Action ${kind ?? 'unknown'} was not accepted: game log did not change`,
+        );
+      }
+    }
+
+    await modal
+      .locator('.app-modal-close')
+      .click()
+      .catch(() => undefined);
+    await expect(modal)
+      .toHaveCount(0, { timeout: 3_000 })
+      .catch(() => undefined);
+  }
+
+  return null;
+}
+
+async function throttleNetwork(page: Page, latency: number) {
+  const session = await page.context().newCDPSession(page);
+  await session.send('Network.enable');
+  await session.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
+  return session;
+}
+
 test('empty turn: boss opens a deal, fails it and the turn ends', async ({ browser }) => {
   const game = await startThreePlayerGame(browser);
   try {
@@ -193,6 +307,18 @@ test('three players close the first deal with table offers', async ({ browser })
     await expect(boss.getByTestId('deal-panel')).toContainText('ช่วงป่วนดีล', {
       timeout: 20_000,
     });
+    await expect(boss.getByTestId('interrupt-cancel-lock')).toBeVisible({
+      timeout: 20_000,
+    });
+    await boss.getByTestId('interrupt-cancel-lock').click();
+    await expect(lock).toBeEnabled({ timeout: 20_000 });
+    await expect(boss.getByTestId('interrupt-bar')).toHaveCount(0, {
+      timeout: 20_000,
+    });
+    await lock.click();
+    await expect(boss.getByTestId('interrupt-bar')).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(boss.getByTestId('game-log')).toContainText('ปิดดีลช่อง 3', {
       timeout: 30_000,
     });
@@ -208,6 +334,103 @@ test('three players close the first deal with table offers', async ({ browser })
       });
       await expect(page.getByTestId('money-delta')).toBeVisible();
     }
+  } finally {
+    await game.close();
+  }
+});
+
+test('action cards stack, reset the window and close when all others pass', async ({
+  browser,
+}) => {
+  const game = await startThreePlayerGame(browser);
+  try {
+    const boss = await findBossPage(game.pages);
+    await openDeal(boss);
+
+    const firstPage = await playAnyAction(game.pages);
+    expect(firstPage, 'No player had a playable action card').not.toBeNull();
+    const firstActor = firstPage!;
+
+    await expect(firstActor.getByTestId('interrupt-bar')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(firstActor.getByTestId('pending-count')).toHaveText('1 ใบ');
+
+    const remainingBefore = Number(
+      await firstActor
+        .getByTestId('interrupt-countdown')
+        .getAttribute('data-remaining-ms'),
+    );
+    await firstActor.waitForTimeout(1_100);
+    const remainingAfter = Number(
+      await firstActor
+        .getByTestId('interrupt-countdown')
+        .getAttribute('data-remaining-ms'),
+    );
+    expect(remainingAfter).toBeLessThan(remainingBefore - 500);
+
+    const deadlineBefore = Number(
+      await firstActor
+        .getByTestId('interrupt-countdown')
+        .getAttribute('data-deadline'),
+    );
+
+    const secondPage = await playAnyAction(game.pages, true);
+    expect(secondPage, 'No player could stack a second action card').not.toBeNull();
+    const trigger = secondPage!;
+
+    await expect(trigger.getByTestId('pending-queue')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect
+      .poll(
+        async () =>
+          Number(
+            await trigger
+              .getByTestId('interrupt-countdown')
+              .getAttribute('data-deadline'),
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(deadlineBefore);
+    const deadlineAfter = Number(
+      await trigger
+        .getByTestId('interrupt-countdown')
+        .getAttribute('data-deadline'),
+    );
+    expect(deadlineAfter).toBeGreaterThan(deadlineBefore);
+
+    const otherPages = game.pages.filter((page) => page !== trigger);
+    expect(otherPages).toHaveLength(2);
+
+    const session = await throttleNetwork(otherPages[0], 450);
+    const delayedPass = otherPages[0].getByTestId('interrupt-pass');
+    await expect(delayedPass).toBeEnabled();
+    await delayedPass.click();
+    await expect(
+      otherPages[0].getByTestId('interrupt-pass-count'),
+    ).toContainText('1/2', { timeout: 5_000 });
+    await expect(delayedPass).toBeDisabled();
+
+    const lastPass = otherPages[1].getByTestId('interrupt-pass');
+    await expect(lastPass).toBeEnabled();
+    await lastPass.click();
+
+    await expect(trigger.getByTestId('interrupt-bar')).toHaveCount(0, {
+      timeout: 2_000,
+    });
+    await expect(trigger.getByTestId('pending-queue')).toHaveCount(0, {
+      timeout: 5_000,
+    });
+
+    await session
+      .send('Network.emulateNetworkConditions', {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      })
+      .catch(() => undefined);
   } finally {
     await game.close();
   }

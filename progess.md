@@ -13,7 +13,7 @@
 | M3 | Host Loop + Security Rules | ✅ เสร็จ (20/10/2026) |
 | M4 | Tabletop UI (Desktop) | ✅ เสร็จ (20/10/2026) |
 | M5 | Offers & Deal Flow | ✅ เสร็จ (21/10/2026) |
-| M6 | Action Cards & Interrupt Window | ⬜ |
+| M6 | Action Cards & Interrupt Window | ✅ เสร็จ (21/10/2026) |
 | M7 | End of Turn & Game End | ⬜ |
 | M8 | Mobile Responsive | ⬜ |
 | M9 | Resilience, Polish, Deploy | ⬜ |
@@ -480,3 +480,70 @@ Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอค�
 ### ขั้นถัดไป
 
 Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** — รอคำสั่ง
+
+---
+
+## M6 — Action Cards & Interrupt Window — เสร็จสมบูรณ์ (21/10/2026)
+
+### สถานะ
+
+- งาน UI/integration ของ M6 เสร็จและผ่าน final gate ครบทุกข้อ
+- commit M6 ในรอบนี้; commit ก่อนหน้าคือ `373c783 feat(M5): implement offers and deal flow`
+- ไม่แก้ `src/engine/reducer.ts` หรือกติกา engine; M6 เป็นงาน UI/net integration ทั้งหมด
+- engine ใช้ `action.ts` (server timestamp) ใน `applyAction` อยู่แล้ว จึงไม่ต้องแก้ host loop สำหรับ grace period
+
+### สิ่งที่ทำ
+
+- เพิ่ม `ActionCardModal` เดียวรองรับทั้ง 4 flow: travel, recruitment (เลือกการ์ดครบ 3 ใบ), stop และ im-the-boss พร้อม target picker, disabled reason และ test IDs คงที่
+- เพิ่ม `InterruptBar` แบบ sticky เหนือโต๊ะ: ชื่อผู้เล่นที่ลงการ์ด, countdown จาก server time, PLAY, PASS, จำนวนคนผ่าน และปุ่ม `CANCEL_LOCK` สำหรับบอส
+- เพิ่ม `PendingQueue` ใน `DealPanel` แสดงการ์ดที่รอผลแบบ public (ไม่เปิดเผยตัวการ์ด) พร้อม target และสถานะ stopped
+- เพิ่มปุ่ม PLAY/PASS ด้านล่างโต๊ะ และ sync เวลากับ Firebase `serverTimeOffset` ทุก 100ms; preview mode ข้าม clock sync
+- ผูก `PLAY_*`, `PASS_WINDOW`, `CANCEL_LOCK` กับ engine ผ่าน action queue เดิม
+- เพิ่ม Thai copy, CSS responsive และ review screenshots
+- เพิ่ม unit tests ของ `actionUtils` และ projection/host-state normalization
+- เพิ่ม e2e M6: เปิดดีล, ลงการ์ด, ตรวจ countdown ลดลง, ลงการ์ดใบที่สองแล้ว deadline reset, หน่วงเน็ตเวิร์กของผู้เล่นอีกคน 450ms แล้วให้ทั้งสองคน PASS, ตรวจว่า window ปิดทันทีเมื่อคนที่ไม่ trigger ผ่านครบ
+- ขยาย e2e M5 ให้ตรวจ `CANCEL_LOCK` แล้ว re-lock ได้
+
+### บั๊กที่พบและแก้ในรอบนี้
+
+- `PublicPendingCard` และ `PendingCardState` มี optional fields เป็น `undefined`; Firebase RTDB ปฏิเสธ `update` ที่มีค่า `undefined` ทำให้ action แรกผ่านแต่ action ที่สองที่ stacking ไม่ถูกเขียนลง public/hostState
+- แก้ `project()` ให้ omit `target`/`stoppedBy` เมื่อไม่มีค่า และแก้ `normalizeHostState()` ให้ไม่เติม optional keys กลับมาเป็น `undefined`
+- เพิ่มเทสต์ `src/net/__tests__/gameState.test.ts` และอัปเดต projection test เพื่อกันการถอยหลัง
+
+### ไฟล์ที่สร้าง/แก้
+
+- `src/ui/table/ActionCardModal.tsx`, `InterruptBar.tsx`, `PendingQueue.tsx`
+- `src/ui/table/actionUtils.ts`, `actionCopy.ts`, `actionUtils.test.ts`
+- `src/ui/table/TableScreen.tsx`, `DealPanel.tsx`
+- `src/engine/project.ts`, `src/net/gameState.ts`
+- `src/engine/__tests__/project.test.ts`, `src/net/__tests__/gameState.test.ts`
+- `e2e/table.spec.ts`
+- `src/i18n/th.ts`, `src/styles/global.css`
+- `review/m6/01-action-modal-travel.png`, `01-action-modal-stop.png`, `02-interrupt-window.png`
+- `progess.md`
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน **142/142 tests** (15 files)
+- `npm run test:e2e`: ผ่าน **8/8 tests** รวม M6 action-stack/deadline-reset/latency-pass และ M5 cancel-lock/re-lock
+- `npm run build`: ผ่าน — JS 726.12 kB (gzip 217.62 kB), CSS 84.88 kB (gzip 16.06 kB); มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
+- `npm run test:rules`: ผ่าน **12/12 tests**; ไม่มีการแก้ `database.rules.json`
+- ตรวจภาพ UI ที่ 1280px: action modal (travel/stop), interrupt bar + pending queue; ไม่พบ layout แตก
+
+### Definition of Done (M6)
+
+- [x] การ์ดทั้ง 4 ชนิดเล่นได้ผ่าน UI
+- [x] มี pending queue แบบ public และ interrupt bar พร้อม countdown
+- [x] PASS ครบทุกคนที่ไม่ใช่ trigger แล้วปิด window ทันที
+- [x] ลงการ์ดซ้อนระหว่าง window แล้ว deadline reset
+- [x] action ที่ส่งทันเวลาแต่มาช้าตาม latency ยังถูกนับ (ทดสอบด้วย delayed PASS)
+- [x] บอส cancel lock และ re-lock ได้
+- [x] e2e ผ่านครบ 8 tests
+- [x] final build + rules tests + commit
+
+### ขั้นถัดไป
+
+- Milestone ถัดไปคือ **M7 — End of Turn & Game End**
+- M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel
