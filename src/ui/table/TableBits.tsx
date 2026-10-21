@@ -6,6 +6,7 @@ import type { FamilyColor } from '@/engine/config/families';
 import { th } from '@/i18n/th';
 import { FAMILY_BY_ID } from '@/ui/common/families';
 import { FamilySymbol } from '@/ui/common/FamilySymbol';
+import { CardBack } from '@/ui/common/influence';
 
 interface FamilyChipProps {
   color: FamilyColor;
@@ -126,15 +127,21 @@ export function CardBacks({ count }: CardBacksProps) {
   const shown = Math.min(6, count);
   return (
     <div className="table-backs" title={label} aria-label={label}>
-      <span
+      <div
         className="table-back-stack"
-        style={{ width: `${16 + Math.max(0, shown - 1) * 9}px` }}
+        style={{ width: `${20 + Math.max(0, shown - 1) * 8}px` }}
         aria-hidden="true"
       >
         {Array.from({ length: shown }).map((_, index) => (
-          <span key={index} className="table-back" style={{ left: `${index * 9}px` }} />
+          <CardBack
+            key={index}
+            width={20}
+            height={28}
+            className="table-back"
+            style={{ left: `${index * 8}px` }}
+          />
         ))}
-      </span>
+      </div>
       <span className="table-backs-count">
         {count > 6 ? `+${count - 6} ` : ''}×{count}
       </span>

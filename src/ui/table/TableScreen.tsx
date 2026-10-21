@@ -10,6 +10,7 @@ import { RoomServiceError } from '@/net/rooms';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/ui/common/Button';
+import { CardBack } from '@/ui/common/influence';
 
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
@@ -326,9 +327,12 @@ function DeckPanel({ deckCount, discardCount }: { deckCount: number; discardCoun
   return (
     <section className="table-panel table-deck">
       <h3>{th.game.table.deckTitle}</h3>
-      <div className="table-deck-chips">
-        <span>{tableReplace(th.game.table.drawCount, { count: deckCount })}</span>
-        <span>{tableReplace(th.game.table.discardCountShort, { count: discardCount })}</span>
+      <div className="table-deck-body">
+        <CardBack width={42} height={59} className="table-deck-back" />
+        <div className="table-deck-chips">
+          <span>{tableReplace(th.game.table.drawCount, { count: deckCount })}</span>
+          <span>{tableReplace(th.game.table.discardCountShort, { count: discardCount })}</span>
+        </div>
       </div>
     </section>
   );

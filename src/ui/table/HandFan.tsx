@@ -1,91 +1,19 @@
-import { Ban, Coins, Crown, Plane } from 'lucide-react';
 import { useRef, type CSSProperties, type KeyboardEvent } from 'react';
 
-import { FAMILY_ORDER, type FamilyColor } from '@/engine/config/families';
-import type { Phase, InfluenceCard } from '@/engine/types';
+import type { FamilyColor } from '@/engine/config/families';
+import type { Phase, InfluenceCard as InfluenceCardData } from '@/engine/types';
 import { th } from '@/i18n/th';
-import { FAMILY_BY_ID } from '@/ui/common/families';
-import { FamilySymbol } from '@/ui/common/FamilySymbol';
-
-const WILD_GRADIENT = (() => {
-  const step = 100 / FAMILY_ORDER.length;
-  const stops = FAMILY_ORDER.map((color, index) => {
-    const start = index * step;
-    const end = (index + 1) * step;
-    return `var(${FAMILY_BY_ID[color].cssVar}) ${start}% ${end}%`;
-  });
-  return `linear-gradient(90deg, ${stops.join(', ')})`;
-})();
+import { InfluenceCard, getRecruitmentPartMap, type RecruitmentPart } from '@/ui/common/influence';
 
 interface HandFanProps {
-  cards: InfluenceCard[];
+  cards: InfluenceCardData[];
   phase: Phase;
   windowOpen: boolean;
   neededColors: Set<FamilyColor>;
 }
 
-function cardAriaLabel(card: InfluenceCard): string {
-  switch (card.kind) {
-    case 'clan':
-      return th.game.table.cardAriaClan.replace('{color}', th.families[card.color]);
-    case 'travel':
-      return th.game.table.cardAriaTravel.replace(
-        '{color}',
-        card.color === 'wild' ? th.card.wildColor : th.families[card.color],
-      );
-    case 'recruitment':
-      return th.game.table.cardAriaRecruitment;
-    case 'stop':
-      return th.game.table.cardAriaStop;
-    case 'imTheBoss':
-      return th.game.table.cardAriaBoss;
-  }
-}
-
-function ActionIcon({ kind, size = 46 }: { kind: InfluenceCard['kind']; size?: number }) {
-  switch (kind) {
-    case 'travel':
-      return <Plane size={size} strokeWidth={2.2} />;
-    case 'recruitment':
-      return <Coins size={size} strokeWidth={2.2} />;
-    case 'stop':
-      return <Ban size={size} strokeWidth={2.5} />;
-    case 'imTheBoss':
-      return <Crown size={size} strokeWidth={2.2} />;
-    case 'clan':
-      return null;
-  }
-}
-
-function shortLabel(card: InfluenceCard): string {
-  switch (card.kind) {
-    case 'clan':
-      return th.families[card.color];
-    case 'travel':
-      return th.game.table.handShortTravel;
-    case 'recruitment':
-      return th.game.table.handShortRecruitment;
-    case 'stop':
-      return th.game.table.handShortStop;
-    case 'imTheBoss':
-      return th.game.table.handShortBoss;
-  }
-}
-
-function actionStripStyle(card: InfluenceCard): CSSProperties {
-  if (card.kind === 'travel') {
-    return card.color === 'wild'
-      ? { backgroundImage: WILD_GRADIENT }
-      : { backgroundColor: `var(${FAMILY_BY_ID[card.color].cssVar})` };
-  }
-  if (card.kind === 'recruitment') return { backgroundColor: 'var(--ink)' };
-  if (card.kind === 'stop') return { backgroundColor: 'var(--red)' };
-  if (card.kind === 'imTheBoss') return { backgroundColor: 'var(--gold)' };
-  return {};
-}
-
 function cardStateClass(
-  card: InfluenceCard,
+  card: InfluenceCardData,
   phase: Phase,
   windowOpen: boolean,
   neededColors: Set<FamilyColor>,
@@ -107,119 +35,37 @@ function HandCard({
   phase,
   windowOpen,
   neededColors,
-  registerRef,
+  part,
 }: {
-  card: InfluenceCard;
+  card: InfluenceCardData;
   index: number;
   count: number;
   phase: Phase;
   windowOpen: boolean;
   neededColors: Set<FamilyColor>;
-  registerRef: (index: number, node: HTMLDivElement | null) => void;
+  part?: RecruitmentPart;
 }) {
   const step = count > 1 ? Math.min(4.2, 40 / (count - 1)) : 0;
   const rotation = (index - (count - 1) / 2) * step;
   const stateClass = cardStateClass(card, phase, windowOpen, neededColors);
-  const isClan = card.kind === 'clan';
-  const meta = isClan ? FAMILY_BY_ID[card.color] : null;
-  const clanStyle = meta
-    ? ({ '--c': `var(${meta.cssVar})` } as CSSProperties)
-    : undefined;
   const style = { '--r': `${rotation}deg` } as CSSProperties;
 
   return (
-    <div
-      ref={(node) => registerRef(index, node)}
+    <InfluenceCard
+      card={card}
+      width={112}
+      height={160}
+      part={part}
       className={`table-hand-card ${stateClass}`}
       style={style}
       data-card-id={card.id}
       role="listitem"
       tabIndex={0}
-      aria-label={cardAriaLabel(card)}
-    >
-      <span className={`table-hand-cn is-${card.kind}`} aria-hidden="true">
-        {isClan ? (
-          <FamilySymbol
-            shape={meta!.symbol}
-            size={20}
-            style={{ color: `var(${meta!.cssVar})` }}
-          />
-        ) : (
-          <ActionIcon kind={card.kind} size={20} />
-        )}
-      </span>
-      <span className="table-hand-cl" aria-hidden="true">
-        {shortLabel(card)}
-      </span>
-      <div
-        className={`table-card-face ${isClan ? 'is-clan stripes' : 'is-action'}`}
-        style={clanStyle}
-      >
-        {isClan ? (
-          <>
-            <span className="table-card-clan-tag">{th.card.clanTag}</span>
-            <span className="table-card-clan-emblem">
-              <FamilySymbol
-                shape={meta!.symbol}
-                size={32}
-                style={{ color: `var(${meta!.cssVar})` }}
-              />
-            </span>
-            <span
-              className={`table-card-clan-name ${
-                card.color === 'yellow' ? 'is-light' : ''
-              }`}
-            >
-              {th.families[card.color]}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="table-card-strip" style={actionStripStyle(card)} aria-hidden="true" />
-            <span className={`table-card-icon is-${card.kind}`}>
-              <ActionIcon kind={card.kind} />
-            </span>
-            <span className="table-card-name">{th.card[card.kind]}</span>
-            {card.kind === 'travel' && (
-              <span
-                className={`table-card-family-pill ${
-                  card.color === 'wild' ? 'is-wild' : ''
-                }`}
-                style={
-                  card.color === 'wild'
-                    ? undefined
-                    : { backgroundColor: 'var(--ink)' }
-                }
-              >
-                {card.color !== 'wild' && (
-                  <FamilySymbol
-                    shape={FAMILY_BY_ID[card.color].symbol}
-                    size={11}
-                    style={{ color: `var(${FAMILY_BY_ID[card.color].cssVar})` }}
-                  />
-                )}
-                <span>
-                  {card.color === 'wild' ? th.card.wildColor : th.families[card.color]}
-                </span>
-              </span>
-            )}
-            {card.kind === 'recruitment' && (
-              <span className="table-card-sub">{th.game.table.recruitSub}</span>
-            )}
-            {card.kind === 'stop' && (
-              <span className="table-card-sub">{th.game.table.stopSub}</span>
-            )}
-            {card.kind === 'imTheBoss' && (
-              <span className="table-card-sub">{th.game.table.bossSub}</span>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    />
   );
 }
 
-const HAND_KIND_ORDER: Record<InfluenceCard['kind'], number> = {
+const HAND_KIND_ORDER: Record<InfluenceCardData['kind'], number> = {
   clan: 0,
   travel: 1,
   stop: 2,
@@ -228,30 +74,31 @@ const HAND_KIND_ORDER: Record<InfluenceCard['kind'], number> = {
 };
 
 export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps) {
-  const refs = useRef<Array<HTMLDivElement | null>>([]);
+  const handRef = useRef<HTMLDivElement>(null);
   const overlap = 52;
   const orderedCards = [...cards].sort(
     (left, right) => HAND_KIND_ORDER[left.kind] - HAND_KIND_ORDER[right.kind],
   );
-
-  function registerRef(index: number, node: HTMLDivElement | null) {
-    refs.current[index] = node;
-  }
+  const recruitmentParts = getRecruitmentPartMap(cards);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    const current = refs.current.findIndex((node) => node === document.activeElement);
+    const nodes = Array.from(
+      handRef.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? [],
+    );
+    const current = nodes.indexOf(document.activeElement as HTMLElement);
     if (current === -1) return;
     const next =
       event.key === 'ArrowLeft'
-        ? (current - 1 + orderedCards.length) % orderedCards.length
-        : (current + 1) % orderedCards.length;
-    refs.current[next]?.focus();
+        ? (current - 1 + nodes.length) % nodes.length
+        : (current + 1) % nodes.length;
+    nodes[next]?.focus();
     event.preventDefault();
   }
 
   return (
     <div
+      ref={handRef}
       className="table-hand"
       data-testid="my-hand"
       role="list"
@@ -271,7 +118,7 @@ export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps
             phase={phase}
             windowOpen={windowOpen}
             neededColors={neededColors}
-            registerRef={registerRef}
+            part={card.kind === 'recruitment' ? recruitmentParts.get(card.id) : undefined}
           />
         ))
       )}

@@ -3,20 +3,17 @@ import { th } from '@/i18n/th';
 import { FAMILY_BY_ID, type FamilyId } from './families';
 import { FamilySymbol } from './FamilySymbol';
 
-type FamilyCardVariant = 'investor' | 'clan';
-
 interface FamilyCardProps {
   family: FamilyId;
-  variant?: FamilyCardVariant;
   className?: string;
 }
 
 /**
- * Family card based on design/home.html: 104x146 desktop / 58x84 mobile,
+ * Investor card based on design/home.html: 104x146 desktop / 58x84 mobile,
  * white frame with ink border, striped family-colored face, emblem in a white
- * circle, name pill and corner labels. The `clan` variant adds the clan ribbon.
+ * circle, name pill and corner labels. Clan cards use ClanCard instead.
  */
-export function FamilyCard({ family, variant = 'investor', className }: FamilyCardProps) {
+export function FamilyCard({ family, className }: FamilyCardProps) {
   const meta = FAMILY_BY_ID[family];
   const isLightFace = meta.textOnFace === 'ink';
 
@@ -60,12 +57,6 @@ export function FamilyCard({ family, variant = 'investor', className }: FamilyCa
           {th.families[family]}
         </span>
       </div>
-
-      {variant === 'clan' && (
-        <span className="absolute -right-9 top-3.5 rotate-[35deg] border-y-2 border-ink bg-gold px-10 py-[2px] font-display text-[13px] font-bold leading-none text-ink max-md:-right-8 max-md:top-2 max-md:px-8 max-md:text-[8px]">
-          {th.card.clanTag}
-        </span>
-      )}
     </div>
   );
 }

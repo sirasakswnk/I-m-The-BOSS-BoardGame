@@ -11,7 +11,9 @@ export default {
         ink: { DEFAULT: '#1D1B2E', soft: '#4A4760' },
         line: '#D6CBB3',
         gold: '#FFE08A',
+        'gold-deep': '#F7C94E',
         accent: '#2B59C3',
+        stop: '#A62A2A',
         family: {
           red: '#C8382D',
           blue: '#2B59C3',

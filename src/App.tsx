@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { th } from '@/i18n/th';
+import { CardSymbolSprite } from '@/ui/common/influence';
 import { Toast } from '@/ui/common/Toast';
 import { Home } from '@/ui/pages/Home';
 import { Room } from '@/ui/pages/Room';
@@ -22,6 +23,7 @@ function PreviewLoading() {
 export function App() {
   return (
     <BrowserRouter>
+      <CardSymbolSprite />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/preview" element={<Navigate to="/preview/home" replace />} />

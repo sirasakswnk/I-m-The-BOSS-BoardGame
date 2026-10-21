@@ -13,12 +13,14 @@
   --white: #ffffff;
   --accent: #2b59c3;
   --gold: #ffe08a;
+  --gold-deep: #f7c94e;
   --red: #c8382d;
   --blue: #2b59c3;
   --green: #2e8b57;
   --yellow: #e8b730;
   --purple: #7b4fb3;
   --black: #26252b;
+  --stop: #a62a2a;
   --shadow-hard: 4px 4px 0 var(--ink);
 }
 
@@ -1020,13 +1022,13 @@
   right: -10px;
   padding: 1px 9px;
   transform: rotate(8deg);
-  border: 3px solid #a62a2a;
+  border: 3px solid var(--stop);
   border-radius: 8px;
   background: rgba(255, 246, 230, 0.92);
   box-shadow:
     inset 0 0 0 2px rgba(255, 246, 230, 0.92),
-    inset 0 0 0 3px #a62a2a;
-  color: #a62a2a;
+    inset 0 0 0 3px var(--stop);
+  color: var(--stop);
   font-family: 'Kanit', system-ui, sans-serif;
   font-size: 20px;
   font-weight: 800;
@@ -1660,24 +1662,14 @@
 .table-back-stack {
   position: relative;
   display: block;
-  height: 24px;
+  height: 28px;
 }
 
-.table-back {
+.table-back.influence-card {
   position: absolute;
   top: 0;
   display: block;
-  width: 16px;
-  height: 22px;
-  border: 2px solid var(--ink);
-  border-radius: 4px;
-  background-color: var(--accent);
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.25) 0 3px,
-    transparent 3px 6px
-  );
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
 }
 
 .table-backs-count {
@@ -1874,6 +1866,17 @@ button.table-family-chip:hover:not(:disabled) {
   gap: 4px;
 }
 
+.table-deck-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-deck-back {
+  flex: none;
+  transform: rotate(-3deg);
+}
+
 .table-deck-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1995,19 +1998,461 @@ button.table-family-chip:hover:not(:disabled) {
   pointer-events: auto;
 }
 
+/* Influence cards (design/cards.html) ------------------------------- */
+
+.influence-card {
+  --u: 1;
+  --card-w: 150px;
+  --card-h: 210px;
+  position: relative;
+  box-sizing: border-box;
+  width: var(--card-w);
+  height: var(--card-h);
+  padding: calc(var(--u) * 5px);
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  border-radius: calc(var(--u) * 14px);
+  background: var(--white);
+  box-shadow:
+    calc(var(--u) * 3px) calc(var(--u) * 4px) 0 rgba(29, 27, 46, 0.85);
+  color: var(--ink);
+  font-family: 'Sarabun', system-ui, sans-serif;
+}
+
+.influence-face {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: calc(var(--u) * 9px);
+  background: var(--white);
+}
+
+.influence-corner-icon {
+  position: absolute;
+  top: calc(var(--u) * 6px);
+  left: calc(var(--u) * 7px);
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 30px);
+  height: calc(var(--u) * 30px);
+  border: max(1px, calc(var(--u) * 1.5px)) solid var(--ink);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.influence-corner-icon svg {
+  width: calc(var(--u) * 20px);
+  height: calc(var(--u) * 20px);
+}
+
+.influence-corner-label {
+  position: absolute;
+  top: calc(var(--u) * 40px);
+  left: calc(var(--u) * 7px);
+  z-index: 8;
+  overflow: hidden;
+  max-width: calc(var(--u) * 90px);
+  padding: calc(var(--u) * 1px) calc(var(--u) * 3px);
+  border-radius: calc(var(--u) * 4px);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 13px);
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.influence-face.stripes,
+.influence-travel-stub {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0 calc(var(--u) * 6px),
+    transparent calc(var(--u) * 6px) calc(var(--u) * 12px)
+  );
+}
+
+/* 1. clan */
+.influence-face.is-clan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 10px);
+  background-color: var(--c);
+  color: var(--on, var(--white));
+}
+
+.influence-clan-tag {
+  position: absolute;
+  top: calc(var(--u) * 60px);
+  left: calc(var(--u) * 6px);
+  z-index: 5;
+  padding: 0 calc(var(--u) * 5px);
+  border: max(1px, calc(var(--u) * 1.5px)) solid var(--ink);
+  border-radius: calc(var(--u) * 5px);
+  background: var(--gold);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 12px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.influence-clan-emblem {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 76px);
+  height: calc(var(--u) * 76px);
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.influence-clan-emblem svg {
+  width: calc(var(--u) * 46px);
+  height: calc(var(--u) * 46px);
+}
+
+.influence-clan-name {
+  overflow: hidden;
+  max-width: calc(var(--u) * 132px);
+  padding: calc(var(--u) * 1px) calc(var(--u) * 12px);
+  border-radius: 999px;
+  background: rgba(29, 27, 46, 0.22);
+  color: inherit;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 17px);
+  font-weight: 700;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 2. travel */
+.influence-face.is-travel {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+
+.influence-travel-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: calc(var(--u) * 38px);
+  padding: 0 calc(var(--u) * 6px) 0 calc(var(--u) * 44px);
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--gold);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 14px);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.influence-travel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 4px);
+  padding: calc(var(--u) * 4px) calc(var(--u) * 8px) 0;
+  text-align: center;
+}
+
+.influence-travel-body > svg {
+  width: calc(var(--u) * 60px);
+  height: calc(var(--u) * 60px);
+}
+
+.influence-travel-body small {
+  color: var(--ink-soft);
+  font-size: calc(var(--u) * 11px);
+  line-height: 1.25;
+}
+
+.influence-travel-stub {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 8px);
+  height: calc(var(--u) * 64px);
+  border-top: max(1px, calc(var(--u) * 2.5px)) solid var(--ink);
+  background-color: var(--c);
+  color: var(--on, var(--white));
+}
+
+.influence-travel-stub.is-wild {
+  background: linear-gradient(
+    90deg,
+    var(--red) 0 16.6%,
+    var(--blue) 16.6% 33.3%,
+    var(--green) 33.3% 50%,
+    var(--yellow) 50% 66.6%,
+    var(--purple) 66.6% 83.3%,
+    var(--black) 83.3%
+  );
+  color: var(--ink);
+}
+
+.influence-travel-stub-emblem {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 38px);
+  height: calc(var(--u) * 38px);
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.influence-travel-stub-emblem svg {
+  width: calc(var(--u) * 26px);
+  height: calc(var(--u) * 26px);
+}
+
+.influence-travel-stub-name {
+  overflow: hidden;
+  max-width: calc(var(--u) * 82px);
+  padding: calc(var(--u) * 1px) calc(var(--u) * 10px);
+  border-radius: 999px;
+  background: rgba(29, 27, 46, 0.22);
+  color: inherit;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 17px);
+  font-weight: 700;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.influence-travel-stub-name.is-wild {
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+}
+
+/* 3. recruitment triptych */
+.influence-face.is-recruitment {
+  background: var(--paper);
+}
+
+.influence-recruit-strip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: calc(var(--u) * 14px);
+  background: var(--ink);
+}
+
+.influence-recruit-art {
+  position: absolute;
+  top: calc(var(--u) * 26px);
+  left: 0;
+  width: 100%;
+  height: calc(var(--u) * 114px);
+}
+
+.influence-recruit-title-row {
+  position: absolute;
+  top: calc(var(--u) * 146px);
+  right: calc(var(--u) * 6px);
+  left: calc(var(--u) * 6px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.influence-recruit-title-row b {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 14px);
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.influence-recruit-part {
+  flex: none;
+  padding: 0 calc(var(--u) * 5px);
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  border-radius: calc(var(--u) * 6px);
+  background: var(--gold);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: calc(var(--u) * 13px);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.influence-face.is-recruitment small {
+  position: absolute;
+  top: calc(var(--u) * 172px);
+  right: calc(var(--u) * 6px);
+  left: calc(var(--u) * 6px);
+  color: var(--ink-soft);
+  font-size: calc(var(--u) * 11px);
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* 4. stop */
+.influence-face.is-stop {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--stop) 0 calc(var(--u) * 10px),
+    var(--paper) calc(var(--u) * 10px) calc(var(--u) * 20px)
+  );
+}
+
+.influence-stop-inner {
+  position: absolute;
+  inset: calc(var(--u) * 9px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 8px);
+  padding-top: calc(var(--u) * 12px);
+  border-radius: calc(var(--u) * 6px);
+  background: var(--paper);
+  text-align: center;
+}
+
+.influence-stop-sign {
+  width: calc(var(--u) * 84px);
+  height: calc(var(--u) * 84px);
+}
+
+.influence-stop-inner small {
+  max-width: calc(var(--u) * 92px);
+  color: var(--ink-soft);
+  font-size: calc(var(--u) * 12px);
+  line-height: 1.25;
+}
+
+/* 5. im the boss */
+.influence-face.is-boss {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 16px);
+  background: repeating-conic-gradient(
+    from 0deg at 50% 38%,
+    var(--gold) 0 7.5deg,
+    var(--gold-deep) 7.5deg 15deg
+  );
+}
+
+.influence-boss-crown {
+  position: absolute;
+  top: calc(var(--u) * 30px);
+  width: calc(var(--u) * 84px);
+  height: calc(var(--u) * 84px);
+}
+
+.influence-boss-stamp {
+  margin-top: calc(var(--u) * 34px);
+  padding: calc(var(--u) * 2px) calc(var(--u) * 12px);
+  border: max(1px, calc(var(--u) * 3px)) solid var(--ink);
+  border-radius: calc(var(--u) * 10px);
+  background: var(--white);
+  box-shadow: calc(var(--u) * 3px) calc(var(--u) * 3px) 0 var(--ink);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 21px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  transform: rotate(-6deg);
+}
+
+.influence-face.is-boss small {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--u) * 10px);
+  left: 0;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 13px);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* card back */
+.influence-face.is-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 14px);
+  background-color: var(--ink);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0 calc(var(--u) * 8px),
+    transparent calc(var(--u) * 8px) calc(var(--u) * 16px)
+  );
+}
+
+.influence-face.is-back::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--u) * 9px);
+  border: max(1px, calc(var(--u) * 2px)) dashed rgba(255, 224, 138, 0.65);
+  border-radius: calc(var(--u) * 6px);
+}
+
+.influence-back-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, calc(var(--u) * 26px));
+  gap: calc(var(--u) * 5px);
+  padding: calc(var(--u) * 7px);
+  border: max(1px, calc(var(--u) * 2px)) solid var(--ink);
+  border-radius: calc(var(--u) * 8px);
+  background: var(--white);
+  box-shadow: 0 0 0 calc(var(--u) * 3px) var(--gold);
+}
+
+.influence-back-cell {
+  height: calc(var(--u) * 26px);
+  border-radius: calc(var(--u) * 4px);
+}
+
+.influence-back-name {
+  position: relative;
+  z-index: 1;
+  color: var(--gold);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: calc(var(--u) * 15px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.influence-card.is-compact .influence-back-name {
+  display: none;
+}
+
+.influence-card.is-compact .influence-back-mark {
+  gap: max(1px, calc(var(--u) * 5px));
+  padding: max(1px, calc(var(--u) * 7px));
+  box-shadow: 0 0 0 max(1px, calc(var(--u) * 3px)) var(--gold);
+}
+
 .table-hand-card {
   position: relative;
   flex: 0 0 auto;
-  width: 112px;
-  height: 160px;
   margin-left: var(--hand-overlap, -52px);
-  padding: 5px;
   transform: translateY(var(--lift, 0px)) rotate(var(--r, 0deg));
   transform-origin: 50% 220%;
-  border: 2px solid var(--ink);
-  border-radius: 14px;
-  background: var(--white);
-  box-shadow: 2px 3px 0 rgba(29, 27, 46, 0.85);
   cursor: pointer;
   outline: none;
   pointer-events: auto;
@@ -2020,43 +2465,6 @@ button.table-family-chip:hover:not(:disabled) {
 
 .table-hand-card:first-child {
   margin-left: 0;
-}
-
-.table-hand-cn {
-  position: absolute;
-  top: 6px;
-  left: 7px;
-  z-index: 4;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1.5px solid var(--ink);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  pointer-events: none;
-}
-
-.table-hand-cl {
-  position: absolute;
-  top: 40px;
-  left: 7px;
-  z-index: 4;
-  overflow: hidden;
-  max-width: 66px;
-  padding: 1px 3px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
 }
 
 .table-hand-card:hover,
@@ -2095,159 +2503,12 @@ button.table-family-chip:hover:not(:disabled) {
   filter: grayscale(0.45);
 }
 
-.table-hand-card.is-up .table-card-face {
+.table-hand-card.is-up .influence-face {
   box-shadow: 0 0 0 2px var(--gold);
 }
 
-.table-hand-card.is-hot .table-card-face {
+.table-hand-card.is-hot .influence-face {
   box-shadow: 0 0 0 2px var(--red);
-}
-
-.table-card-face {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  overflow: hidden;
-  border: 1.5px solid rgba(29, 27, 46, 0.55);
-  border-radius: 9px;
-}
-
-.table-card-face.is-clan {
-  gap: 4px;
-  padding: 0 4px;
-  background-color: var(--c);
-}
-
-.table-card-face.is-action {
-  justify-content: flex-start;
-  padding: 24px 5px 16px;
-  background: var(--paper);
-}
-
-.table-card-clan-tag {
-  position: absolute;
-  top: 60px;
-  left: 6px;
-  z-index: 2;
-  padding: 0 4px;
-  border: 1.5px solid var(--ink);
-  border-radius: 5px;
-  background: var(--gold);
-  color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.table-card-clan-emblem {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.table-card-clan-name {
-  overflow: hidden;
-  max-width: 96px;
-  margin-top: 6px;
-  padding: 1px 10px;
-  border-radius: 999px;
-  background: rgba(29, 27, 46, 0.2);
-  color: var(--white);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.table-card-clan-name.is-light {
-  color: var(--ink);
-}
-
-.table-card-strip {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 14px;
-  border-bottom: 1.5px solid var(--ink);
-}
-
-.table-card-icon {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-top: 2px;
-  color: var(--ink);
-}
-
-.table-card-icon.is-travel svg,
-.table-card-icon.is-recruitment svg,
-.table-card-icon.is-imTheBoss svg,
-.table-hand-cn.is-travel svg,
-.table-hand-cn.is-recruitment svg,
-.table-hand-cn.is-imTheBoss svg {
-  fill: var(--gold);
-  stroke: var(--ink);
-}
-
-.table-card-icon.is-stop svg,
-.table-hand-cn.is-stop svg {
-  fill: #a62a2a;
-  stroke: var(--white);
-}
-
-.table-card-name {
-  margin-top: 5px;
-  color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.05;
-  text-align: center;
-}
-
-.table-card-family-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  max-width: 100%;
-  margin-top: 3px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--white);
-  font-size: 8.5px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.table-card-family-pill.is-wild {
-  background: var(--gold);
-  color: var(--ink);
-}
-
-.table-card-sub {
-  margin-top: 2px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.table-hand-card:hover .table-hand-cn,
-.table-hand-card:hover .table-hand-cl,
-.table-hand-card:focus-visible .table-hand-cn,
-.table-hand-card:focus-visible .table-hand-cl {
-  opacity: 0;
 }
 
 .table-lip {
@@ -2609,6 +2870,67 @@ button.table-family-chip:hover:not(:disabled) {
   .table-actions .table-btn {
     flex: 1;
   }
+}
+
+/* Preview card gallery ---------------------------------------------- */
+
+.cards-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-bottom: 40px;
+}
+
+.cards-gallery-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-align: center;
+}
+
+.cards-gallery-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.cards-gallery-section h2::after {
+  flex: 1;
+  height: 2px;
+  background: var(--line);
+  content: '';
+}
+
+.cards-gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.cards-gallery-fan {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  padding: 10px 0 20px;
+}
+
+.cards-gallery-fan .influence-card {
+  margin-left: -68px;
+  transition: transform 0.15s ease;
+}
+
+.cards-gallery-fan .influence-card:first-child {
+  margin-left: 0;
+}
+
+.cards-gallery-fan .influence-card:hover {
+  transform: translateY(-12px);
 }
 
 @media (max-width: 640px) {

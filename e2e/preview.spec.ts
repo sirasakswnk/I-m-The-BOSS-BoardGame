@@ -39,6 +39,27 @@ test('preview route shows every current screen without a live room', async ({ pa
   await expect(page.getByTestId('preview-setup')).toBeVisible();
   await expect(page.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
 
+  await nav.getByRole('link', { name: 'การ์ด' }).click();
+  await expect(page.getByTestId('preview-cards')).toBeVisible();
+  await expect(
+    page.getByTestId('cards-clan').locator('[data-card-kind="clan"]'),
+  ).toHaveCount(6);
+  await expect(
+    page.getByTestId('cards-travel').locator('[data-card-kind="travel"]'),
+  ).toHaveCount(7);
+  await expect(page.getByTestId('cards-travel')).toContainText('สีใดก็ได้');
+  await expect(
+    page.getByTestId('cards-recruitment').locator('[data-card-kind="recruitment"]'),
+  ).toHaveCount(3);
+  await expect(page.getByTestId('cards-recruitment')).toContainText('1/3');
+  await expect(page.getByTestId('cards-recruitment')).toContainText('2/3');
+  await expect(page.getByTestId('cards-recruitment')).toContainText('3/3');
+  await expect(page.getByTestId('cards-action')).toContainText('ยกเลิกผลการ์ดที่เพิ่งลง');
+  await expect(page.getByTestId('cards-back')).toContainText('โต๊ะเจรจาดีล');
+  await expect(
+    page.getByTestId('cards-gallery').locator('[aria-label]'),
+  ).toHaveCount(24);
+
   await nav.getByRole('link', { name: 'สถานะห้อง' }).click();
   await expect(page.getByTestId('preview-status')).toBeVisible();
   await expect(page.getByTestId('preview-status')).toContainText('ไม่พบห้องนี้');

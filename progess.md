@@ -368,3 +368,50 @@ Milestone ถัดไปคือ M4 (Tabletop UI — Desktop) — รอคำ
 ### ขั้นถัดไป
 
 Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอคำสั่ง
+
+---
+
+## Card face redesign — influence cards ✅ (21/10/2026)
+
+### สิ่งที่ทำ
+
+- สร้างชุด shared component สำหรับการ์ดอิทธิพลทั้ง 5 ชนิดและหลังการ์ดภายใต้ `src/ui/common/influence/` ตาม `design/cards.html` โดยใช้กรอบฐาน **150×210** และหน่วยภายใน `--u = width / 150`; การ์ดในมือเดสก์ท็อปยังคง **112×160**
+- เพิ่ม `ClanCard` (หน้าสีตระกูลเต็มใบ, ลายทแยง, ตราสัญลักษณ์ใหญ่, ชื่อไทย, ป้าย `ญาติ`), `TravelCard` (ตั๋วเครื่องบิน, หัวเข้ม, ถุง/คำใบ้, ปลายตั๋วสีตระกูล และ wild หกสี `สีใดก็ได้`), `RecruitmentCard` (ภาพจับมือเดียวแบ่ง viewBox 1/3–3/3), `StopCard` (ป้ายแปดเหลี่ยมบนกรอบลายเตือน), `BossCard` (มงกุฎ+รัศมี+ตราประทับเอียง) และ `CardBack`
+- ใช้ SVG sprite ชุดเดียวสำหรับรูปทรงตระกูล 6 แบบและไอคอน bag/coin/stop/crown; mount ครั้งเดียวที่ `App` และแก้ `FamilySymbol` ให้อ้าง symbol จาก sprite
+- การ์ดทุกใบมีไอคอนวงกลม+ชื่อสั้นมุมซ้ายบน, `aria-label` ภาษาไทย, ไม่พึ่งสีอย่างเดียว, มี focus-visible และ transition ที่เคารพ `prefers-reduced-motion`
+- แทนที่การ์ดมือเดิมใน `HandFan` โดยคงการเรียงชนิด, การหมุนพัด, สถานะ up/down/hot, `data-card-id` และการเลือกด้วยลูกศรซ้าย–ขวา
+- เปลี่ยนหลังการ์ดสีน้ำเงินในที่นั่งและกองจั่วเป็น `CardBack` ใหม่; การ์ดนักลงทุนยังใช้ `FamilyCard` เดิม และตัด clan variant ออกจาก `FamilyCard`
+- เพิ่ม `--stop`/Tailwind `stop` และ `--gold-deep`/Tailwind `gold-deep` สำหรับสีหยุดและรัศมีบอส
+- เพิ่มหน้า review `/preview/cards` แสดงตระกูลทั้ง 6 สี, travel wild, recruitment 1/3–3/3, stop, boss, หลังการ์ด และตัวอย่างพัดในมือ
+- เพิ่ม unit tests ครอบคลุมการ์ดทุกใบใน deck config 3.2, aria-label, หลังการ์ด และ recruitment-part mapping; เพิ่ม e2e ของหน้า gallery
+
+### ไฟล์ที่สร้าง/แก้
+
+- `src/ui/common/influence/` — `CardFrame`, `CardSymbols`, `ClanCard`, `TravelCard`, `RecruitmentCard`, `StopCard`, `BossCard`, `CardBack`, `InfluenceCard`, `recruitmentParts`, `index` และ unit test
+- `src/ui/pages/CardsPreview.tsx` — gallery หน้า `/preview/cards`
+- `src/ui/table/HandFan.tsx`, `TableBits.tsx`, `TableScreen.tsx` — ใช้การ์ด/หลังการ์ดใหม่
+- `src/ui/common/FamilySymbol.tsx`, `FamilyCard.tsx` — ใช้ sprite และแยกบทบาท investor/clan
+- `src/App.tsx`, `src/ui/pages/Preview.tsx`, `src/i18n/th.ts`, `src/styles/global.css`, `tailwind.config.ts`, `e2e/preview.spec.ts`
+- `review/cards/01-gallery-desktop.jpg`, `02-game-table.jpg`, `03-hand-fan.png`, `04-deck-back.png`, `05-seat-card-backs.png`, `06-reference-compare.jpg`
+- `progess.md`
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน **131/131 tests** (13 files)
+- `npm run build`: ผ่าน; มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
+- `npm run test:rules`: ผ่าน **12/12 tests**
+- `firebase emulators:exec --config firebase.emulator.json --only database,auth "npm.cmd run test:e2e"`: ผ่าน **6/6 tests**
+- ตรวจภาพจริงที่ 1440px เทียบ `design/cards.html`; หน้า gallery/มือ/กองจั่ว/ที่นั่งใช้งานได้ และไม่มีการแก้ `design/` หรือ `src/engine/`
+
+### ASSUMPTION / ข้อจำกัด
+
+- `// ASSUMPTION:` recruitment parts เรียงตาม card id แบบ natural และมือที่มีเกิน 3 ใบจะวนกลับไปเริ่ม 1/3; ไม่กระทบ engine
+- `// ASSUMPTION:` หลังการ์ดที่เล็กกว่า 90px (ที่นั่ง/กองจั่ว) ซ่อนชื่อเกมเพื่อให้โลโก้และกรอบทองอ่านได้; หลังการ์ดขนาดฐานยังมีชื่อเกมครบ
+- เลือกใช้ route `/preview/cards` แทน `/dev/cards` เพื่อรวมกับ preview gallery เดิม
+- flow ปัจจุบันยังไม่มีการ render หน้าการ์ดในแผงดีล (แผงสรุปผู้เข้าร่วมใช้ `FamilyChip` ตามเดิม); `ClanCard` พร้อมใช้เมื่อ M5 เริ่มมี UI วางการ์ดในดีล
+
+### ขั้นถัดไป
+
+Milestone ถัดไปคือ **M5 — Offers & Deal Flow** — รอคำสั่ง

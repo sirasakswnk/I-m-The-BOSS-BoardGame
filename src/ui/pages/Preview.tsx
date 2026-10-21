@@ -25,10 +25,11 @@ import { FAMILY_PRESENTATION } from '@/ui/common/families';
 import { Panel } from '@/ui/common/Panel';
 import { Pawn } from '@/ui/common/Pawn';
 import { TextInput } from '@/ui/common/TextInput';
+import { CardsPreview } from '@/ui/pages/CardsPreview';
 import { GameRoom } from '@/ui/pages/GameRoom';
 import { JoinRoomView, LobbyView } from '@/ui/room/LobbyView';
 
-const PREVIEW_SCREEN_IDS = ['home', 'join', 'lobby', 'game', 'setup', 'status'] as const;
+const PREVIEW_SCREEN_IDS = ['home', 'join', 'lobby', 'game', 'setup', 'cards', 'status'] as const;
 type PreviewScreenId = (typeof PREVIEW_SCREEN_IDS)[number];
 
 const PREVIEW_NOW = Date.UTC(2026, 9, 20, 12, 0, 0);
@@ -194,7 +195,7 @@ function PreviewToolbar({ wide = false }: { wide?: boolean }) {
 }
 
 function PreviewFrame({ screen, children }: { screen: PreviewScreenId; children: ReactNode }) {
-  const wide = screen === 'game' || screen === 'setup';
+  const wide = screen === 'game' || screen === 'setup' || screen === 'cards';
   const frameWidth = wide ? 'max-w-[1520px]' : 'max-w-[1200px]';
 
   return (
@@ -565,6 +566,9 @@ export function PreviewPage() {
       break;
     case 'setup':
       content = <PreviewGame mode="setup" />;
+      break;
+    case 'cards':
+      content = <CardsPreview />;
       break;
     case 'status':
       content = <PreviewStatus />;
