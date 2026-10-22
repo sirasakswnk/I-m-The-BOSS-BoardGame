@@ -3943,6 +3943,110 @@ button.table-family-chip:hover:not(:disabled) {
   }
 }
 
+/* Turn-start dice roll (shared by every player; never blocks input) --- */
+.dice-roll {
+  position: fixed;
+  top: 38%;
+  right: 16px;
+  left: 16px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+  padding: 12px 18px 12px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background-color: var(--white);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(29, 27, 46, 0.035) 0 6px,
+    transparent 6px 12px
+  );
+  box-shadow: var(--shadow-hard);
+  pointer-events: none;
+  transform: translateY(-50%);
+  animation: dice-roll-in 0.22s ease-out both;
+}
+
+@keyframes dice-roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+.dice-roll-die .table-die {
+  width: 64px;
+  height: 64px;
+  padding: 10px;
+  border-width: 3px;
+  border-radius: 13px;
+  box-shadow: 4px 5px 0 var(--ink);
+}
+
+.dice-roll-die .table-die-cell {
+  width: 10px;
+  height: 10px;
+}
+
+.dice-roll-die.is-rolling .table-die {
+  animation: endcheck-tumble 0.18s linear infinite;
+}
+
+.dice-roll-die.is-settled .table-die {
+  background: var(--gold);
+  animation: endcheck-settle 0.28s ease-out;
+}
+
+.dice-roll-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dice-roll-copy strong {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.dice-roll-copy span {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+@media (max-width: 767px) {
+  .dice-roll {
+    top: 34%;
+    gap: 10px;
+    padding: 10px 14px 10px 10px;
+  }
+
+  .dice-roll-die .table-die {
+    width: 52px;
+    height: 52px;
+    padding: 8px;
+  }
+
+  .dice-roll-copy strong {
+    font-size: 17px;
+  }
+
+  .dice-roll-copy span {
+    font-size: 13px;
+  }
+}
+
 /* M8 phone + tablet table (< 1024px, plan.md 9.2) -------------------- */
 /* TableScreen swaps to this layout with the same media query in JS
    (COMPACT_TABLE_QUERY), so desktop-only parts are never rendered here. */

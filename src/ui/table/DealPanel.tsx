@@ -44,6 +44,8 @@ interface DealPanelProps {
   onLockDeal: () => void;
   onPlaceClan: () => void;
   canPlaceClan: boolean;
+  /** Hides the rolled face while the shared dice animation is still playing. */
+  diceRolling?: boolean;
 }
 
 function text(template: string, values: Record<string, string | number>): string {
@@ -192,6 +194,7 @@ function TurnPanel({
   onOpenDeal,
   onRollDice,
   onDrawCards,
+  diceRolling = false,
 }: Pick<
   DealPanelProps,
   | 'uid'
@@ -203,6 +206,7 @@ function TurnPanel({
   | 'onOpenDeal'
   | 'onRollDice'
   | 'onDrawCards'
+  | 'diceRolling'
 >) {
   const space = getCurrentSpace(publicState);
   const isBoss = publicState.bossUid === uid;
@@ -216,7 +220,7 @@ function TurnPanel({
         )
       : [];
   const canOpen = space ? isExclusionPlanValid(space, autoJoin, exclusions) : false;
-  const dice = publicState.lastDice?.[0] ?? null;
+  const dice = diceRolling ? null : (publicState.lastDice?.[0] ?? null);
   const isAfterMove = publicState.phase === 'afterMove';
   const title =
     publicState.phase === 'afterMove' ? th.game.table.afterMoveTitle : th.game.table.turnTitle;
@@ -253,9 +257,11 @@ function TurnPanel({
             <DiceFace value={isAfterMove ? dice : null} />
             <div className="table-dice-copy">
               <strong>
-                {isAfterMove && dice !== null
-                  ? th.game.table.diceResult.replace('{face}', String(dice))
-                  : th.game.table.diceNotRolled}
+                {isAfterMove && diceRolling
+                  ? th.game.table.diceRoll.rollingShort
+                  : isAfterMove && dice !== null
+                    ? th.game.table.diceResult.replace('{face}', String(dice))
+                    : th.game.table.diceNotRolled}
               </strong>
               <span>{th.game.table.openDealHint}</span>
             </div>
@@ -627,6 +633,7 @@ export function DealPanel({
   onLockDeal,
   onPlaceClan,
   canPlaceClan,
+  diceRolling,
 }: DealPanelProps) {
   return (
     <section
@@ -654,6 +661,7 @@ export function DealPanel({
           onOpenDeal={onOpenDeal}
           onRollDice={onRollDice}
           onDrawCards={onDrawCards}
+          diceRolling={diceRolling}
         />
       )}
       {publicState.phase === 'dealOpen' && (

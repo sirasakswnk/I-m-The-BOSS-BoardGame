@@ -152,6 +152,7 @@ export function CardBacks({ count }: CardBacksProps) {
 
 interface DiceFaceProps {
   value: number | null;
+  testId?: string;
 }
 
 const PIPS: Record<number, number[]> = {
@@ -163,7 +164,7 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
-export function DiceFace({ value }: DiceFaceProps) {
+export function DiceFace({ value, testId = 'dice-face' }: DiceFaceProps) {
   const pips = value ? (PIPS[value] ?? []) : [];
   const label = value
     ? th.game.table.diceResult.replace('{face}', String(value))
@@ -172,7 +173,7 @@ export function DiceFace({ value }: DiceFaceProps) {
   return (
     <div
       className={`table-die ${value ? '' : 'is-empty'}`}
-      data-testid="dice-face"
+      data-testid={testId}
       data-face={value ?? ''}
       role="img"
       aria-label={label}

@@ -326,6 +326,13 @@ export const th = {
       handTitle: 'การ์ดในมือ',
       handSlots: '{count}/12',
       handHint: 'ชี้ที่การ์ดเพื่อดู ใช้ลูกศรซ้ายขวาเลื่อนได้',
+      diceRoll: {
+        aria: 'ผลทอยเต๋าเดินหมาก',
+        rolling: '{name} กำลังทอยเต๋า…',
+        rollingShort: 'กำลังทอยเต๋า…',
+        result: '{name} ทอยได้ {face}',
+        move: 'หมาก $ เดินจากช่อง {from} ไปช่อง {to}',
+      },
       compact: {
         playersAria: 'ผู้เล่นคนอื่น (เลื่อนซ้ายขวาได้)',
         noOthers: 'ยังไม่มีผู้เล่นคนอื่น',

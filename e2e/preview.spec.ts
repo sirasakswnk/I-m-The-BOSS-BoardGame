@@ -125,3 +125,43 @@ test('preview shows a deal-15 game over without an end-check overlay', async ({ 
   await expect(page.getByTestId('final-score-p2')).toContainText('41');
   await expect(page.getByTestId('gameover-winner')).toContainText('นก');
 });
+
+test('preview dice roll tumbles, then walks the pawn one space per pip', async ({ page }) => {
+  await page.goto('/preview/game');
+  await expect(page.getByTestId('dice-roll')).toHaveCount(0);
+
+  // Sample the drawn pawn space (desktop board or phone mini map) until the
+  // shared dice overlay goes away.
+  const sampling = page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const seen: number[] = [];
+        let appeared = false;
+        const timer = window.setInterval(() => {
+          const cell =
+            document.querySelector('[data-testid="table-pawn"]')?.closest('[data-space]') ??
+            document.querySelector('.mtable-map-grid i.is-current');
+          const space = Number(cell?.getAttribute('data-space'));
+          if (space && seen.at(-1) !== space) seen.push(space);
+          const overlay = document.querySelector('[data-testid="dice-roll"]');
+          if (overlay) appeared = true;
+          if (appeared && !overlay) {
+            window.clearInterval(timer);
+            resolve(seen);
+          }
+        }, 40);
+      }),
+  );
+
+  await page.getByTestId('roll-dice').click();
+  const roll = page.getByTestId('dice-roll');
+  await expect(roll).toHaveAttribute('data-rolling', 'true');
+  await expect(roll).toHaveAttribute('data-face', /^[1-6]$/);
+  const face = Number(await roll.getAttribute('data-face'));
+  await expect(roll).toContainText(`ทอยได้ ${face}`);
+
+  const path = await sampling;
+  // Preview starts on space 7 with no closed spaces.
+  expect(path).toEqual(Array.from({ length: face + 1 }, (_, step) => 7 + step));
+  await expect(page.getByTestId('dice-face')).toHaveAttribute('data-face', String(face));
+});

@@ -416,7 +416,27 @@ test('dice turn: boss rolls, draws three cards and finishes the turn', async ({ 
     const boss = await findBossPage(game.pages);
     await boss.getByTestId('roll-dice').click();
     await expect(boss.getByTestId('draw-cards')).toBeVisible({ timeout: 20_000 });
-    await expect(boss.getByTestId('dice-face')).not.toHaveAttribute('data-face', '');
+
+    // Every player sees the shared roll animation settle on the same face.
+    const faces = new Set<string>();
+    for (const page of game.pages) {
+      const roll = page.getByTestId('dice-roll');
+      await expect(roll).toHaveAttribute('data-face', /^[1-6]$/, { timeout: 10_000 });
+      faces.add((await roll.getAttribute('data-face')) ?? '');
+    }
+    expect(faces.size).toBe(1);
+    await expect(boss.getByTestId('dice-face')).toHaveAttribute('data-face', [...faces][0], {
+      timeout: 10_000,
+    });
+    await expect(boss.getByTestId('dice-roll')).toHaveCount(0, { timeout: 10_000 });
+
+    // A refresh does not replay a roll that already happened.
+    const watcher = game.pages.find((page) => page !== boss)!;
+    await watcher.reload();
+    await expect(watcher.getByTestId('game-room')).toBeVisible({ timeout: 20_000 });
+    await expect(watcher.getByTestId('deal-panel')).toBeVisible();
+    await watcher.waitForTimeout(500);
+    await expect(watcher.getByTestId('dice-roll')).toHaveCount(0);
 
     const hand = boss.getByTestId('my-hand').locator('[data-card-id]');
     await expect(hand).toHaveCount(5);

@@ -21,6 +21,8 @@ import { ClanPlaceModal } from './ClanPlaceModal';
 import { BoardSheet, MiniBoardMap } from './CompactBoard';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
+import { DiceRollOverlay } from './DiceRollOverlay';
+import { diceRollKey, findLatestDiceRoll } from './diceRollUtils';
 import { DiscardModal } from './DiscardModal';
 import { EndCheckOverlay } from './EndCheckOverlay';
 import { endCheckKey, getDiscardNeed, getEndCheckToShow } from './endgameUtils';
@@ -36,6 +38,7 @@ import {
   getClosedTileMap,
   getDealParticipation,
   getDealTileValue,
+  getPlayerName,
   getSeatLayout,
   type SeatEntry,
 } from './tableUtils';
@@ -76,6 +79,13 @@ export function TableScreen({
   const [moneyDeltaKey, setMoneyDeltaKey] = useState(0);
   const [dismissedEndCheckKey, setDismissedEndCheckKey] = useState<string | null>(null);
   const [boardSheetOpen, setBoardSheetOpen] = useState(false);
+  // Rolls already in the log when the table opens count as seen, so a refresh
+  // never replays them.
+  const [seenRollKey, setSeenRollKey] = useState<string | null>(() => {
+    const roll = findLatestDiceRoll(publicState.log);
+    return roll ? diceRollKey(roll) : null;
+  });
+  const [pawnOverride, setPawnOverride] = useState<number | null>(null);
   const compact = useMediaQuery(COMPACT_TABLE_QUERY);
   const previousMoneyRef = useRef(privateState.money);
   const previewMode = onAction !== undefined;
@@ -235,6 +245,10 @@ export function TableScreen({
   }
 
   const closedTiles = getClosedTileMap(publicState.closedSpaces);
+  const latestRoll = findLatestDiceRoll(publicState.log);
+  const latestRollKey = latestRoll ? diceRollKey(latestRoll) : null;
+  const showDiceRoll = latestRoll !== null && latestRollKey !== seenRollKey;
+  const pawnSpace = showDiceRoll && pawnOverride !== null ? pawnOverride : publicState.pawnSpace;
   const layout = getSeatLayout(players, uid);
   const hasTop = layout.top.length > 0;
   const mainRow = hasTop ? 2 : 1;
@@ -435,6 +449,7 @@ export function TableScreen({
       onLockDeal={handleLockDeal}
       onPlaceClan={() => setClanModalOpen(true)}
       canPlaceClan={canPlaceClan}
+      diceRolling={showDiceRoll}
     />
   );
 
@@ -525,6 +540,17 @@ export function TableScreen({
         />
       )}
 
+      {showDiceRoll && latestRoll && (
+        <DiceRollOverlay
+          key={latestRollKey}
+          event={latestRoll}
+          playerName={getPlayerName(players, latestRoll.uid)}
+          closedSpaces={publicState.closedSpaces}
+          onPawnStep={setPawnOverride}
+          onDone={() => setSeenRollKey(latestRollKey)}
+        />
+      )}
+
       {compact ? (
         <div className="mtable" data-testid="compact-table">
           <section
@@ -541,7 +567,7 @@ export function TableScreen({
 
           <MiniBoardMap
             closedTiles={closedTiles}
-            pawnSpace={publicState.pawnSpace}
+            pawnSpace={pawnSpace}
             onOpen={() => setBoardSheetOpen(true)}
           />
 
@@ -602,7 +628,7 @@ export function TableScreen({
               </aside>
 
               <div className="table-board-wrap" style={{ gridColumn: 2, gridRow: mainRow }}>
-                <DealBoard closedSpaces={closedTiles} pawnSpace={publicState.pawnSpace}>
+                <DealBoard closedSpaces={closedTiles} pawnSpace={pawnSpace}>
                   {dealPanel}
                 </DealBoard>
               </div>
@@ -646,7 +672,7 @@ export function TableScreen({
       {compact && boardSheetOpen && (
         <BoardSheet
           closedTiles={closedTiles}
-          pawnSpace={publicState.pawnSpace}
+          pawnSpace={pawnSpace}
           onClose={() => setBoardSheetOpen(false)}
         />
       )}

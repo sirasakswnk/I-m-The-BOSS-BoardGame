@@ -683,3 +683,15 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 - Milestone ถัดไปคือ **M9 — Resilience, Polish, Deploy**
 - M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel
+
+---
+
+## Dice roll animation — งานย่อยก่อน M9 (22/10/2026)
+
+- ทอยเต๋าเดินหมาก (`ROLL_DICE`) มีอนิเมชันที่**ทุกคนเห็น** ไม่ใช่แค่บอส: `DiceRollOverlay` แสดงเต๋ากลิ้ง 0.8 วินาที (ใช้ keyframes เดียวกับเต๋าเช็กจบเกม) หยุดที่หน้าจริง แล้วหมาก `$` เดินทีละช่องตามแต้ม (ข้ามช่องที่ปิดแล้ว) ทั้งบนกระดานเดสก์ท็อปและแผนที่ย่อ/กระดานเต็มบนมือถือ จากนั้นป้ายหายเอง (~2–3.5 วินาที)
+- ป้ายไม่รับการคลิก (`pointer-events: none`) จึงไม่บังปุ่ม; ระหว่างกลิ้ง เต๋าในแผงของบอสขึ้น "กำลังทอยเต๋า…" แทนผล
+- เล่นเฉพาะการทอยที่เกิดขึ้นหลังเปิดโต๊ะ — การทอยที่อยู่ใน log ตอนโหลด/รีเฟรชถือว่าเห็นแล้ว จึงไม่เล่นซ้ำ
+- `prefers-reduced-motion`: ไม่กลิ้ง แสดงผลทันทีและหมากไปช่องปลายทางเลย
+- ใช้ event `diceRolled` (`face`, `from`, `to`) ที่มีอยู่แล้ว ไม่แก้ engine; `getPawnPath` มี unit test เทียบกับ `movePawn` ของ engine ทุกช่องทุกแต้ม
+- ไฟล์: ใหม่ `src/ui/table/DiceRollOverlay.tsx`, `diceRollUtils.ts`, `diceRollUtils.test.ts`; แก้ `TableScreen.tsx`, `DealPanel.tsx`, `TableBits.tsx` (`DiceFace` รับ `testId`), `th.ts` (`th.game.table.diceRoll`), `global.css`, `e2e/table.spec.ts` (ทุกคนเห็นหน้าเต๋าเดียวกัน + รีเฟรชไม่เล่นซ้ำ), `e2e/preview.spec.ts` (หมากเดินทีละช่อง)
+- ผล: `typecheck` ✅ `lint` ✅ unit **156/156** ✅ e2e **27/27** ✅ (เดสก์ท็อป 12 + mobile 15)
