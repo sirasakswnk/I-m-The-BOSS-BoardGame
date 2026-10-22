@@ -885,3 +885,13 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 - rules **16/16** ✅
 - e2e **35/35** ทั้ง desktop และ mobile (2.9 นาที) ✅
 - `build` ✅ — JS `789.68 kB` (gzip `234.51 kB`), CSS `107.65 kB` (gzip `20.09 kB`)
+
+### Deploy production
+
+- [x] commit + push `main` (implementation `40a6eca`) และ Vercel deploy สถานะ Ready
+- [x] production ใช้ asset `index-C3nbtXlN.js`
+- [x] smoke test ด้วย Chrome 3 browser contexts บน production:
+      สร้างห้อง → เริ่มเกม → เลือกช่องเริ่มต้น 3 → เปิดดีลแรก → ล้มดีล
+      → บอสคนถัดไป **ไม่มีปุ่มเปิดดีล** และเห็นปุ่มทอยเต๋า
+      → กดทอย → เห็นข้อความ "หลังทอยเต๋า" และปุ่มเปิดดีลจึงปรากฏ
+- [x] ลบห้อง smoke test (`88568`) ออกจาก Realtime Database แล้ว
