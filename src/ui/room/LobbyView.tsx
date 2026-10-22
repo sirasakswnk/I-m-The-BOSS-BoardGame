@@ -446,17 +446,10 @@ export function JoinRoomView({
 
       <section className="room-board" aria-label={th.room.joinBoardAria}>
         <div className="room-board-inner">
-          <RoomCodePanel
-            code={code}
-            inviteUrl={inviteUrl}
-            onCopyLink={onCopyLink}
-            onCopyCode={onCopyCode}
-          />
-
-          <SeatSection players={players} hostUid={hostUid} viewerUid={null} />
-
+          {/* Identity comes before room details: an invite link only lets a
+              visitor view the table until they explicitly join. */}
           <div className="lobby-actions">
-            <div className="lobby-action-card lobby-action-start">
+            <div className="lobby-action-card lobby-action-start" data-testid="join-action-card">
               <span className="lobby-ribbon">{th.room.joinCardRibbon}</span>
               <h2>{th.room.joinCardTitle}</h2>
               <p>{th.room.joinCardDescription}</p>
@@ -506,6 +499,15 @@ export function JoinRoomView({
               />
             </div>
           </div>
+
+          <RoomCodePanel
+            code={code}
+            inviteUrl={inviteUrl}
+            onCopyLink={onCopyLink}
+            onCopyCode={onCopyCode}
+          />
+
+          <SeatSection players={players} hostUid={hostUid} viewerUid={null} />
         </div>
       </section>
 

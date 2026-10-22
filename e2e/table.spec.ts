@@ -16,6 +16,11 @@ async function createRoom(page: Page, nickname: string): Promise<string> {
 
 async function joinFromInvite(page: Page, code: string, nickname: string) {
   await page.goto(`/${code}`);
+  // An invite opens the join gate first; the visitor is not a member until
+  // they enter a name and press the join button.
+  await expect(page.getByTestId('join-action-card')).toBeVisible();
+  await expect(page.getByTestId('join-nickname-input')).toBeInViewport();
+  await expect(page.getByTestId('join-room-invite')).toBeInViewport({ ratio: 1 });
   await page.getByTestId('join-nickname-input').fill(nickname);
   await page.getByTestId('join-room-invite').click();
   await expect(page.getByTestId('lobby')).toBeVisible();
