@@ -9,6 +9,13 @@
 - ถ้า host ปิดแท็บ ผู้เล่นที่เชื่อมต่ออยู่จะรับช่วงเป็น host ภายในประมาณ 10–15 วินาที
 - มีระบบขอคืนที่นั่งหลังเปลี่ยนเครื่อง/ล้างข้อมูลเบราว์เซอร์ โดยต้องให้ host อนุมัติ
 
+## Production
+
+เว็บจริง: **https://im-the-boss-boardgame.vercel.app**
+
+Deploy อัตโนมัติจาก branch `main` ของ GitHub ผ่าน Vercel project
+`im-the-boss-boardgame` (team `mingmings-projects-c4169f4b`)
+
 ## เทคโนโลยี
 
 | ส่วน | เทคโนโลยี |
@@ -77,7 +84,8 @@ firebase deploy --only database --project i-m-the-boss
 
 ## Deploy บน Vercel
 
-โปรเจกต์นี้เป็น SPA และมี `vercel.json` rewrite ทุก path ไป `index.html` แล้ว
+โปรเจกต์นี้เป็น SPA, build ด้วย Vite ไปที่ `dist` และมี `vercel.json` rewrite
+ทุก path ไป `index.html` แล้ว
 
 1. link repo/project:
 

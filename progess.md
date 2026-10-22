@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 22 ต.ค. 2026 (M9 ผ่าน gate ครบแล้ว — กำลัง deploy production)
+> อัปเดตล่าสุด: 22 ต.ค. 2026 (M9 เสร็จครบ + deploy production แล้ว)
 
 ## สถานะ Milestone
 
@@ -16,7 +16,7 @@
 | M6 | Action Cards & Interrupt Window | ✅ เสร็จ (21/10/2026) |
 | M7 | End of Turn & Game End | ✅ เสร็จ (22/10/2026) |
 | M8 | Mobile Responsive | ✅ เสร็จ (22/10/2026) |
-| M9 | Resilience, Polish, Deploy | 🚧 ผ่าน gate แล้ว (รอ deploy) (22/10/2026) |
+| M9 | Resilience, Polish, Deploy | ✅ เสร็จ + deploy production (22/10/2026) |
 
 ---
 
@@ -728,9 +728,10 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 ---
 
-## M9 — Resilience, Polish, Deploy 🚧 (22/10/2026)
+## M9 — Resilience, Polish, Deploy ✅ (22/10/2026)
 
-> **สถานะ: ผ่าน gate ครบทุกชุดแล้ว** เหลือ deploy production, smoke test และบันทึก URL จริง
+> **สถานะ: เสร็จสมบูรณ์** ผ่าน gate ครบทุกชุด, deploy Firebase Rules + Vercel production
+> และ smoke test บนเว็บจริงแล้ว
 
 ### สิ่งที่ทำ
 
@@ -787,12 +788,21 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
   - how-to-play modal และ sound toggle ผ่านทั้งสอง project
 - `build` ✅ — JS `788.66 kB` (gzip `234.27 kB`), CSS `107.65 kB` (gzip `20.09 kB`), Preview chunk แยก `16.15 kB`; ยังมี warning chunk >500 kB ตามเดิม
 
-### Deploy checklist
+### Deploy production (22/10/2026)
 
-- [ ] commit + push `main`
-- [ ] deploy `database.rules.json` ด้วย `firebase deploy --only database --project i-m-the-boss`
-- [ ] link Vercel project `im-the-boss-boardgame` กับ GitHub repo
-- [ ] ตั้ง Production env ครบ 5 `VITE_FIREBASE_*` + `VITE_USE_EMULATORS=false`
-- [ ] deploy production และ smoke test ด้วย 3 browser contexts
-- [ ] บันทึก URL จริงใน README/progess
+- [x] commit + push `main` (implementation `01ee6ba`, Vercel config `67e48e9`)
+- [x] deploy `database.rules.json` สำเร็จที่ database `i-m-the-boss-default-rtdb`
+      (`firebase deploy --only database --project i-m-the-boss`)
+- [x] Vercel project `im-the-boss-boardgame` เชื่อม GitHub repo
+      `sirasakswnk/I-m-The-BOSS-BoardGame` และ deploy จาก `main`
+- [x] ตั้ง Production env ครบ 5 `VITE_FIREBASE_*` + `VITE_USE_EMULATORS=false`
+- [x] production URL: **https://im-the-boss-boardgame.vercel.app**
+- [x] smoke test บน production ด้วย Chrome 3 browser contexts:
+      สร้างห้อง → join 3 คน → เริ่มเกม → เปิดดีล → ปิดแท็บ host
+      → host migration สำเร็จและมือของผู้เล่นไม่เปลี่ยน
+- [x] SPA deep link (`/12345`) ตอบ 200 และโหลดแอปผ่าน rewrite
+- [x] ลบห้อง smoke test (`60017`, `32827`) ออกจาก Realtime Database แล้ว
+
+**DoD M9:** ปิดแท็บ host แล้วผู้เล่นคนอื่นเล่นต่อได้ใน ~14 วินาที
+โดย state ไม่หาย — ผ่านทั้ง Firebase Emulator (desktop/mobile) และ production
 
