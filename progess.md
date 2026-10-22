@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 22 ต.ค. 2026 (M9 เสร็จครบ + deploy production แล้ว)
+> อัปเดตล่าสุด: 22 ต.ค. 2026 (Post-M9: สุ่มผู้เล่นคนแรก, เริ่มช่อง 1, บังคับทอยก่อนเปิดดีลทุกเทิร์น)
 
 ## สถานะ Milestone
 
@@ -896,3 +896,60 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
       → กดทอย → เห็นข้อความ "หลังทอยเต๋า" และปุ่มเปิดดีลจึงปรากฏ
       (รันซ้ำหลัง deploy รอบสุดท้ายผ่าน)
 - [x] ลบห้อง smoke test (`88568`, `72856`) ออกจาก Realtime Database แล้ว
+
+---
+
+## Post-M9 — สุ่มผู้เล่นคนแรก + เริ่มช่อง 1 + บังคับทอยทุกเทิร์น (22/10/2026)
+
+### กติกาที่เปลี่ยน
+
+- **ลบขั้นตอนเลือกช่องเริ่มต้นถาวร** ทั้ง `setupPickStart`, action `SET_START_SPACE`,
+  state `startPickerUid` และ UI picker
+- **สุ่มผู้เล่นคนแรก** จากผู้เล่นทุกคนด้วยโอกาสเท่ากัน โดยใช้ seeded RNG
+  **ก่อนแจกการ์ด/นักลงทุน** เพื่อไม่ให้สีนักลงทุนมีผล และสุ่มใหม่ทุกเกม/รีแมตช์
+- **หมากทุกคนเริ่มที่ช่อง 1** และเข้า `turnStart` ของเทิร์น 1 ทันที
+- **ต้องทอยเต๋าก่อนทุกเทิร์น** รวมถึงเทิร์นแรก; `OPEN_DEAL` รับเฉพาะ phase
+  `afterMove` ไม่มีข้อยกเว้นเทิร์นแรกแล้ว
+- ช่อง 1 จึงถูกข้ามในเทิร์นแรกโดยธรรมชาติ และจะเปิดได้เมื่อหมากวนกลับมาที่ช่อง 1
+- หลังทอยแล้วจึงเลือกเปิดดีลที่ช่องที่ตก หรือจั่วการ์ด 3 ใบ
+
+### การแก้ไข
+
+- `src/engine/setup.ts` — สุ่มคนแรกด้วย `randomInt`, ตั้ง `pawnSpace = 1`,
+  `turnNumber = 1`, `phase = 'turnStart'` และ emit `gameStarted` + `turnStarted`
+- `src/engine/types.ts`, `reducer.ts`, `validators.ts`, `project.ts` — ลบ type/action/
+  event/state/reject ที่เกี่ยวกับ picker และตัด `isOpeningTurn` ออก
+- `src/net/gameState.ts`, `src/net/host/hostLoop.ts` — ลบ field/action ของ picker
+- `src/ui/table/DealPanel.tsx` — ลบ `StartPickerPanel`; ต้นเทิร์นเหลือปุ่มทอยเต๋า
+- `src/ui/pages/Preview.tsx` — preview "เริ่มเกม" แสดงเทิร์น 1 ที่ช่อง 1 และทอยได้ทันที
+- `src/i18n/th.ts`, `src/styles/global.css` — อัปเดตวิธีเล่น ข้อความ phase และลบ CSS picker
+- `e2e/table.spec.ts`, `e2e/mobile.spec.ts`, `e2e/lobby.spec.ts`, `e2e/preview.spec.ts`
+  — ตรวจการทอยก่อนเปิดดีล, หมากเริ่มช่อง 1 และ preview dice path จากช่อง 1
+- `src/engine/__tests__/setup.test.ts`, `turn.test.ts`, test helpers/bot — เพิ่มเทสต์
+  random-first/start-at-1 และบังคับทอยทั้งเทิร์นแรกและเทิร์นถัดไป
+- `plan.md` — อัปเดตสเปก setup, phase, action list, flow diagram และ DoD ให้ตรงกติกาใหม่
+
+### Gate ผลจริง (22/10/2026)
+
+- `typecheck` ✅
+- `lint` ✅
+- unit **171/171** (22 ไฟล์) ✅
+- rules **16/16** ✅
+- e2e **35/35** ทั้ง desktop และ mobile (3.2 นาที) ✅
+  - ตรวจว่าเทิร์นแรกเห็นเฉพาะปุ่มทอยและหมากอยู่ช่อง 1
+  - ตรวจว่าบอสคนถัดไปต้องทอยก่อนจึงเปิดดีลได้
+  - preview dice animation เดินจากช่อง 1 ตามแต้มจริง
+- `build` ✅ — JS `786.42 kB` (gzip `233.82 kB`), CSS `106.60 kB` (gzip `19.95 kB`),
+  Preview chunk แยก `15.87 kB`; ยังมี warning chunk >500 kB ตามเดิม
+
+### Deploy production (22/10/2026)
+
+- [x] commit + push `main` (implementation `5f6159a`) และ Vercel deploy สถานะ Ready (17 วินาที)
+- [x] ตรวจ production bundle `assets/index-7ucCdrKA.js` ว่ามีข้อความกติกาใหม่
+      (สุ่มผู้เล่นคนแรก / หมากเริ่มช่อง 1 / ทอยเต๋าก่อน) และไม่มีข้อความ picker เดิม
+- [x] production smoke test ด้วย Playwright + Chrome 3 browser contexts:
+      สร้างห้อง → join 3 คน → เริ่มเกม → ทุกคนเห็นมือ 5 ใบและเทิร์น 1 ที่ช่อง 1
+      → ไม่มี UI เลือกช่องเริ่ม และมีเพียงบอสคนเดียวที่เห็นปุ่มทอย
+      → บอสทอย → เปิดดีล → ล้มดีล → เทิร์น 2 บอสคนถัดไปเห็นเฉพาะปุ่มทอย
+      (ปุ่มเปิดดีลยังไม่ปรากฏจนกว่าจะทอย) — ผ่านใน 15.0 วินาที
+- [x] ลบห้อง smoke test (`48623`) ออกจาก Realtime Database แล้ว
