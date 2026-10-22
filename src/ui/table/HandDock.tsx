@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { HAND_LIMIT } from '@/engine/config/rules';
 import { th } from '@/i18n/th';
 
 const SWIPE_PX = 24;
@@ -17,6 +18,8 @@ const DOCK_HEIGHT_VAR = '--mdock-h';
 interface HandDockProps {
   handCount: number;
   money: number;
+  /** Drawn cards are flying into the hand. */
+  receiving?: boolean;
   moneyDelta: number | null;
   moneyDeltaKey: number;
   /** My seat details, shown when the sheet is pulled up. */
@@ -40,6 +43,7 @@ function fill(template: string, values: Record<string, string | number>): string
 export function HandDock({
   handCount,
   money,
+  receiving = false,
   moneyDelta,
   moneyDeltaKey,
   seat,
@@ -131,7 +135,7 @@ export function HandDock({
       >
         <button
           type="button"
-          className="mdock-handle"
+          className={`mdock-handle ${receiving ? 'is-receiving' : ''}`}
           data-testid="hand-dock-toggle"
           aria-expanded={expanded}
           aria-controls={bodyId}
@@ -146,7 +150,15 @@ export function HandDock({
           <span className="mdock-grip" aria-hidden="true" />
           <span className="mdock-title">
             <strong>{th.game.table.handTitle}</strong>
-            <span>{fill(copy.handSummary, { count: handCount })}</span>
+            <span
+              key={receiving ? handCount : 'count'}
+              className={[receiving ? 'is-bump' : '', handCount > HAND_LIMIT ? 'is-over' : '']
+                .filter(Boolean)
+                .join(' ')}
+              data-testid="dock-hand-count"
+            >
+              {fill(copy.handSummary, { count: handCount })}
+            </span>
           </span>
           <span className="mdock-money" data-testid="dock-money">
             <Lock size={12} strokeWidth={2.4} aria-hidden="true" />

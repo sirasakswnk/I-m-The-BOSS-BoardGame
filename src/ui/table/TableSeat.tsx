@@ -32,6 +32,8 @@ interface TableSeatProps {
   onUnacceptOffer?: (color: FamilyColor) => void;
   /** `strip` is the compact card in the phone/tablet player strip. */
   variant: 'top' | 'side' | 'strip';
+  /** Drawn cards are landing on this seat. */
+  receiving?: boolean;
 }
 
 function format(template: string, values: Record<string, string | number>): string {
@@ -190,6 +192,7 @@ export function TableSeat({
   onAcceptOffer,
   onUnacceptOffer,
   variant,
+  receiving = false,
 }: TableSeatProps) {
   const seatLabel = th.game.table.seatAria.replace('{seat}', String(seat + 1));
 
@@ -236,7 +239,7 @@ export function TableSeat({
       </div>
 
       <div className="table-seat-foot">
-        <CardBacks count={handCount} />
+        <CardBacks count={handCount} bump={receiving} />
         <OfferBubbles
           offers={offers}
           acceptedOffers={acceptedOffers}

@@ -444,6 +444,17 @@ test('dice turn: boss rolls, draws three cards and finishes the turn', async ({ 
     await expect(hand).toHaveCount(8, { timeout: 20_000 });
     await expect(boss.getByTestId('game-log')).toContainText('จั่วการ์ด 3 ใบ');
     await expect(boss.getByTestId('draw-cards')).toHaveCount(0);
+
+    // After the draw animation, the drawer's three new cards carry a ribbon.
+    for (const page of game.pages) {
+      await expect(page.getByTestId('draw-anim')).toHaveCount(0, { timeout: 10_000 });
+    }
+    const ribbons = boss.locator('[data-testid="my-hand"] .table-hand-card.is-new');
+    await expect(ribbons).toHaveCount(3);
+    await ribbons.first().dispatchEvent('click');
+    await expect(ribbons).toHaveCount(2);
+    const bossSeat = await boss.locator('.table-mine-seat').getAttribute('data-testid');
+    await expect(watcher.getByTestId(bossSeat!).getByTestId('seat-hand-count')).toHaveText('+2 ×8');
   } finally {
     await game.close();
   }
@@ -472,6 +483,9 @@ test('drawing over the hand limit forces a discard before the next turn', async 
 
     expect(discardingBoss).not.toBeNull();
     const boss = discardingBoss!;
+    // The draw ends on an over-the-limit warning before the forced discard.
+    await expect(boss.getByTestId('draw-overflow')).toBeVisible({ timeout: 20_000 });
+    await expect(boss.getByTestId('draw-overflow')).toContainText('ต้องทิ้ง 2 ใบ');
     const modal = boss.getByTestId('discard-modal');
     await expect(modal).toBeVisible({ timeout: 20_000 });
     await expect(boss.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(14);

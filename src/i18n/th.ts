@@ -338,6 +338,14 @@ export const th = {
         stepAria: 'ก้าวที่ {step}',
         tapToSkip: 'แตะเพื่อข้าม',
       },
+      draw: {
+        aria: '{name} จั่วการ์ด {count} ใบ',
+        newBadge: 'ใหม่',
+        newAria: 'การ์ดใหม่ที่เพิ่งจั่ว',
+        reshuffle: 'สับกองใหม่!',
+        reshuffleHint: 'กองจั่วหมด เอากองทิ้งมาสับ',
+        overflow: 'ไพ่ล้นมือ! ต้องทิ้ง {count} ใบ',
+      },
       compact: {
         playersAria: 'ผู้เล่นคนอื่น (เลื่อนซ้ายขวาได้)',
         noOthers: 'ยังไม่มีผู้เล่นคนอื่น',

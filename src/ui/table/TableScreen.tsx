@@ -23,6 +23,8 @@ import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { DiceRollOverlay } from './DiceRollOverlay';
 import { diceRollKey, findLatestDiceRoll, type PawnWalkState } from './diceRollUtils';
+import { DrawCardsOverlay } from './DrawCardsOverlay';
+import { didReshuffle, drawKey, findLatestDraw, getNewCards } from './drawUtils';
 import { DiscardModal } from './DiscardModal';
 import { EndCheckOverlay } from './EndCheckOverlay';
 import { endCheckKey, getDiscardNeed, getEndCheckToShow } from './endgameUtils';
@@ -86,6 +88,24 @@ export function TableScreen({
     return roll ? diceRollKey(roll) : null;
   });
   const [walk, setWalk] = useState<{ rollKey: string; state: PawnWalkState } | null>(null);
+  // Draws already in the log when the table opens count as seen, like rolls.
+  const [seenDrawKey, setSeenDrawKey] = useState<string | null>(() => {
+    const draw = findLatestDraw(publicState.log);
+    return draw ? drawKey(draw) : null;
+  });
+  const [drawProgress, setDrawProgress] = useState<{
+    key: string;
+    landed: number;
+    warning: boolean;
+  } | null>(null);
+  // The hand and piles as they were before the latest draw; kept in sync
+  // whenever no draw animation is playing.
+  const [beforeDraw, setBeforeDraw] = useState(() => ({
+    handIds: privateState.hand.map((card) => card.id),
+    deckCount: publicState.deckCount,
+    discardCount: publicState.discardCount,
+  }));
+  const [newCardIds, setNewCardIds] = useState<string[]>([]);
   const compact = useMediaQuery(COMPACT_TABLE_QUERY);
   const previousMoneyRef = useRef(privateState.money);
   const previewMode = onAction !== undefined;
@@ -98,6 +118,31 @@ export function TableScreen({
   useEffect(() => {
     setExclusions([]);
   }, [publicState.phase, publicState.turnNumber, publicState.bossUid, publicState.deal?.space]);
+
+  const handIdsKey = privateState.hand.map((card) => card.id).join(',');
+  const pendingDraw = findLatestDraw(publicState.log);
+  // Same rule as `showDraw` below (declared later, so recomputed here).
+  const drawPending =
+    pendingDraw !== null && pendingDraw.count > 0 && drawKey(pendingDraw) !== seenDrawKey;
+  useEffect(() => {
+    if (drawPending) return;
+    setBeforeDraw((current) =>
+      current.handIds.join(',') === handIdsKey &&
+      current.deckCount === publicState.deckCount &&
+      current.discardCount === publicState.discardCount
+        ? current
+        : {
+            handIds: handIdsKey ? handIdsKey.split(',') : [],
+            deckCount: publicState.deckCount,
+            discardCount: publicState.discardCount,
+          },
+    );
+  }, [drawPending, handIdsKey, publicState.deckCount, publicState.discardCount]);
+
+  // "New" ribbons last until looked at, or until my next turn starts.
+  useEffect(() => {
+    if (publicState.phase === 'turnStart' && publicState.bossUid === uid) setNewCardIds([]);
+  }, [publicState.phase, publicState.bossUid, publicState.turnNumber, uid]);
 
   useEffect(() => {
     setPendingAction(null);
@@ -249,6 +294,27 @@ export function TableScreen({
   const latestRollKey = latestRoll ? diceRollKey(latestRoll) : null;
   const showDiceRoll = latestRoll !== null && latestRollKey !== seenRollKey;
   const activeWalk = showDiceRoll && walk?.rollKey === latestRollKey ? walk.state : null;
+
+  const latestDraw = findLatestDraw(publicState.log);
+  const latestDrawKey = latestDraw ? drawKey(latestDraw) : null;
+  const showDraw = latestDraw !== null && latestDraw.count > 0 && latestDrawKey !== seenDrawKey;
+  const drawIsMine = showDraw && latestDraw.uid === uid;
+  const drawnCards = drawIsMine ? getNewCards(privateState.hand, beforeDraw.handIds) : [];
+  const progress = drawProgress?.key === latestDrawKey ? drawProgress : null;
+  const landedCount = progress?.landed ?? 0;
+  const arrivingCount = showDraw ? Math.max(0, latestDraw.count - landedCount) : 0;
+  const arrivingIds = new Set(drawnCards.slice(landedCount).map((card) => card.id));
+  const handIds = new Set(privateState.hand.map((card) => card.id));
+  const ribbonIds = new Set(
+    [...newCardIds, ...drawnCards.slice(0, landedCount).map((card) => card.id)].filter((id) =>
+      handIds.has(id),
+    ),
+  );
+  const warnIds = new Set(progress?.warning ? drawnCards.map((card) => card.id) : []);
+  const myHandCount = privateState.hand.length - (drawIsMine ? arrivingCount : 0);
+  const seatHandCount = (seatUid: string) =>
+    (publicState.handCounts[seatUid] ?? 0) -
+    (showDraw && latestDraw.uid === seatUid ? arrivingCount : 0);
   // Until the roll animation reports its walk, keep the pawn on its start
   // space so it never flashes at the destination first.
   const pawnSpace = showDiceRoll ? (activeWalk?.pawn ?? latestRoll.from) : publicState.pawnSpace;
@@ -395,7 +461,8 @@ export function TableScreen({
     publicState.phase === 'turnEndDiscard' &&
     publicState.pendingDiscardUids.includes(uid) &&
     discardNeed > 0 &&
-    !showEndCheck;
+    !showEndCheck &&
+    !drawIsMine;
   const showGameOver = publicState.phase === 'gameOver' && !showEndCheck;
 
   function handleDiscard(cardIds: string[]): void {
@@ -421,7 +488,8 @@ export function TableScreen({
         isMe={entry.uid === uid}
         investors={publicState.tableInvestors[entry.uid] ?? []}
         onVacation={publicState.onVacation}
-        handCount={publicState.handCounts[entry.uid] ?? 0}
+        handCount={seatHandCount(entry.uid)}
+        receiving={showDraw && latestDraw.uid === entry.uid}
         offers={publicState.deal?.offers[entry.uid]}
         acceptedOffers={publicState.deal?.acceptedOffers}
         valuePerDividend={dealValue}
@@ -482,6 +550,10 @@ export function TableScreen({
       windowOpen={publicState.window !== null}
       neededColors={neededColors}
       layout={compact ? 'grid' : 'fan'}
+      arrivingIds={arrivingIds}
+      newIds={ribbonIds}
+      warnIds={warnIds}
+      onSeen={(cardId) => setNewCardIds((current) => current.filter((id) => id !== cardId))}
     />
   );
 
@@ -559,6 +631,27 @@ export function TableScreen({
         />
       )}
 
+      {showDraw && latestDraw && latestDrawKey && (
+        <DrawCardsOverlay
+          key={latestDrawKey}
+          event={latestDraw}
+          playerName={getPlayerName(players, latestDraw.uid)}
+          cards={drawnCards}
+          reshuffle={didReshuffle(beforeDraw, latestDraw.count)}
+          overflowCount={drawIsMine ? getDiscardNeed(privateState.hand.length) : 0}
+          onProgress={(landed, warning) => setDrawProgress({ key: latestDrawKey, landed, warning })}
+          onDone={() => {
+            setSeenDrawKey(latestDrawKey);
+            setDrawProgress(null);
+            if (drawIsMine) {
+              setNewCardIds((current) => [
+                ...new Set([...current, ...drawnCards.map((card) => card.id)]),
+              ]);
+            }
+          }}
+        />
+      )}
+
       {compact ? (
         <div className="mtable" data-testid="compact-table">
           <section
@@ -592,7 +685,8 @@ export function TableScreen({
           </section>
 
           <HandDock
-            handCount={privateState.hand.length}
+            handCount={myHandCount}
+            receiving={drawIsMine}
             money={privateState.money}
             moneyDelta={moneyDelta}
             moneyDeltaKey={moneyDeltaKey}
@@ -659,15 +753,23 @@ export function TableScreen({
             <div className="table-lip" aria-hidden="true">
               <div className="table-lip-head">
                 <strong>{th.game.table.handTitle}</strong>
-                <span>
+                <span
+                  key={drawIsMine ? myHandCount : 'count'}
+                  className={[
+                    drawIsMine ? 'is-bump' : '',
+                    myHandCount > HAND_LIMIT ? 'is-over' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
                   {tableReplace(th.game.table.handSlots, {
-                    count: privateState.hand.length,
+                    count: myHandCount,
                   })}
                 </span>
               </div>
               <div className="table-slots">
                 {Array.from({ length: HAND_LIMIT }, (_, index) => (
-                  <i key={index} className={index < privateState.hand.length ? 'is-filled' : ''} />
+                  <i key={index} className={index < myHandCount ? 'is-filled' : ''} />
                 ))}
               </div>
               <small>{th.game.table.handHint}</small>
@@ -789,7 +891,7 @@ function DeckPanel({ deckCount, discardCount }: { deckCount: number; discardCoun
     <section className="table-panel table-deck">
       <h3>{th.game.table.deckTitle}</h3>
       <div className="table-deck-body">
-        <CardBack width={42} height={59} className="table-deck-back" />
+        <CardBack width={42} height={59} className="table-deck-back" data-testid="deck-pile" />
         <div className="table-deck-chips">
           <span>{tableReplace(th.game.table.drawCount, { count: deckCount })}</span>
           <span>{tableReplace(th.game.table.discardCountShort, { count: discardCount })}</span>

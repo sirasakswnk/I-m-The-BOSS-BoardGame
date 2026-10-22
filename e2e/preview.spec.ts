@@ -190,3 +190,23 @@ test('a tap or Escape skips the dice animation without blocking the table', asyn
   await expect(page.getByTestId('dice-roll')).toHaveCount(0);
   await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
 });
+
+test('other players see card backs fly from the deck to the drawer', async ({ page }) => {
+  await page.goto('/preview/game');
+  await page.getByTestId('preview-state-afterMove').click();
+  await expect(page.getByTestId('dice-roll')).toHaveCount(0, { timeout: 10_000 });
+  const drawer = page.locator('[data-testid^="game-player-"]').filter({
+    has: page.locator('.table-crown, .table-mine-crown'),
+  });
+  const drawerId = await drawer.first().getAttribute('data-testid');
+
+  await page.getByTestId('draw-cards').click();
+  // The preview now follows the next boss, so the draw is someone else's.
+  const anim = page.getByTestId('draw-anim');
+  await expect(anim).toBeVisible();
+  await expect(anim).toHaveAttribute('aria-label', /จั่วการ์ด 3 ใบ/);
+  await expect(anim).toHaveCount(0, { timeout: 5_000 });
+  await expect(page.getByTestId(drawerId!).getByTestId('seat-hand-count')).toHaveText('+2 ×8');
+  // Backs only: nothing in my own hand is marked new.
+  await expect(page.locator('[data-testid="my-hand"] .is-new')).toHaveCount(0);
+});

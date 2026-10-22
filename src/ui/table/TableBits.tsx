@@ -120,10 +120,12 @@ export function InvestorTile({ color, vacation = false }: InvestorTileProps) {
 
 interface CardBacksProps {
   count: number;
+  /** Pops the count while drawn cards land on this seat. */
+  bump?: boolean;
 }
 
 /** A small stack of face-down influence cards. */
-export function CardBacks({ count }: CardBacksProps) {
+export function CardBacks({ count, bump = false }: CardBacksProps) {
   const label = th.game.handCount.replace('{count}', String(count));
   const shown = Math.min(6, count);
   return (
@@ -143,7 +145,11 @@ export function CardBacks({ count }: CardBacksProps) {
           />
         ))}
       </div>
-      <span className="table-backs-count">
+      <span
+        key={bump ? count : 'count'}
+        className={`table-backs-count ${bump ? 'is-bump' : ''}`}
+        data-testid="seat-hand-count"
+      >
         {count > 6 ? `+${count - 6} ` : ''}×{count}
       </span>
     </div>

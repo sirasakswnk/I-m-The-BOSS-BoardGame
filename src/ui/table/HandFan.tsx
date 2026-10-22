@@ -5,6 +5,8 @@ import type { Phase, InfluenceCard as InfluenceCardData } from '@/engine/types';
 import { th } from '@/i18n/th';
 import { InfluenceCard, getRecruitmentPartMap, type RecruitmentPart } from '@/ui/common/influence';
 
+import { sortHandForDisplay } from './drawUtils';
+
 interface HandFanProps {
   cards: InfluenceCardData[];
   phase: Phase;
@@ -12,7 +14,16 @@ interface HandFanProps {
   neededColors: Set<FamilyColor>;
   /** `grid` lays smaller cards out in rows for the phone/tablet hand sheet. */
   layout?: 'fan' | 'grid';
+  /** Just-drawn cards still flying in: their slot is kept but hidden. */
+  arrivingIds?: ReadonlySet<string>;
+  /** Just-drawn cards that show the "new" ribbon until looked at. */
+  newIds?: ReadonlySet<string>;
+  /** Cards flagged by the over-the-hand-limit warning. */
+  warnIds?: ReadonlySet<string>;
+  onSeen?: (cardId: string) => void;
 }
+
+const NO_IDS: ReadonlySet<string> = new Set();
 
 const CARD_SIZE = {
   fan: { width: 112, height: 160 },
@@ -44,6 +55,10 @@ function HandCard({
   neededColors,
   part,
   layout,
+  arriving,
+  isNew,
+  warn,
+  onSeen,
 }: {
   card: InfluenceCardData;
   index: number;
@@ -53,11 +68,25 @@ function HandCard({
   neededColors: Set<FamilyColor>;
   part?: RecruitmentPart;
   layout: 'fan' | 'grid';
+  arriving: boolean;
+  isNew: boolean;
+  warn: boolean;
+  onSeen?: (cardId: string) => void;
 }) {
   const step = count > 1 ? Math.min(4.2, 40 / (count - 1)) : 0;
   const rotation = layout === 'fan' ? (index - (count - 1) / 2) * step : 0;
   const stateClass = cardStateClass(card, phase, windowOpen, neededColors);
   const style = { '--r': `${rotation}deg` } as CSSProperties;
+  const markSeen = isNew && onSeen ? () => onSeen(card.id) : undefined;
+  const classes = [
+    'table-hand-card',
+    stateClass,
+    arriving ? 'is-arriving' : '',
+    isNew ? 'is-new' : '',
+    warn ? 'is-warn' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <InfluenceCard
@@ -65,29 +94,34 @@ function HandCard({
       width={CARD_SIZE[layout].width}
       height={CARD_SIZE[layout].height}
       part={part}
-      className={`table-hand-card ${stateClass}`}
+      className={classes}
       style={style}
       data-card-id={card.id}
+      data-new-label={isNew ? th.game.table.draw.newBadge : undefined}
+      aria-description={isNew ? th.game.table.draw.newAria : undefined}
       role="listitem"
       tabIndex={0}
+      onPointerEnter={markSeen}
+      onFocus={markSeen}
+      onClick={markSeen}
     />
   );
 }
 
-const HAND_KIND_ORDER: Record<InfluenceCardData['kind'], number> = {
-  clan: 0,
-  travel: 1,
-  stop: 2,
-  recruitment: 3,
-  imTheBoss: 4,
-};
-
-export function HandFan({ cards, phase, windowOpen, neededColors, layout = 'fan' }: HandFanProps) {
+export function HandFan({
+  cards,
+  phase,
+  windowOpen,
+  neededColors,
+  layout = 'fan',
+  arrivingIds = NO_IDS,
+  newIds = NO_IDS,
+  warnIds = NO_IDS,
+  onSeen,
+}: HandFanProps) {
   const handRef = useRef<HTMLDivElement>(null);
   const overlap = 52;
-  const orderedCards = [...cards].sort(
-    (left, right) => HAND_KIND_ORDER[left.kind] - HAND_KIND_ORDER[right.kind],
-  );
+  const orderedCards = sortHandForDisplay(cards);
   const recruitmentParts = getRecruitmentPartMap(cards);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -131,6 +165,10 @@ export function HandFan({ cards, phase, windowOpen, neededColors, layout = 'fan'
             neededColors={neededColors}
             part={card.kind === 'recruitment' ? recruitmentParts.get(card.id) : undefined}
             layout={layout}
+            arriving={arrivingIds.has(card.id)}
+            isNew={newIds.has(card.id)}
+            warn={warnIds.has(card.id)}
+            onSeen={onSeen}
           />
         ))
       )}

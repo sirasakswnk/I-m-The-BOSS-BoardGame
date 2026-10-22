@@ -5,6 +5,14 @@ import { th } from '@/i18n/th';
 import { matchesQuery, PHONE_QUERY } from '@/ui/common/useMediaQuery';
 
 import { getPawnWalk, type DiceRollEvent, type PawnWalkState } from './diceRollUtils';
+import {
+  centerOf,
+  clampToViewport,
+  isFullyVisible,
+  visibleBottom,
+  visibleRect,
+  type Point,
+} from './overlayGeometry';
 import { DiePips } from './TableBits';
 import { getSpaceByIndex } from './tableUtils';
 
@@ -14,7 +22,6 @@ const STEP_MS = 210;
 const SKIP_MS = 150;
 const LANDED_HOLD_MS = 1_000;
 const REDUCED_HOLD_MS = 1_800;
-const EDGE_PX = 40;
 const CAPTION_GAP_PX = 14;
 const CAPTION_MIN_WIDTH_PX = 170;
 const DIE_PX = { desktop: 58, phone: 46 } as const;
@@ -40,11 +47,6 @@ const CUBE_FACES = [
 
 type Stage = 'rolling' | 'walking' | 'landed';
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 interface Geometry {
   size: number;
   origin: Point;
@@ -66,42 +68,6 @@ function fill(template: string, values: Record<string, string | number>): string
   return Object.entries(values).reduce(
     (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
     template,
-  );
-}
-
-function visibleRect(selector: string): DOMRect | null {
-  for (const element of document.querySelectorAll(selector)) {
-    const rect = element.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) return rect;
-  }
-  return null;
-}
-
-function centerOf(rect: DOMRect): Point {
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-}
-
-/** Viewport area not covered by the phone/tablet hand dock. */
-function visibleBottom(): number {
-  const dock = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--mdock-h'),
-  );
-  return window.innerHeight - (Number.isFinite(dock) ? dock : 0);
-}
-
-function clampToViewport(point: Point): Point {
-  return {
-    x: Math.min(Math.max(point.x, EDGE_PX), window.innerWidth - EDGE_PX),
-    y: Math.min(Math.max(point.y, EDGE_PX), visibleBottom() - EDGE_PX),
-  };
-}
-
-function isFullyVisible(rect: DOMRect): boolean {
-  return (
-    rect.top >= 0 &&
-    rect.left >= 0 &&
-    rect.bottom <= visibleBottom() &&
-    rect.right <= window.innerWidth
   );
 }
 
