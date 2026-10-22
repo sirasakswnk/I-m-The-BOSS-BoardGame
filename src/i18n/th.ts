@@ -331,7 +331,12 @@ export const th = {
         rolling: '{name} กำลังทอยเต๋า…',
         rollingShort: 'กำลังทอยเต๋า…',
         result: '{name} ทอยได้ {face}',
-        move: 'หมาก $ เดินจากช่อง {from} ไปช่อง {to}',
+        walking: 'หมาก $ เดิน {face} ก้าว จากช่อง {from}',
+        landed: 'ถึงช่อง {space} · ใช้ {count} ตระกูล ×{dividends}',
+        skipped: 'ข้าม',
+        skippedAria: 'ช่อง {space} ปิดแล้ว หมากเดินข้าม',
+        stepAria: 'ก้าวที่ {step}',
+        tapToSkip: 'แตะเพื่อข้าม',
       },
       compact: {
         playersAria: 'ผู้เล่นคนอื่น (เลื่อนซ้ายขวาได้)',

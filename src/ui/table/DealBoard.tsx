@@ -6,6 +6,7 @@ import type { DealSpace } from '@/engine/config/dealBoard';
 import { th } from '@/i18n/th';
 import { Pawn } from '@/ui/common/Pawn';
 
+import type { PawnWalkState } from './diceRollUtils';
 import { GroupSymbols } from './TableBits';
 import { getSpacePosition, getSpaceStripe } from './tableUtils';
 
@@ -20,17 +21,25 @@ function BoardCell({
   space,
   closedTile,
   isCurrent,
+  walk,
 }: {
   space: DealSpace;
   closedTile: number | undefined;
   isCurrent: boolean;
+  walk: PawnWalkState | null;
 }) {
+  const step = walk?.steps[space.index];
+  const skipped = walk?.skipped.includes(space.index) ?? false;
+  const landed = walk?.landed === space.index;
   const { row, col } = getSpacePosition(space.index);
   const isClosed = closedTile !== undefined;
   const classes = [
     'table-cell',
     isCurrent ? 'is-current' : '',
     isClosed ? 'is-closed' : 'is-quiet',
+    step !== undefined ? 'is-stepped' : '',
+    skipped ? 'is-skipped' : '',
+    landed ? 'is-landed' : '',
     col === 1 ? 'is-left' : '',
     col === 5 ? 'is-right' : '',
     row === 1 ? 'is-top' : '',
@@ -72,9 +81,25 @@ function BoardCell({
           <span className="table-cell-index">{space.index}</span>
           <span className="table-cell-tile">#{closedTile}</span>
           <span className="table-cell-check">✓</span>
+          {skipped && (
+            <span
+              className="table-cell-skip"
+              aria-label={fill(th.game.table.diceRoll.skippedAria, { space: space.index })}
+            >
+              {th.game.table.diceRoll.skipped}
+            </span>
+          )}
         </>
       ) : (
         <>
+          {step !== undefined && (
+            <span
+              className="table-cell-step"
+              aria-label={fill(th.game.table.diceRoll.stepAria, { step })}
+            >
+              {step}
+            </span>
+          )}
           <div className="table-cell-top">
             <b>{space.index}</b>
             <span>×{space.dividends}</span>
@@ -109,10 +134,13 @@ function BoardCell({
               className="table-pawn"
               data-testid="table-pawn"
             >
-              <Pawn
-                title={fill(th.game.pawnSpace, { space: space.index })}
-                className="table-pawn-svg"
-              />
+              {/* Re-keyed on every walk step so the hop animation replays. */}
+              <span key={walk?.hop ?? 0} className={walk ? 'table-pawn-hop' : undefined}>
+                <Pawn
+                  title={fill(th.game.pawnSpace, { space: space.index })}
+                  className="table-pawn-svg"
+                />
+              </span>
             </motion.div>
           )}
         </>
@@ -124,11 +152,13 @@ function BoardCell({
 interface DealBoardProps {
   closedSpaces: Map<number, number>;
   pawnSpace: number;
+  /** Step numbers, skipped spaces and the landing spot of a dice walk. */
+  walk?: PawnWalkState | null;
   children: ReactNode;
 }
 
 /** 5x5 board with 16 deal spaces around a 3x3 center panel. */
-export function DealBoard({ closedSpaces, pawnSpace, children }: DealBoardProps) {
+export function DealBoard({ closedSpaces, pawnSpace, walk = null, children }: DealBoardProps) {
   return (
     <section className="table-board" aria-label={th.game.table.boardAria}>
       <LayoutGroup id="table-pawn-group">
@@ -139,6 +169,7 @@ export function DealBoard({ closedSpaces, pawnSpace, children }: DealBoardProps)
               space={space}
               closedTile={closedSpaces.get(space.index)}
               isCurrent={pawnSpace === space.index}
+              walk={walk}
             />
           ))}
           <div className="table-deal-slot">{children}</div>

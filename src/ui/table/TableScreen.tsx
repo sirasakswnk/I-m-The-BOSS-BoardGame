@@ -22,7 +22,7 @@ import { BoardSheet, MiniBoardMap } from './CompactBoard';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { DiceRollOverlay } from './DiceRollOverlay';
-import { diceRollKey, findLatestDiceRoll } from './diceRollUtils';
+import { diceRollKey, findLatestDiceRoll, type PawnWalkState } from './diceRollUtils';
 import { DiscardModal } from './DiscardModal';
 import { EndCheckOverlay } from './EndCheckOverlay';
 import { endCheckKey, getDiscardNeed, getEndCheckToShow } from './endgameUtils';
@@ -85,7 +85,7 @@ export function TableScreen({
     const roll = findLatestDiceRoll(publicState.log);
     return roll ? diceRollKey(roll) : null;
   });
-  const [pawnOverride, setPawnOverride] = useState<number | null>(null);
+  const [walk, setWalk] = useState<{ rollKey: string; state: PawnWalkState } | null>(null);
   const compact = useMediaQuery(COMPACT_TABLE_QUERY);
   const previousMoneyRef = useRef(privateState.money);
   const previewMode = onAction !== undefined;
@@ -248,7 +248,10 @@ export function TableScreen({
   const latestRoll = findLatestDiceRoll(publicState.log);
   const latestRollKey = latestRoll ? diceRollKey(latestRoll) : null;
   const showDiceRoll = latestRoll !== null && latestRollKey !== seenRollKey;
-  const pawnSpace = showDiceRoll && pawnOverride !== null ? pawnOverride : publicState.pawnSpace;
+  const activeWalk = showDiceRoll && walk?.rollKey === latestRollKey ? walk.state : null;
+  // Until the roll animation reports its walk, keep the pawn on its start
+  // space so it never flashes at the destination first.
+  const pawnSpace = showDiceRoll ? (activeWalk?.pawn ?? latestRoll.from) : publicState.pawnSpace;
   const layout = getSeatLayout(players, uid);
   const hasTop = layout.top.length > 0;
   const mainRow = hasTop ? 2 : 1;
@@ -449,7 +452,10 @@ export function TableScreen({
       onLockDeal={handleLockDeal}
       onPlaceClan={() => setClanModalOpen(true)}
       canPlaceClan={canPlaceClan}
-      diceRolling={showDiceRoll}
+      diceRolling={
+        showDiceRoll &&
+        (activeWalk === null || (activeWalk.hop === 0 && activeWalk.landed === null))
+      }
     />
   );
 
@@ -546,7 +552,9 @@ export function TableScreen({
           event={latestRoll}
           playerName={getPlayerName(players, latestRoll.uid)}
           closedSpaces={publicState.closedSpaces}
-          onPawnStep={setPawnOverride}
+          onWalk={(state) =>
+            setWalk(state && latestRollKey ? { rollKey: latestRollKey, state } : null)
+          }
           onDone={() => setSeenRollKey(latestRollKey)}
         />
       )}
@@ -568,6 +576,7 @@ export function TableScreen({
           <MiniBoardMap
             closedTiles={closedTiles}
             pawnSpace={pawnSpace}
+            walk={activeWalk}
             onOpen={() => setBoardSheetOpen(true)}
           />
 
@@ -628,7 +637,7 @@ export function TableScreen({
               </aside>
 
               <div className="table-board-wrap" style={{ gridColumn: 2, gridRow: mainRow }}>
-                <DealBoard closedSpaces={closedTiles} pawnSpace={pawnSpace}>
+                <DealBoard closedSpaces={closedTiles} pawnSpace={pawnSpace} walk={activeWalk}>
                   {dealPanel}
                 </DealBoard>
               </div>

@@ -164,8 +164,23 @@ const PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
+/** The 3x3 pip cells of one die face (no wrapper, for flat and 3D dice). */
+export function DiePips({ value }: { value: number }) {
+  const pips = PIPS[value] ?? [];
+  return (
+    <>
+      {Array.from({ length: 9 }).map((_, index) => (
+        <span
+          key={index}
+          className={`table-die-cell ${pips.includes(index) ? 'has-pip' : ''}`}
+          aria-hidden="true"
+        />
+      ))}
+    </>
+  );
+}
+
 export function DiceFace({ value, testId = 'dice-face' }: DiceFaceProps) {
-  const pips = value ? (PIPS[value] ?? []) : [];
   const label = value
     ? th.game.table.diceResult.replace('{face}', String(value))
     : th.game.table.diceNotRolled;
@@ -179,13 +194,7 @@ export function DiceFace({ value, testId = 'dice-face' }: DiceFaceProps) {
       aria-label={label}
     >
       {value ? (
-        Array.from({ length: 9 }).map((_, index) => (
-          <span
-            key={index}
-            className={`table-die-cell ${pips.includes(index) ? 'has-pip' : ''}`}
-            aria-hidden="true"
-          />
-        ))
+        <DiePips value={value} />
       ) : (
         <span className="table-die-question" aria-hidden="true">
           ?

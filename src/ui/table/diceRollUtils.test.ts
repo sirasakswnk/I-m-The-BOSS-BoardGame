@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { movePawn } from '@/engine/validators';
 import type { GameEvent } from '@/engine/types';
 
-import { diceRollKey, findLatestDiceRoll, getPawnPath } from './diceRollUtils';
+import { diceRollKey, findLatestDiceRoll, getPawnPath, getPawnWalk } from './diceRollUtils';
 
 describe('getPawnPath', () => {
   it('walks one space per pip', () => {
@@ -30,6 +30,23 @@ describe('getPawnPath', () => {
         expect(path.at(-1)).toBe(movePawn(from, face, closed));
       }
     }
+  });
+});
+
+describe('getPawnWalk', () => {
+  it('numbers counted steps and marks closed spaces as skipped', () => {
+    expect(getPawnWalk(2, 3, [3, 5])).toEqual([
+      { kind: 'skip', space: 3 },
+      { kind: 'step', space: 4, step: 1 },
+      { kind: 'skip', space: 5 },
+      { kind: 'step', space: 6, step: 2 },
+      { kind: 'step', space: 7, step: 3 },
+    ]);
+  });
+
+  it('returns nothing when every space is closed', () => {
+    const all = Array.from({ length: 16 }, (_, index) => index + 1);
+    expect(getPawnWalk(1, 4, all)).toEqual([]);
   });
 });
 

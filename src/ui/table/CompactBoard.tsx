@@ -7,6 +7,7 @@ import { th } from '@/i18n/th';
 import { Modal } from '@/ui/common/Modal';
 import { Pawn } from '@/ui/common/Pawn';
 
+import type { PawnWalkState } from './diceRollUtils';
 import { GroupSymbols } from './TableBits';
 import { getSpacePosition, getSpaceStripe } from './tableUtils';
 
@@ -29,8 +30,9 @@ interface CompactBoardProps {
 export function MiniBoardMap({
   closedTiles,
   pawnSpace,
+  walk = null,
   onOpen,
-}: CompactBoardProps & { onOpen: () => void }) {
+}: CompactBoardProps & { walk?: PawnWalkState | null; onOpen: () => void }) {
   const closed = closedTiles.size;
   const label = fill(th.game.table.compact.mapAria, {
     space: pawnSpace > 0 ? pawnSpace : '—',
@@ -52,16 +54,26 @@ export function MiniBoardMap({
           const { row, col } = getSpacePosition(space.index);
           const isClosed = closedTiles.has(space.index);
           const isCurrent = pawnSpace === space.index;
+          const step = walk?.steps[space.index];
+          const classes = [
+            isClosed ? 'is-closed' : '',
+            isCurrent ? 'is-current' : '',
+            step !== undefined ? 'is-stepped' : '',
+            walk?.skipped.includes(space.index) ? 'is-skipped' : '',
+            walk?.landed === space.index ? 'is-landed' : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
           return (
             <i
               key={space.index}
-              className={`${isClosed ? 'is-closed' : ''} ${isCurrent ? 'is-current' : ''}`}
+              className={classes}
               style={
                 { gridArea: `${row} / ${col}`, '--st': getSpaceStripe(space) } as CSSProperties
               }
               data-space={space.index}
             >
-              {isCurrent ? '$' : space.index}
+              {isCurrent ? '$' : (step ?? space.index)}
             </i>
           );
         })}

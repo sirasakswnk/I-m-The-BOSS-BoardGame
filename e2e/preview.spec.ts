@@ -160,8 +160,33 @@ test('preview dice roll tumbles, then walks the pawn one space per pip', async (
   const face = Number(await roll.getAttribute('data-face'));
   await expect(roll).toContainText(`ทอยได้ ${face}`);
 
+  // Step numbers appear on the board and the destination is announced.
+  await expect(roll).toHaveAttribute('data-stage', 'landed', { timeout: 5_000 });
+  await expect(roll).toContainText(`ถึงช่อง ${7 + face}`);
+  await expect(
+    page.locator('.table-cell-step, .mtable-map-grid i.is-stepped').filter({ visible: true }),
+  ).toHaveCount(face);
+
   const path = await sampling;
   // Preview starts on space 7 with no closed spaces.
   expect(path).toEqual(Array.from({ length: face + 1 }, (_, step) => 7 + step));
   await expect(page.getByTestId('dice-face')).toHaveAttribute('data-face', String(face));
+  await expect(page.locator('.table-cell-step, .mtable-map-grid i.is-stepped')).toHaveCount(0);
+});
+
+test('a tap or Escape skips the dice animation without blocking the table', async ({ page }) => {
+  await page.goto('/preview/game');
+  await page.getByTestId('roll-dice').click();
+  await expect(page.getByTestId('dice-roll')).toHaveAttribute('data-rolling', 'true');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('dice-roll')).toHaveCount(0);
+  await expect(page.getByTestId('dice-face')).toHaveAttribute('data-face', /^[1-6]$/);
+
+  // The overlay never intercepts input: the next action works mid-animation.
+  await page.reload();
+  await page.getByTestId('roll-dice').click();
+  await expect(page.getByTestId('dice-roll')).toBeVisible();
+  await page.getByTestId('draw-cards').click();
+  await expect(page.getByTestId('dice-roll')).toHaveCount(0);
+  await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
 });
