@@ -10,7 +10,14 @@ interface HandFanProps {
   phase: Phase;
   windowOpen: boolean;
   neededColors: Set<FamilyColor>;
+  /** `grid` lays smaller cards out in rows for the phone/tablet hand sheet. */
+  layout?: 'fan' | 'grid';
 }
+
+const CARD_SIZE = {
+  fan: { width: 112, height: 160 },
+  grid: { width: 78, height: 111 },
+} as const;
 
 function cardStateClass(
   card: InfluenceCardData,
@@ -36,6 +43,7 @@ function HandCard({
   windowOpen,
   neededColors,
   part,
+  layout,
 }: {
   card: InfluenceCardData;
   index: number;
@@ -44,17 +52,18 @@ function HandCard({
   windowOpen: boolean;
   neededColors: Set<FamilyColor>;
   part?: RecruitmentPart;
+  layout: 'fan' | 'grid';
 }) {
   const step = count > 1 ? Math.min(4.2, 40 / (count - 1)) : 0;
-  const rotation = (index - (count - 1) / 2) * step;
+  const rotation = layout === 'fan' ? (index - (count - 1) / 2) * step : 0;
   const stateClass = cardStateClass(card, phase, windowOpen, neededColors);
   const style = { '--r': `${rotation}deg` } as CSSProperties;
 
   return (
     <InfluenceCard
       card={card}
-      width={112}
-      height={160}
+      width={CARD_SIZE[layout].width}
+      height={CARD_SIZE[layout].height}
       part={part}
       className={`table-hand-card ${stateClass}`}
       style={style}
@@ -73,7 +82,7 @@ const HAND_KIND_ORDER: Record<InfluenceCardData['kind'], number> = {
   imTheBoss: 4,
 };
 
-export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps) {
+export function HandFan({ cards, phase, windowOpen, neededColors, layout = 'fan' }: HandFanProps) {
   const handRef = useRef<HTMLDivElement>(null);
   const overlap = 52;
   const orderedCards = [...cards].sort(
@@ -99,11 +108,13 @@ export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps
   return (
     <div
       ref={handRef}
-      className="table-hand"
+      className={layout === 'grid' ? 'table-hand is-grid' : 'table-hand'}
       data-testid="my-hand"
       role="list"
       aria-label={th.game.myHand}
-      style={{ '--hand-overlap': `-${overlap}px` } as CSSProperties}
+      style={
+        layout === 'fan' ? ({ '--hand-overlap': `-${overlap}px` } as CSSProperties) : undefined
+      }
       onKeyDown={handleKeyDown}
     >
       {orderedCards.length === 0 ? (
@@ -119,6 +130,7 @@ export function HandFan({ cards, phase, windowOpen, neededColors }: HandFanProps
             windowOpen={windowOpen}
             neededColors={neededColors}
             part={card.kind === 'recruitment' ? recruitmentParts.get(card.id) : undefined}
+            layout={layout}
           />
         ))
       )}

@@ -16,7 +16,20 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /mobile\.spec\.ts$/,
       use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    },
+    {
+      // M8 DoD: the full table flow must be playable on a 375x667 phone.
+      name: 'mobile',
+      testMatch: /(table|preview|mobile)\.spec\.ts$/,
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chrome',
+        viewport: { width: 375, height: 667 },
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
   webServer: {

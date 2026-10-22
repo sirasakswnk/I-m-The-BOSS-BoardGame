@@ -7,6 +7,7 @@ import { th } from '@/i18n/th';
 import { serverNow } from '@/net/clock';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { Button } from '@/ui/common/Button';
+import { COMPACT_TABLE_QUERY, matchesQuery } from '@/ui/common/useMediaQuery';
 
 import { fillText } from './actionCopy';
 import { getWindowPassInfo } from './actionUtils';
@@ -43,6 +44,25 @@ function useRemainingMs(deadline: number): number {
   return remaining;
 }
 
+const VIBRATE_PATTERN = [120, 60, 120];
+
+/**
+ * Buzzes phones and tablets when someone else opens the window or plays into
+ * it (plan.md 9.2). Each card resets the deadline, so the deadline keys it.
+ */
+function useWindowVibration(deadline: number | null, triggeredBy: string | null, uid: string) {
+  useEffect(() => {
+    if (deadline === null || triggeredBy === uid) return;
+    if (!matchesQuery(COMPACT_TABLE_QUERY)) return;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+    try {
+      navigator.vibrate(VIBRATE_PATTERN);
+    } catch {
+      // Some browsers throw when vibration is blocked; the bar is still shown.
+    }
+  }, [deadline, triggeredBy, uid]);
+}
+
 /**
  * Sticky interrupt bar. The deadline comes from the server; the local
  * countdown re-reads the RTDB server-time offset every tick (plan.md 7.2).
@@ -61,6 +81,7 @@ export function InterruptBar({
 }: InterruptBarProps) {
   const activeWindow = publicState.window;
   const remaining = useRemainingMs(activeWindow?.deadline ?? 0);
+  useWindowVibration(activeWindow?.deadline ?? null, activeWindow?.triggeredBy ?? null, uid);
   if (!activeWindow) return null;
 
   const seconds = Math.ceil(remaining / 1000);

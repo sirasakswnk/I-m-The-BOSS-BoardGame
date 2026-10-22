@@ -30,7 +30,8 @@ interface TableSeatProps {
   ) => { disabled: boolean; title: string };
   onAcceptOffer?: (uid: string, color: FamilyColor) => void;
   onUnacceptOffer?: (color: FamilyColor) => void;
-  variant: 'top' | 'side';
+  /** `strip` is the compact card in the phone/tablet player strip. */
+  variant: 'top' | 'side' | 'strip';
 }
 
 function format(template: string, values: Record<string, string | number>): string {

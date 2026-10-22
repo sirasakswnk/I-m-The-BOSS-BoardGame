@@ -500,7 +500,9 @@
 
   /* Global toast from design/home.html. */
   .toast {
-    @apply fixed bottom-6 left-1/2 z-[1200] rounded-btn bg-ink px-[18px] py-3 font-medium text-white;
+    @apply fixed left-1/2 z-[1200] rounded-btn bg-ink px-[18px] py-3 font-medium text-white;
+    /* --mdock-h is set by the phone/tablet hand dock so toasts sit above it. */
+    bottom: calc(24px + var(--mdock-h, 0px));
     max-width: calc(100% - 32px);
     transform: translate(-50%, 140%);
     box-shadow: 4px 4px 0 var(--accent);
@@ -3762,7 +3764,7 @@ button.table-family-chip:hover:not(:disabled) {
   }
 }
 
-/* Responsive fallback; the polished mobile layout is M8. ------------- */
+/* Desktop tightening (1024-1350px); phones/tablets use the M8 layout. */
 
 @media (max-width: 1350px) and (min-width: 1181px) {
   .table-deal {
@@ -3904,80 +3906,6 @@ button.table-family-chip:hover:not(:disabled) {
   }
 }
 
-@media (max-width: 1023px) {
-  .table-topbar {
-    align-items: flex-start;
-  }
-
-  .table-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .table-top-seats,
-  .table-side,
-  .table-board-wrap {
-    grid-column: 1 !important;
-    grid-row: auto !important;
-  }
-
-  .table-board-wrap {
-    order: 1;
-    width: 100%;
-  }
-
-  .table-side-left {
-    order: 2;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .table-side-right {
-    order: 3;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .table-mine {
-    grid-template-columns: minmax(0, 1fr);
-    margin-top: 100px;
-    min-height: 0;
-  }
-
-  .table-hand {
-    position: relative;
-    top: auto;
-    right: auto;
-    left: auto;
-    height: 180px;
-    margin-top: -36px;
-    overflow-x: auto;
-    justify-content: flex-start;
-    padding: 40px 10px 0;
-  }
-
-  .table-lip {
-    position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    margin-top: -36px;
-    border-bottom: 3px solid var(--ink);
-    border-radius: 15px;
-  }
-
-  .table-actions {
-    flex-direction: row;
-    grid-column: 1;
-  }
-
-  .table-actions .table-btn {
-    flex: 1;
-  }
-}
-
 @media (max-width: 640px) {
   .app-modal-backdrop {
     align-items: end;
@@ -4013,6 +3941,605 @@ button.table-family-chip:hover:not(:disabled) {
     padding: 0 10px;
     font-size: 13px;
   }
+}
+
+/* M8 phone + tablet table (< 1024px, plan.md 9.2) -------------------- */
+/* TableScreen swaps to this layout with the same media query in JS
+   (COMPACT_TABLE_QUERY), so desktop-only parts are never rendered here. */
+
+@media (max-width: 1023px) {
+  .table-topbar {
+    gap: 6px;
+    padding: 8px 0;
+  }
+
+  .table-topbar-chips,
+  .table-topbar-chips.is-pushed,
+  .table-topbar-chips:not(.is-pushed) {
+    margin: 0;
+  }
+
+  .table-topbar-nav {
+    margin-left: auto;
+  }
+
+  .table-interrupt {
+    top: 4px;
+    z-index: 70;
+  }
+}
+
+@media (max-width: 767px) {
+  .table-topbar .table-top-btn {
+    min-height: 44px;
+  }
+
+  .table-topbar-chips {
+    order: 3;
+    width: 100%;
+  }
+
+  .table-chip {
+    min-height: 30px;
+    padding: 2px 8px;
+    font-size: 12.5px;
+  }
+
+  .table-pips {
+    display: none;
+  }
+}
+
+.mtable {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Other players: one swipeable row on phones, a wrapped grid on tablets. */
+.mtable-players {
+  display: flex;
+  gap: 10px;
+  margin: 0 -16px;
+  padding: 14px 16px 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 27, 46, 0.35) transparent;
+}
+
+.table-seat.is-strip {
+  flex: 0 0 auto;
+  width: min(232px, 74vw);
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  background-color: var(--paper-deep);
+  box-shadow: 2px 3px 0 var(--ink);
+  scroll-snap-align: start;
+}
+
+.table-seat.is-strip.is-boss {
+  border-color: var(--ink);
+  background-color: #f9e3a3;
+}
+
+.table-seat.is-strip .table-seat-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-seat.is-strip .table-offer {
+  min-height: 36px;
+}
+
+@media (min-width: 768px) {
+  .mtable-players {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    margin: 0;
+    padding: 14px 0 0;
+    overflow: visible;
+  }
+
+  .table-seat.is-strip {
+    width: auto;
+  }
+}
+
+/* Tablets: the mini map sits beside the deal panel. */
+@media (min-width: 768px) {
+  .mtable {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+  }
+
+  .mtable-players,
+  .mtable-info,
+  .mdock-spacer {
+    grid-column: 1 / -1;
+  }
+
+  .mtable-map {
+    position: sticky;
+    top: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Mini board map */
+.mtable-map {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background-color: var(--board);
+  background-image:
+    linear-gradient(rgba(29, 27, 46, 0.085) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 27, 46, 0.085) 1px, transparent 1px);
+  background-size: 22px 22px;
+  box-shadow: var(--shadow-hard);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.mtable-map:hover {
+  background-color: #f7e6c2;
+}
+
+.mtable-map:active {
+  transform: translate(2px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.mtable-map-grid {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 26px);
+  grid-template-rows: repeat(5, 21px);
+  gap: 3px;
+}
+
+.mtable-map-grid i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding-top: 2px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.mtable-map-grid i::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--st, var(--line));
+  content: '';
+}
+
+.mtable-map-grid i.is-closed {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.mtable-map-grid i.is-closed::before {
+  opacity: 0.35;
+}
+
+.mtable-map-grid i.is-current {
+  z-index: 1;
+  background: var(--gold);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.mtable-map-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.mtable-map-copy strong {
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.mtable-map-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 3px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Deal panel leaves the board grid and grows with its content. */
+.mtable-deal .table-deal {
+  overflow: visible;
+  padding: 12px 14px 14px;
+}
+
+.mtable-deal .table-deal-body h2 {
+  font-size: 24px;
+}
+
+.mtable-deal .table-deal-actions .table-btn,
+.mtable-deal .table-turn-actions .table-btn {
+  min-height: 48px;
+  height: auto;
+}
+
+.mtable-deal .table-start-grid {
+  gap: 6px;
+}
+
+.mtable-deal .table-start-space {
+  height: 48px;
+  font-size: 16px;
+}
+
+.mtable-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.mtable-info .table-log {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 768px) {
+  .mtable-info {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+  }
+
+  .mtable-info .table-log {
+    grid-column: auto;
+  }
+}
+
+/* Full board sheet */
+.mtable-board-hint {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.mtable-board-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mtable-board-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 5px 10px 5px 5px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--white);
+}
+
+.mtable-board-row.is-current {
+  background: #fff3c8;
+  box-shadow:
+    0 0 0 2px var(--gold),
+    2px 3px 0 var(--ink);
+}
+
+.mtable-board-row.is-closed {
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+.mtable-board-row.is-closed .table-req-groups {
+  opacity: 0.45;
+}
+
+.mtable-board-index {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  height: 38px;
+  padding-top: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--white);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.mtable-board-index::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 5px;
+  background: var(--st, var(--line));
+  content: '';
+}
+
+.mtable-board-row.is-closed .mtable-board-index {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.mtable-board-req {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mtable-board-req .table-req-groups {
+  justify-content: flex-start;
+}
+
+.mtable-board-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.mtable-board-meta b {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.mtable-board-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mtable-board-pawn {
+  width: 22px;
+  height: 26px;
+}
+
+/* Hand dock (bottom sheet) */
+.mdock-spacer {
+  flex: none;
+}
+
+.mdock-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(29, 27, 46, 0.45);
+}
+
+.mdock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  max-height: 84dvh;
+  padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 3px solid var(--ink);
+  border-radius: 20px 20px 0 0;
+  background-color: var(--paper-deep);
+  background-image: radial-gradient(rgba(29, 27, 46, 0.1) 1.2px, transparent 1.3px);
+  background-size: 14px 14px;
+  box-shadow: 0 -4px 0 rgba(29, 27, 46, 0.9);
+}
+
+@media (min-width: 768px) {
+  .mdock {
+    right: auto;
+    left: 50%;
+    width: min(calc(100% - 32px), 960px);
+    border: 3px solid var(--ink);
+    border-bottom: 0;
+    transform: translateX(-50%);
+  }
+}
+
+.mdock-handle {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 16px 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.mdock-grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 46px;
+  height: 5px;
+  margin-left: -23px;
+  border-radius: 999px;
+  background: rgba(29, 27, 46, 0.4);
+}
+
+.mdock-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mdock-title strong {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mdock-title span {
+  color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mdock-money {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mdock-money .table-money-delta {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  font-size: 14px;
+}
+
+.mdock-chevron {
+  transition: transform 0.18s ease;
+}
+
+.mdock.is-open .mdock-chevron {
+  transform: rotate(180deg);
+}
+
+.mdock-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px 12px;
+}
+
+.mdock-body[hidden] {
+  display: none;
+}
+
+.mdock-body .table-mine-seat {
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.mdock-actions {
+  flex: none;
+  padding-top: 2px;
+}
+
+.mdock-actions .table-actions {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.mdock-actions .table-actions .table-btn {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  padding: 0 6px;
+  font-size: 15px;
+}
+
+/* Hand as a grid inside the dock */
+.table-hand.is-grid {
+  position: static;
+  z-index: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  justify-items: center;
+  gap: 10px 8px;
+  height: auto;
+  margin: 0;
+  padding: 2px 0 4px;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.table-hand.is-grid .table-hand-empty {
+  grid-column: 1 / -1;
+  margin: 8px 0;
+}
+
+.table-hand.is-grid .table-hand-card,
+.table-hand.is-grid .table-hand-card:hover,
+.table-hand.is-grid .table-hand-card:focus-visible {
+  margin-left: 0;
+  transform: none;
+  translate: none;
+  box-shadow: none;
+}
+
+.table-hand.is-grid .table-hand-card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Preview card gallery ---------------------------------------------- */

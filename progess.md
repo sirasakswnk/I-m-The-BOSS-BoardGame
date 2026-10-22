@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 21 ต.ค. 2026 (M5 offers & deal flow)
+> อัปเดตล่าสุด: 22 ต.ค. 2026 (M8 mobile responsive)
 
 ## สถานะ Milestone
 
@@ -14,8 +14,8 @@
 | M4 | Tabletop UI (Desktop) | ✅ เสร็จ (20/10/2026) |
 | M5 | Offers & Deal Flow | ✅ เสร็จ (21/10/2026) |
 | M6 | Action Cards & Interrupt Window | ✅ เสร็จ (21/10/2026) |
-| M7 | End of Turn & Game End | ⬜ |
-| M8 | Mobile Responsive | ⬜ |
+| M7 | End of Turn & Game End | ✅ เสร็จ (22/10/2026) |
+| M8 | Mobile Responsive | ✅ เสร็จ (22/10/2026) |
 | M9 | Resilience, Polish, Deploy | ⬜ |
 
 ---
@@ -619,4 +619,67 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 ### ขั้นถัดไป
 
 - Milestone ถัดไปคือ **M8 — Mobile Responsive**
+- M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel
+
+---
+
+## M8 — Mobile Responsive — เสร็จสมบูรณ์ (22/10/2026)
+
+### สถานะ
+
+- โต๊ะเกมมีเลย์เอาต์มือถือ/แท็บเล็ตของตัวเองตามหัวข้อ 9.2 และเล่นได้ครบ flow บนจอ 375×667 โดยไม่ต้อง zoom และไม่มี horizontal scroll ของทั้งหน้า
+- ไม่แตะ engine/กติกา ไม่แตะ `database.rules.json` และไม่แตะ `design/`
+
+### สิ่งที่ทำ
+
+- **สลับเลย์เอาต์ด้วย media query เดียวกันทั้ง JS และ CSS** — `useMediaQuery` + `COMPACT_TABLE_QUERY` (`max-width: 1023px`) ใน `src/ui/common/useMediaQuery.ts`; `TableScreen` แยก JSX เป็น compact (< 1024) กับ desktop (≥ 1024) แต่ใช้ state, handler, modal และ `DealPanel` ชุดเดียวกัน จึงไม่มีลอจิกซ้ำ และเดสก์ท็อปไม่เปลี่ยน
+- **บน: แถบผู้เล่นคนอื่น** — `TableSeat` variant `strip`; มือถือเป็นแถวเลื่อนซ้ายขวา (scroll-snap) แท็บเล็ตเป็น grid ห่อบรรทัด; bubble ข้อเสนอยังกดรับ/ยกเลิกได้ (สูง ≥ 36px)
+- **กลาง: แผนที่กระดานย่อ + แผงดีล** — `MiniBoardMap` (กรอบ 5×5 ตามตำแหน่งจริง หมาก `$` สีทอง ช่องปิดทึบ) กดแล้วเปิด `BoardSheet` (bottom sheet รายการ 16 ช่อง: ส่วนแบ่ง เงื่อนไขกลุ่มสี สถานะปิด/เลขแผ่น และเลื่อนไปช่องที่หมากอยู่อัตโนมัติ); `DealPanel` ออกจาก grid กระดานมาเต็มความกว้างและสูงตามเนื้อหา; แท็บเล็ตวางแผนที่ไว้ข้างแผงดีล
+- **ล่าง: มือของฉันเป็น bottom sheet** — `HandDock` ติดล่างจอ แถบย่อแสดงจำนวนไพ่ x/12, เงิน (พร้อม animation รับ/จ่าย) และปุ่มแอ็กชันใหญ่ 3 ปุ่ม (สูง 50px); แตะหรือปัดขึ้นที่ handle เพื่อดึงขึ้น เห็นที่นั่ง/นักลงทุน/เงิน และไพ่ทุกใบเป็น grid (`HandFan layout="grid"` การ์ด 78×111); ปิดด้วยแตะฉากหลัง ปัดลง หรือ Escape; มี spacer กันเนื้อหาสุดท้ายโดนบัง และตั้ง `--mdock-h` ให้ toast ลอยเหนือ dock
+- **Interrupt bar** — sticky บนสุดของจอ (z เหนือ dock) และสั่นด้วย `navigator.vibrate` บนจอ < 1024 เมื่อคนอื่นเปิดหน้าต่าง/ลงการ์ดเพิ่ม (ไม่สั่นถ้าเราเป็นคน trigger, ข้ามเงียบ ๆ ถ้าเบราว์เซอร์ไม่รองรับ)
+- **Top bar** — จอ < 768 ซ่อน pips 15 ช่อง (เหลือข้อความ x/15) ชิปเล็กลงและขึ้นบรรทัดใหม่ ปุ่มนำทางสูง 44px
+- **Touch target** — ปุ่มทอยเต๋า/เปิดดีล/ล้มดีล/ล็อก/วางการ์ดญาติ ≥ 48px, ปุ่มเลือกช่องเริ่มต้น 48px, handle ของ dock 54px
+- **Preview** — แถบเครื่องมือของ `/preview` ไม่ sticky บนจอ < 768 เพื่อไม่กินพื้นที่ครึ่งจอ
+- ลบ CSS fallback ≤ 1023px เดิมของ M4 (เดิมจัดเลย์เอาต์เดสก์ท็อปให้เป็นคอลัมน์เดียว) เพราะส่วนนั้นไม่ถูก render บนจอเล็กแล้ว
+
+### บั๊กที่พบและแก้ในรอบนี้
+
+- **ช่องที่ปิดแล้วหายจากกระดานเมื่อเกมยาว** (กระทบเดสก์ท็อปด้วย) — `getClosedTileMap` เดิมอ่านจาก `public.log` ซึ่งเก็บแค่ 50 event ล่าสุด ดีลแรก ๆ จึงหลุดออกจาก log แล้วช่องกลับมาแสดงเป็นช่องเปิด; เปลี่ยนไปใช้ `public.closedSpaces` (engine push ตามลำดับการวางแผ่น ตำแหน่ง = เลขแผ่น) พร้อม unit test กรณีปิด 12 ช่อง
+- swipe ที่ handle ไม่ทำงานเมื่อลากเมาส์/ปากกาออกนอกปุ่ม — ใช้ `setPointerCapture` ตอน pointerdown
+- toast บังปุ่มแอ็กชันใน dock — ยก toast ขึ้นตามความสูง dock (`--mdock-h`)
+
+### ไฟล์ที่สร้าง/แก้
+
+- ใหม่: `src/ui/common/useMediaQuery.ts`, `src/ui/table/CompactBoard.tsx`, `src/ui/table/HandDock.tsx`, `e2e/mobile.spec.ts`
+- แก้: `src/ui/table/TableScreen.tsx`, `TableSeat.tsx`, `HandFan.tsx`, `InterruptBar.tsx`, `tableUtils.ts`, `tableUtils.test.ts`
+- แก้: `src/i18n/th.ts` (`th.game.table.compact`), `src/styles/global.css` (ส่วน "M8 phone + tablet table"), `src/ui/pages/Preview.tsx`
+- แก้: `playwright.config.ts` — เพิ่ม project `mobile` (375×667, `isMobile`, `hasTouch`) รัน `table`, `preview`, `mobile` specs; project เดสก์ท็อปข้าม `mobile.spec.ts`
+- `review/m8/01-phone-turn.png` … `08-tablet-deal.png`
+- `progess.md` (แก้ตารางสถานะ M7 ที่ค้างเป็น ⬜ และวันที่อัปเดตด้วย)
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน **151/151 tests** (17 files)
+- `npm run test:rules`: ผ่าน **12/12 tests**
+- `npm run test:e2e`: ผ่าน **25/25 tests** — เดสก์ท็อป 11 (เดิมทั้งหมด) + mobile 14 (table 5 flow จริงผ่าน Firebase Emulator 3 ผู้เล่น, preview 3, mobile layout 6)
+- หมายเหตุการรันใน cloud container: ไม่มี Chrome/`.env` จึงรันด้วย config ชั่วคราวนอก repo ที่ชี้ Chromium ที่ติดตั้งไว้ + ค่า Firebase demo สำหรับ Emulator; บนเครื่อง Windows ใช้คำสั่งเดิมได้ตามปกติ
+
+### Definition of Done (M8)
+
+- [x] เล่นได้ครบบนจอ 375×667 โดยไม่ต้อง zoom — flow จริง 3 ผู้เล่นทั้ง 5 สถานการณ์ใน `table.spec.ts` (ดีลล้ม, ปิดดีลด้วยข้อเสนอ + เงินถูกต้อง, ลงการ์ดซ้อน/หน้าต่างขัดจังหวะ, ทอยเต๋า-จั่ว, บังคับทิ้งไพ่) ผ่านที่ 375×667
+- [x] ไม่มี horizontal scroll ของทั้งหน้า — ตรวจทุกหน้าใน preview (home, join, lobby, status, cards, setup) และโต๊ะเกมทั้ง 6 สถานะ รวม discard/end-check/game-over
+- [x] แท็บเล็ต 768–1023 ใช้เลย์เอาต์มือถือแบบกว้าง (แถบผู้เล่นเป็น grid, แผนที่ข้างแผงดีล) และ ≥ 1024 กลับเป็นโต๊ะเดสก์ท็อป
+- [x] ปุ่มสัมผัส ≥ 44px, interrupt bar sticky + สั่น
+
+### ข้อจำกัด / รู้ไว้
+
+- การสลับเลย์เอาต์ทำตอน render ตามความกว้างจอ ถ้าหมุนจอข้าม 1024px ระหว่างเปิด modal อยู่ modal ยังเปิดต่อได้ปกติ แต่ dock/แผนที่จะ mount ใหม่ (สถานะดึงขึ้นของ dock รีเซ็ตเป็นย่อ)
+- `navigator.vibrate` ไม่มีบน iOS Safari — iPhone จะเห็นแค่แถบ sticky ไม่สั่น
+- การ์ดในมือบนมือถือไม่มีโหมดขยายดูใบเดียว (ขนาด 78×111 อ่านชื่อและไอคอนได้); ถ้าต้องการ zoom การ์ดค่อยเพิ่มใน M9 polish
+
+### ขั้นถัดไป
+
+- Milestone ถัดไปคือ **M9 — Resilience, Polish, Deploy**
 - M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel

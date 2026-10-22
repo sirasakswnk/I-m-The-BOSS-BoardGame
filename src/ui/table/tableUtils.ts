@@ -2,7 +2,7 @@ import type { DealRequirementGroup, DealSpace } from '@/engine/config/dealBoard'
 import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
 import { DEAL_TILES } from '@/engine/config/dealTiles';
 import { FAMILY_ORDER, MAX_PLAYERS, type FamilyColor } from '@/engine/config/families';
-import type { GameEvent, PublicDeal, PublicOffer, PublicState } from '@/engine/types';
+import type { PublicDeal, PublicOffer, PublicState } from '@/engine/types';
 import type { RoomPlayer, RoomPlayers } from '@/net/roomTypes';
 
 import { FAMILY_BY_ID } from '@/ui/common/families';
@@ -79,12 +79,13 @@ export function getSpaceStripe(space: DealSpace): string {
   return `linear-gradient(90deg, ${stops.join(', ')})`;
 }
 
-export function getClosedTileMap(log: GameEvent[]): Map<number, number> {
-  const map = new Map<number, number>();
-  for (const event of log) {
-    if (event.type === 'dealResolved') map.set(event.space, event.tileNumber);
-  }
-  return map;
+/**
+ * Space -> deal tile number. Tiles are placed in order (#1, #2, ...) and the
+ * engine appends each covered space to `closedSpaces`, so the position is the
+ * tile number. The public log is trimmed and must not be used for this.
+ */
+export function getClosedTileMap(closedSpaces: readonly number[]): Map<number, number> {
+  return new Map(closedSpaces.map((space, index) => [space, index + 1]));
 }
 
 export function getDealTileValue(tileNumber: number): number {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
 import type { FamilyColor } from '@/engine/config/families';
-import type { GameEvent, PublicDeal } from '@/engine/types';
+import type { PublicDeal } from '@/engine/types';
 import type { RoomPlayers } from '@/net/roomTypes';
 
 import {
@@ -87,29 +87,19 @@ describe('board geometry', () => {
 });
 
 describe('closed deal tiles', () => {
-  it('maps closed spaces to their tile numbers from the public log', () => {
-    const events: GameEvent[] = [
-      {
-        type: 'dealResolved',
-        at: 1,
-        space: 3,
-        bossUid: 'p1',
-        tileNumber: 2,
-        dividends: 4,
-        valuePerDividend: 2,
-        bossDividends: 4,
-        accepted: [],
-        totalPaid: 8,
-      },
-      {
-        type: 'dealFailed',
-        at: 2,
-        uid: 'p2',
-        space: 8,
-        reason: 'bossAction',
-      },
-    ];
-    expect([...getClosedTileMap(events)]).toEqual([[3, 2]]);
+  it('maps closed spaces to tiles in the order they were covered', () => {
+    expect([...getClosedTileMap([3, 11, 7])]).toEqual([
+      [3, 1],
+      [11, 2],
+      [7, 3],
+    ]);
+  });
+
+  it('does not depend on the trimmed public log', () => {
+    // The public log keeps 50 events; closed spaces must survive long games.
+    const closed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    expect(getClosedTileMap(closed).get(1)).toBe(1);
+    expect(getClosedTileMap(closed).size).toBe(12);
   });
 });
 

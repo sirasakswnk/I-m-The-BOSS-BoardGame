@@ -13,10 +13,12 @@ import type { RoomPlayers } from '@/net/roomTypes';
 import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/ui/common/Button';
 import { CardBack } from '@/ui/common/influence';
+import { COMPACT_TABLE_QUERY, useMediaQuery } from '@/ui/common/useMediaQuery';
 
 import { ActionCardModal } from './ActionCardModal';
 import { hasPlayableAction, getWindowPassInfo } from './actionUtils';
 import { ClanPlaceModal } from './ClanPlaceModal';
+import { BoardSheet, MiniBoardMap } from './CompactBoard';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
 import { DiscardModal } from './DiscardModal';
@@ -24,6 +26,7 @@ import { EndCheckOverlay } from './EndCheckOverlay';
 import { endCheckKey, getDiscardNeed, getEndCheckToShow } from './endgameUtils';
 import { GameLog } from './GameLog';
 import { GameOverOverlay } from './GameOverOverlay';
+import { HandDock } from './HandDock';
 import { HandFan } from './HandFan';
 import { InterruptBar } from './InterruptBar';
 import { OfferModal, type OfferInput } from './OfferModal';
@@ -72,6 +75,8 @@ export function TableScreen({
   const [moneyDelta, setMoneyDelta] = useState<number | null>(null);
   const [moneyDeltaKey, setMoneyDeltaKey] = useState(0);
   const [dismissedEndCheckKey, setDismissedEndCheckKey] = useState<string | null>(null);
+  const [boardSheetOpen, setBoardSheetOpen] = useState(false);
+  const compact = useMediaQuery(COMPACT_TABLE_QUERY);
   const previousMoneyRef = useRef(privateState.money);
   const previewMode = onAction !== undefined;
 
@@ -229,7 +234,7 @@ export function TableScreen({
     void act('lock', { type: 'LOCK_DEAL' });
   }
 
-  const closedTiles = getClosedTileMap(publicState.log);
+  const closedTiles = getClosedTileMap(publicState.closedSpaces);
   const layout = getSeatLayout(players, uid);
   const hasTop = layout.top.length > 0;
   const mainRow = hasTop ? 2 : 1;
@@ -385,7 +390,7 @@ export function TableScreen({
     void act('rematch', { type: 'REMATCH' });
   }
 
-  const renderSeat = (entry: SeatEntry, variant: 'top' | 'side') => {
+  const renderSeat = (entry: SeatEntry, variant: 'top' | 'side' | 'strip') => {
     const player = entry.player;
     return (
       <TableSeat
@@ -413,6 +418,96 @@ export function TableScreen({
     );
   };
 
+  const dealPanel = (
+    <DealPanel
+      uid={uid}
+      players={players}
+      publicState={publicState}
+      privateState={privateState}
+      pendingAction={pendingAction}
+      exclusions={exclusions}
+      onToggleExclusion={handleToggleExclusion}
+      onOpenDeal={handleOpenDeal}
+      onFailDeal={handleFailDeal}
+      onRollDice={handleRollDice}
+      onDrawCards={handleDrawCards}
+      onPickStart={handlePickStart}
+      onLockDeal={handleLockDeal}
+      onPlaceClan={() => setClanModalOpen(true)}
+      canPlaceClan={canPlaceClan}
+    />
+  );
+
+  const mySeatPanel = (
+    <MySeat
+      uid={uid}
+      name={myName}
+      seat={mySeat}
+      connected={me?.connected ?? false}
+      isBoss={publicState.bossUid === uid}
+      isHost={uid === hostUid}
+      investors={myInvestors}
+      onVacation={publicState.onVacation}
+      money={privateState.money}
+      moneyDelta={compact ? null : moneyDelta}
+      moneyDeltaKey={moneyDeltaKey}
+    />
+  );
+
+  const hand = (
+    <HandFan
+      cards={privateState.hand}
+      phase={publicState.phase}
+      windowOpen={publicState.window !== null}
+      neededColors={neededColors}
+      layout={compact ? 'grid' : 'fan'}
+    />
+  );
+
+  const actionButtons = (
+    <div className="table-actions">
+      <Button
+        variant="light"
+        className="table-btn"
+        data-testid="offer-open"
+        disabled={!canOffer || pendingAction !== null}
+        title={offerDisabledTitle}
+        onClick={() => setOfferModalOpen(true)}
+      >
+        {th.game.table.offer}
+      </Button>
+      <Button
+        variant="dark"
+        className="table-btn"
+        data-testid="play-card-open"
+        disabled={!canPlayCard || pendingAction !== null}
+        title={playDisabledTitle ?? th.game.table.playHint}
+        onClick={() => setActionModalOpen(true)}
+      >
+        {th.game.table.playCard}
+      </Button>
+      <Button
+        variant="light"
+        className="table-btn"
+        data-testid="table-pass"
+        disabled={!canPass || pendingAction !== null}
+        title={passDisabledTitle}
+        onClick={handlePassWindow}
+      >
+        {pendingAction === 'pass' && (
+          <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+        )}
+        {hasPassedWindow ? th.game.table.interrupt.passed : th.game.table.interrupt.pass}
+      </Button>
+    </div>
+  );
+
+  const others = [
+    ...(layout.left ? [layout.left] : []),
+    ...layout.top,
+    ...(layout.right ? [layout.right] : []),
+  ];
+
   return (
     <>
       {publicState.window && (
@@ -430,140 +525,131 @@ export function TableScreen({
         />
       )}
 
-      <div className="table-felt">
-        <div className="table-layout">
-          {hasTop && (
-            <div
-              className="table-top-seats"
-              style={{
-                gridColumn: 2,
-                gridRow: 1,
-                gridTemplateColumns:
-                  layout.top.length === 1
-                    ? 'minmax(0, 320px)'
-                    : `repeat(${layout.top.length}, minmax(0, 1fr))`,
-              }}
-            >
-              {layout.top.map((entry) => renderSeat(entry, 'top'))}
-            </div>
-          )}
+      {compact ? (
+        <div className="mtable" data-testid="compact-table">
+          <section
+            className="mtable-players"
+            aria-label={th.game.table.compact.playersAria}
+            data-testid="player-strip"
+          >
+            {others.length > 0 ? (
+              others.map((entry) => renderSeat(entry, 'strip'))
+            ) : (
+              <p className="table-empty-note">{th.game.table.compact.noOthers}</p>
+            )}
+          </section>
 
-          <aside className="table-side table-side-left" style={{ gridColumn: 1, gridRow: mainRow }}>
-            {layout.left && renderSeat(layout.left, 'side')}
+          <MiniBoardMap
+            closedTiles={closedTiles}
+            pawnSpace={publicState.pawnSpace}
+            onOpen={() => setBoardSheetOpen(true)}
+          />
+
+          <div className="mtable-deal">{dealPanel}</div>
+
+          <section className="mtable-info" aria-label={th.game.table.compact.tableInfo}>
             <UnclaimedPanel
               colors={publicState.unclaimedInvestors}
               onVacation={publicState.onVacation}
             />
             <DeckPanel deckCount={publicState.deckCount} discardCount={publicState.discardCount} />
-          </aside>
-
-          <div className="table-board-wrap" style={{ gridColumn: 2, gridRow: mainRow }}>
-            <DealBoard closedSpaces={closedTiles} pawnSpace={publicState.pawnSpace}>
-              <DealPanel
-                uid={uid}
-                players={players}
-                publicState={publicState}
-                privateState={privateState}
-                pendingAction={pendingAction}
-                exclusions={exclusions}
-                onToggleExclusion={handleToggleExclusion}
-                onOpenDeal={handleOpenDeal}
-                onFailDeal={handleFailDeal}
-                onRollDice={handleRollDice}
-                onDrawCards={handleDrawCards}
-                onPickStart={handlePickStart}
-                onLockDeal={handleLockDeal}
-                onPlaceClan={() => setClanModalOpen(true)}
-                canPlaceClan={canPlaceClan}
-              />
-            </DealBoard>
-          </div>
-
-          <aside
-            className="table-side table-side-right"
-            style={{ gridColumn: 3, gridRow: mainRow }}
-          >
-            {layout.right && renderSeat(layout.right, 'side')}
             <GameLog events={publicState.log} players={players} />
-          </aside>
+          </section>
+
+          <HandDock
+            handCount={privateState.hand.length}
+            money={privateState.money}
+            moneyDelta={moneyDelta}
+            moneyDeltaKey={moneyDeltaKey}
+            seat={mySeatPanel}
+            hand={hand}
+            actions={actionButtons}
+          />
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="table-felt">
+            <div className="table-layout">
+              {hasTop && (
+                <div
+                  className="table-top-seats"
+                  style={{
+                    gridColumn: 2,
+                    gridRow: 1,
+                    gridTemplateColumns:
+                      layout.top.length === 1
+                        ? 'minmax(0, 320px)'
+                        : `repeat(${layout.top.length}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {layout.top.map((entry) => renderSeat(entry, 'top'))}
+                </div>
+              )}
 
-      <section className="table-mine">
-        <MySeat
-          uid={uid}
-          name={myName}
-          seat={mySeat}
-          connected={me?.connected ?? false}
-          isBoss={publicState.bossUid === uid}
-          isHost={uid === hostUid}
-          investors={myInvestors}
-          onVacation={publicState.onVacation}
-          money={privateState.money}
-          moneyDelta={moneyDelta}
-          moneyDeltaKey={moneyDeltaKey}
-        />
+              <aside
+                className="table-side table-side-left"
+                style={{ gridColumn: 1, gridRow: mainRow }}
+              >
+                {layout.left && renderSeat(layout.left, 'side')}
+                <UnclaimedPanel
+                  colors={publicState.unclaimedInvestors}
+                  onVacation={publicState.onVacation}
+                />
+                <DeckPanel
+                  deckCount={publicState.deckCount}
+                  discardCount={publicState.discardCount}
+                />
+              </aside>
 
-        <HandFan
-          cards={privateState.hand}
-          phase={publicState.phase}
-          windowOpen={publicState.window !== null}
-          neededColors={neededColors}
-        />
+              <div className="table-board-wrap" style={{ gridColumn: 2, gridRow: mainRow }}>
+                <DealBoard closedSpaces={closedTiles} pawnSpace={publicState.pawnSpace}>
+                  {dealPanel}
+                </DealBoard>
+              </div>
 
-        <div className="table-lip" aria-hidden="true">
-          <div className="table-lip-head">
-            <strong>{th.game.table.handTitle}</strong>
-            <span>
-              {tableReplace(th.game.table.handSlots, {
-                count: privateState.hand.length,
-              })}
-            </span>
+              <aside
+                className="table-side table-side-right"
+                style={{ gridColumn: 3, gridRow: mainRow }}
+              >
+                {layout.right && renderSeat(layout.right, 'side')}
+                <GameLog events={publicState.log} players={players} />
+              </aside>
+            </div>
           </div>
-          <div className="table-slots">
-            {Array.from({ length: HAND_LIMIT }, (_, index) => (
-              <i key={index} className={index < privateState.hand.length ? 'is-filled' : ''} />
-            ))}
-          </div>
-          <small>{th.game.table.handHint}</small>
-        </div>
 
-        <div className="table-actions">
-          <Button
-            variant="light"
-            className="table-btn"
-            data-testid="offer-open"
-            disabled={!canOffer || pendingAction !== null}
-            title={offerDisabledTitle}
-            onClick={() => setOfferModalOpen(true)}
-          >
-            {th.game.table.offer}
-          </Button>
-          <Button
-            variant="dark"
-            className="table-btn"
-            data-testid="play-card-open"
-            disabled={!canPlayCard || pendingAction !== null}
-            title={playDisabledTitle ?? th.game.table.playHint}
-            onClick={() => setActionModalOpen(true)}
-          >
-            {th.game.table.playCard}
-          </Button>
-          <Button
-            variant="light"
-            className="table-btn"
-            data-testid="table-pass"
-            disabled={!canPass || pendingAction !== null}
-            title={passDisabledTitle}
-            onClick={handlePassWindow}
-          >
-            {pendingAction === 'pass' && (
-              <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-            )}
-            {hasPassedWindow ? th.game.table.interrupt.passed : th.game.table.interrupt.pass}
-          </Button>
-        </div>
-      </section>
+          <section className="table-mine">
+            {mySeatPanel}
+            {hand}
+
+            <div className="table-lip" aria-hidden="true">
+              <div className="table-lip-head">
+                <strong>{th.game.table.handTitle}</strong>
+                <span>
+                  {tableReplace(th.game.table.handSlots, {
+                    count: privateState.hand.length,
+                  })}
+                </span>
+              </div>
+              <div className="table-slots">
+                {Array.from({ length: HAND_LIMIT }, (_, index) => (
+                  <i key={index} className={index < privateState.hand.length ? 'is-filled' : ''} />
+                ))}
+              </div>
+              <small>{th.game.table.handHint}</small>
+            </div>
+
+            {actionButtons}
+          </section>
+        </>
+      )}
+
+      {compact && boardSheetOpen && (
+        <BoardSheet
+          closedTiles={closedTiles}
+          pawnSpace={publicState.pawnSpace}
+          onClose={() => setBoardSheetOpen(false)}
+        />
+      )}
 
       {offerModalOpen &&
         deal &&

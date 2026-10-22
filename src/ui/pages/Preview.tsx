@@ -230,7 +230,7 @@ function roomPlayersFromState(state: FullGameState): RoomPlayers {
 
 function PreviewToolbar({ wide = false }: { wide?: boolean }) {
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper">
+    <header className="sticky top-0 z-40 max-md:static border-b-2 border-ink bg-paper">
       <div
         className={`mx-auto flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 ${
           wide ? 'max-w-[1520px]' : 'max-w-[1240px]'
