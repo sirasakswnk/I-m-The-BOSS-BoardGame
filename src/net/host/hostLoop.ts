@@ -29,7 +29,6 @@ const ACTION_TYPES: ReadonlySet<string> = new Set([
   'JOIN',
   'LEAVE',
   'START_GAME',
-  'SET_START_SPACE',
   'ROLL_DICE',
   'OPEN_DEAL',
   'DRAW_CARDS',

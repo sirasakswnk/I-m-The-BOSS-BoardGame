@@ -30,8 +30,6 @@ export function formatLogEvent(event: GameEvent, players: RoomPlayers): string {
         name: name(event.uid),
         turn: event.turnNumber,
       });
-    case 'startSpacePicked':
-      return fill(log.startSpacePicked, { name: name(event.uid), space: event.space });
     case 'dealOpened':
       return fill(log.dealOpened, {
         name: name(event.uid),

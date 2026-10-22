@@ -53,15 +53,6 @@ export function requirePhase(state: FullGameState, ...phases: FullGameState['pha
   if (!phases.includes(state.phase)) reject('WRONG_PHASE');
 }
 
-/**
- * Only the opening turn may open the deal at the chosen start space without
- * rolling. Every later turn starts with a forced dice roll, so a closed deal
- * cannot be chained straight into the next space.
- */
-export function isOpeningTurn(state: Pick<FullGameState, 'turnNumber' | 'dealsClosed'>): boolean {
-  return state.turnNumber === 1 && state.dealsClosed === 0;
-}
-
 export function requireBoss(state: FullGameState, uid: string): PlayerState {
   const player = requirePlayer(state, uid);
   if (state.bossUid !== uid) reject('NOT_BOSS');
@@ -82,13 +73,6 @@ export function leftOf(state: FullGameState, uid: string): PlayerState {
   const index = players.findIndex((player) => player.uid === uid);
   if (index < 0) reject('PLAYER_NOT_FOUND');
   return players[(index + 1) % players.length];
-}
-
-export function rightOf(state: FullGameState, uid: string): PlayerState {
-  const players = orderedPlayers(state);
-  const index = players.findIndex((player) => player.uid === uid);
-  if (index < 0) reject('PLAYER_NOT_FOUND');
-  return players[(index - 1 + players.length) % players.length];
 }
 
 /* ------------------------------------------------------------------ */

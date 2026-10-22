@@ -353,16 +353,16 @@ describe('actions', () => {
     await assertSucceeds(
       set(actionRef, {
         uid: 'p1',
-        type: 'SET_START_SPACE',
-        payload: { space: 1 },
+        type: 'ROLL_DICE',
+        payload: {},
         ts: NOW,
       }),
     );
     await assertFails(
       set(ref(dbFor('p1'), `rooms/${ROOM}/actions/a2`), {
         uid: 'p2',
-        type: 'SET_START_SPACE',
-        payload: { space: 2 },
+        type: 'ROLL_DICE',
+        payload: {},
         ts: NOW,
       }),
     );

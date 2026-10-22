@@ -4,7 +4,6 @@ import type { ClanCard, InfluenceCard, InfluenceCardKind } from './config/influe
 
 export type Phase =
   | 'lobby'
-  | 'setupPickStart'
   | 'turnStart'
   | 'afterMove'
   | 'dealOpen'
@@ -87,8 +86,7 @@ export interface FullGameState {
   turnNumber: number;
   /** Current turn owner at TURN_START, and current boss while a deal is open. */
   bossUid: string | null;
-  startPickerUid: string | null;
-  /** 0 until the start space has been picked. */
+  /** Starts at 1 and moves clockwise around the 16-space board. */
   pawnSpace: number;
   closedSpaces: number[];
   dealsClosed: number;
@@ -113,7 +111,6 @@ export type GameAction =
   | { type: 'JOIN'; uid: string; name: string; ts?: number }
   | { type: 'LEAVE'; uid: string; ts?: number }
   | { type: 'START_GAME'; uid: string; ts?: number }
-  | { type: 'SET_START_SPACE'; uid: string; space: number; ts?: number }
   | { type: 'ROLL_DICE'; uid: string; ts?: number }
   | {
       type: 'OPEN_DEAL';
@@ -167,13 +164,11 @@ export type GameEvent =
       type: 'gameStarted';
       playerCount: number;
       firstUid: string;
-      pickerUid: string;
     })
   | (BaseEvent & { type: 'playerJoined'; uid: string; name: string; seat: number })
   | (BaseEvent & { type: 'playerLeft'; uid: string })
   | (BaseEvent & { type: 'seatReassigned'; uid: string; seat: number })
   | (BaseEvent & { type: 'turnStarted'; uid: string; turnNumber: number })
-  | (BaseEvent & { type: 'startSpacePicked'; uid: string; space: number })
   | (BaseEvent & {
       type: 'dealOpened';
       uid: string;
@@ -271,7 +266,6 @@ export interface PublicState {
   phase: Phase;
   turnNumber: number;
   bossUid: string | null;
-  startPickerUid: string | null;
   pawnSpace: number;
   closedSpaces: number[];
   dealsClosed: number;
@@ -311,7 +305,6 @@ export type RejectReason =
   | 'WRONG_PHASE'
   | 'NOT_YOUR_TURN'
   | 'NOT_BOSS'
-  | 'NOT_START_PICKER'
   | 'INVALID_SPACE'
   | 'SPACE_CLOSED'
   | 'DEAL_ALREADY_OPEN'

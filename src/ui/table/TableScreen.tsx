@@ -212,11 +212,6 @@ export function TableScreen({
     }
   }
 
-  function handlePickStart(space: number): void {
-    if (publicState.startPickerUid !== uid) return;
-    void act(`start:${space}`, { type: 'SET_START_SPACE', space });
-  }
-
   function handleToggleExclusion(color: FamilyColor): void {
     setExclusions((current) =>
       current.includes(color) ? current.filter((item) => item !== color) : [...current, color],
@@ -522,7 +517,6 @@ export function TableScreen({
       onFailDeal={handleFailDeal}
       onRollDice={handleRollDice}
       onDrawCards={handleDrawCards}
-      onPickStart={handlePickStart}
       onLockDeal={handleLockDeal}
       onPlaceClan={() => setClanModalOpen(true)}
       canPlaceClan={canPlaceClan}

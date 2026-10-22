@@ -122,7 +122,8 @@ test('phone table: the boss can roll, draw and open a deal with large buttons', 
   page,
 }) => {
   await page.goto('/preview/game');
-  await expectTouchTargets(page, ['roll-dice', 'open-deal']);
+  await expectTouchTargets(page, ['roll-dice']);
+  await expect(page.getByTestId('open-deal')).toHaveCount(0);
 
   await page.getByTestId('roll-dice').click();
   await expect(page.getByTestId('game-room')).toContainText('หลังทอยเต๋า');
@@ -139,16 +140,14 @@ test('phone table: the boss can roll, draw and open a deal with large buttons', 
   await expectNoHorizontalScroll(page, 'after failing the deal');
 });
 
-test('start picker uses touch-sized space buttons', async ({ page }) => {
+test('first turn starts on space 1 and only offers the forced roll', async ({ page }) => {
   await page.goto('/preview/setup');
-  await expect(page.getByTestId('start-space-1')).toBeVisible();
-  const spaces = await page
-    .locator('[data-testid^="start-space-"]')
-    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
-  expect(spaces).toHaveLength(16);
-  for (const height of spaces) expect(height).toBeGreaterThanOrEqual(TOUCH_TARGET_PX);
-  await page.getByTestId('start-space-5').click();
   await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
+  await expect(page.getByTestId('game-room')).toContainText('เทิร์น 1');
+  await expect(page.getByTestId('game-room')).toContainText('หมากอยู่ช่อง 1');
+  await expectTouchTargets(page, ['roll-dice']);
+  await expect(page.getByTestId('open-deal')).toHaveCount(0);
+  await expect(page.getByTestId('start-space-1')).toHaveCount(0);
 });
 
 test('tablet width keeps the compact table and no sideways scroll', async ({ page }) => {

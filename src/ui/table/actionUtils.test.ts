@@ -51,7 +51,6 @@ function makeState(overrides: Partial<PublicState> = {}): PublicState {
     phase: 'dealOpen',
     turnNumber: 1,
     bossUid: 'boss',
-    startPickerUid: null,
     pawnSpace: 1,
     closedSpaces: [],
     dealsClosed: 0,

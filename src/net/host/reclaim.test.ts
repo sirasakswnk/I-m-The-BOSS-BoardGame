@@ -18,7 +18,6 @@ function startedState(): FullGameState {
   );
   if ('error' in result) throw new Error(result.error);
   result.state.bossUid = 'p2';
-  result.state.startPickerUid = 'p3';
   result.state.log.push({ type: 'bossSkipped', uid: 'p2', at: 1_000 });
   result.state.finalScores = { p1: 3, p2: 7, p3: 2 };
   result.state.deal = {

@@ -898,66 +898,6 @@
   min-width: 0;
 }
 
-.table-start-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  margin-top: 3px;
-}
-
-.table-start-space {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  height: 42px;
-  overflow: hidden;
-  border: 1.5px solid var(--ink);
-  border-radius: 8px;
-  background: var(--white);
-  color: var(--ink);
-  font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: 0 2px 0 var(--ink);
-}
-
-.table-start-space::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 5px;
-  background: var(--st, var(--line));
-  border-bottom: 1px solid rgba(29, 27, 46, 0.35);
-}
-
-.table-start-space:hover:not(:disabled) {
-  background: var(--gold);
-}
-
-.table-start-space:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: none;
-}
-
-.table-start-space:disabled {
-  cursor: wait;
-  opacity: 0.55;
-}
-
-.table-start-space-index {
-  margin-top: 3px;
-}
-
-.table-start-space-dividends {
-  margin-top: 3px;
-  color: var(--ink-soft);
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 9px;
-  font-weight: 600;
-}
-
 .table-exclusions {
   display: flex;
   flex-direction: column;
@@ -4700,15 +4640,6 @@ button.table-family-chip:hover:not(:disabled) {
 .mtable-deal .table-turn-actions .table-btn {
   min-height: 48px;
   height: auto;
-}
-
-.mtable-deal .table-start-grid {
-  gap: 6px;
-}
-
-.mtable-deal .table-start-space {
-  height: 48px;
-  font-size: 16px;
 }
 
 .mtable-info {

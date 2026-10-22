@@ -168,35 +168,21 @@ describe('drawing cards', () => {
 });
 
 describe('opening a deal', () => {
-  it('opens the opening deal at the chosen start space on turn 1', () => {
+  it('forces a roll before opening on turn 1 and every later turn', () => {
     const state = startGame(3, 31);
     const boss = state.bossUid;
     if (!boss) throw new Error('no boss');
-    state.pawnSpace = 6;
+    expect(state.phase).toBe('turnStart');
+    expect(state.pawnSpace).toBe(1);
+    expect(rejected(state, { type: 'OPEN_DEAL', uid: boss }, 3000)).toBe('WRONG_PHASE');
 
-    const result = ok(state, { type: 'OPEN_DEAL', uid: boss }, 3000);
-    expect(result.state.phase).toBe('dealOpen');
-    expect(result.state.deal?.space).toBe(6);
-    expect(result.state.deal?.tileNumber).toBe(1);
-    expect(result.state.deal?.requirements.dividends).toBe(4);
-    expect(result.events.some((event) => event.type === 'dealOpened')).toBe(true);
-  });
-
-  it('forces a roll before opening on every turn after the opening turn', () => {
-    const state = startGame(3, 36);
-    const boss = state.bossUid;
-    if (!boss) throw new Error('no boss');
-    state.phase = 'turnStart';
     state.turnNumber = 2;
     state.dealsClosed = 1;
-    state.pawnSpace = 6;
-
+    arrangeTurn(state, boss, 6);
     expect(rejected(state, { type: 'OPEN_DEAL', uid: boss }, 3000)).toBe('WRONG_PHASE');
 
     const rolled = ok(state, { type: 'ROLL_DICE', uid: boss }, 3000).state;
     expect(rolled.phase).toBe('afterMove');
-    const opened = ok(rolled, { type: 'OPEN_DEAL', uid: boss }, 3000).state;
-    expect(opened.phase).toBe('dealOpen');
   });
 
   it('opens at the new space after a move', () => {
@@ -259,7 +245,8 @@ describe('lobby', () => {
     );
 
     state = ok(state, { type: 'START_GAME', uid: 'p1' }, 2000).state;
-    expect(state.phase).toBe('setupPickStart');
+    expect(state.phase).toBe('turnStart');
+    expect(state.pawnSpace).toBe(1);
     expect(state.players).toHaveLength(3);
   });
 

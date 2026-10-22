@@ -123,10 +123,12 @@ describe('endgame integration', () => {
   it('rematches into a fresh game', () => {
     const finished = gameAtTenDeals(137, 1);
     const rematched = ok(finished, { type: 'REMATCH', uid: 'p2' }, 6000).state;
-    expect(rematched.phase).toBe('setupPickStart');
+    expect(rematched.phase).toBe('turnStart');
+    expect(rematched.turnNumber).toBe(1);
     expect(rematched.dealsClosed).toBe(0);
     expect(rematched.closedSpaces).toEqual([]);
-    expect(rematched.pawnSpace).toBe(0);
+    expect(rematched.pawnSpace).toBe(1);
+    expect(rematched.bossUid).not.toBeNull();
     expect(rematched.finalScores).toBeNull();
     expect(rematched.deal).toBeNull();
     expect(rematched.players).toHaveLength(4);

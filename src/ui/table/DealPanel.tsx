@@ -1,10 +1,7 @@
 import { Handshake, Loader2 } from 'lucide-react';
-import type { CSSProperties } from 'react';
 
-import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
 import type { FamilyColor } from '@/engine/config/families';
 import type { PrivateState, PublicState } from '@/engine/types';
-import { isOpeningTurn } from '@/engine/validators';
 import { th } from '@/i18n/th';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { Button } from '@/ui/common/Button';
@@ -24,7 +21,6 @@ import {
   getOverfilledGroups,
   getPlayerName,
   getRemainingExclusionNeed,
-  getSpaceStripe,
   isDealComplete,
   isExclusionPlanValid,
 } from './tableUtils';
@@ -41,7 +37,6 @@ interface DealPanelProps {
   onFailDeal: () => void;
   onRollDice: () => void;
   onDrawCards: () => void;
-  onPickStart: (space: number) => void;
   onLockDeal: () => void;
   onPlaceClan: () => void;
   canPlaceClan: boolean;
@@ -68,54 +63,6 @@ function LoadingLabel({ loading, label }: { loading: boolean; label: string }) {
 
 function phaseLabel(publicState: PublicState): string {
   return th.game.phases[publicState.phase];
-}
-
-function StartPickerPanel({
-  uid,
-  players,
-  publicState,
-  pendingAction,
-  onPickStart,
-}: Pick<DealPanelProps, 'uid' | 'players' | 'publicState' | 'pendingAction' | 'onPickStart'>) {
-  const canPick = publicState.startPickerUid === uid;
-  const pickerName = getPlayerName(players, publicState.startPickerUid);
-
-  return (
-    <div className="table-deal-body">
-      <p className="table-deal-eyebrow">{phaseLabel(publicState)}</p>
-      <h2>{th.game.startSpaceTitle}</h2>
-      {canPick ? (
-        <>
-          <p className="table-deal-copy">{th.game.startSpaceDescription}</p>
-          <div className="table-start-grid" role="group" aria-label={th.game.startSpaceTitle}>
-            {DEAL_BOARD_SPACES.map((space) => {
-              const loading = pendingAction === `start:${space.index}`;
-              return (
-                <button
-                  key={space.index}
-                  type="button"
-                  className="table-start-space"
-                  style={{ '--st': getSpaceStripe(space) } as CSSProperties}
-                  data-testid={`start-space-${space.index}`}
-                  disabled={pendingAction !== null}
-                  aria-label={text(th.game.startSpaceButton, { space: space.index })}
-                  onClick={() => onPickStart(space.index)}
-                >
-                  <span className="table-start-space-index">{space.index}</span>
-                  <span className="table-start-space-dividends">×{space.dividends}</span>
-                  {loading && <Loader2 size={14} className="animate-spin" />}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        <p className="table-deal-waiting">
-          {text(th.game.startSpaceWaiting, { name: pickerName })}
-        </p>
-      )}
-    </div>
-  );
 }
 
 function ExclusionPicker({
@@ -222,15 +169,10 @@ function TurnPanel({
       : [];
   const dice = diceRolling ? null : (publicState.lastDice?.[0] ?? null);
   const isAfterMove = publicState.phase === 'afterMove';
-  const openingTurn = isOpeningTurn(publicState);
-  // After the opening turn, every turn must roll before a deal can be opened.
-  const canOpenNow = isAfterMove || (publicState.phase === 'turnStart' && openingTurn);
+  // Every turn, including turn 1, must roll before a deal can be opened.
+  const canOpenNow = isAfterMove;
   const canOpen = canOpenNow && space ? isExclusionPlanValid(space, autoJoin, exclusions) : false;
-  const hint = isAfterMove
-    ? th.game.table.openDealHint
-    : openingTurn
-      ? th.game.table.openingTurnHint
-      : th.game.table.rollFirstHint;
+  const hint = isAfterMove ? th.game.table.openDealHint : th.game.table.rollFirstHint;
   const title =
     publicState.phase === 'afterMove' ? th.game.table.afterMoveTitle : th.game.table.turnTitle;
 
@@ -640,7 +582,6 @@ export function DealPanel({
   onFailDeal,
   onRollDice,
   onDrawCards,
-  onPickStart,
   onLockDeal,
   onPlaceClan,
   canPlaceClan,
@@ -652,15 +593,6 @@ export function DealPanel({
       data-testid="deal-panel"
       aria-label={th.game.table.dealPanelAria}
     >
-      {publicState.phase === 'setupPickStart' && (
-        <StartPickerPanel
-          uid={uid}
-          players={players}
-          publicState={publicState}
-          pendingAction={pendingAction}
-          onPickStart={onPickStart}
-        />
-      )}
       {(publicState.phase === 'turnStart' || publicState.phase === 'afterMove') && (
         <TurnPanel
           uid={uid}

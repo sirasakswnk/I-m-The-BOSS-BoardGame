@@ -1,5 +1,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
+import { getDealSpace } from '../src/engine/config/dealBoard';
+import { getDealTile } from '../src/engine/config/dealTiles';
+
 async function openHome(page: Page, nickname: string) {
   await page.goto('/');
   await page.getByTestId('nickname-input').fill(nickname);
@@ -26,10 +29,7 @@ async function joinFromInvite(page: Page, code: string, nickname: string) {
   await expect(page.getByTestId('lobby')).toBeVisible();
 }
 
-async function startThreePlayerGame(
-  browser: Browser,
-  startSpace = 1,
-): Promise<{
+async function startThreePlayerGame(browser: Browser): Promise<{
   code: string;
   pages: Page[];
   close: () => Promise<void>;
@@ -51,19 +51,6 @@ async function startThreePlayerGame(
   for (const page of pages) {
     await expect(page.getByTestId('game-room')).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(5);
-  }
-
-  let picker: Page | null = null;
-  for (const page of pages) {
-    if (await page.getByTestId(`start-space-${startSpace}`).isVisible()) {
-      picker = page;
-      break;
-    }
-  }
-  expect(picker).not.toBeNull();
-  await picker!.getByTestId(`start-space-${startSpace}`).click();
-
-  for (const page of pages) {
     await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น', {
       timeout: 20_000,
     });
@@ -88,6 +75,12 @@ async function findBossPage(pages: Page[]): Promise<Page> {
 }
 
 async function openDeal(page: Page): Promise<void> {
+  const roll = page.getByTestId('roll-dice');
+  if (await roll.isVisible()) {
+    await roll.click();
+    await expect(page.getByTestId('draw-cards')).toBeVisible({ timeout: 20_000 });
+  }
+
   const openButton = page.getByTestId('open-deal');
   await expect(openButton).toBeVisible();
 
@@ -236,7 +229,7 @@ async function throttleNetwork(page: Page, latency: number) {
   return session;
 }
 
-test('empty turn: boss opens a deal, fails it and the turn ends', async ({ browser }) => {
+test('empty turn: the first boss must roll, then opens and fails a deal', async ({ browser }) => {
   const game = await startThreePlayerGame(browser);
   try {
     const host = game.pages[0];
@@ -245,6 +238,7 @@ test('empty turn: boss opens a deal, fails it and the turn ends', async ({ brows
     await host.getByTestId('how-to-play-trigger').click();
     await expect(host.getByTestId('how-to-play')).toBeVisible();
     await expect(host.getByTestId('how-to-play')).toContainText('วิธีเล่นโต๊ะเจรจาดีล');
+    await expect(host.getByTestId('how-to-play')).toContainText('ระบบสุ่มผู้เล่นคนแรก');
     await host.getByRole('button', { name: 'เข้าใจแล้ว กลับไปโต๊ะ' }).click();
     await expect(host.getByTestId('how-to-play')).toHaveCount(0);
 
@@ -257,6 +251,12 @@ test('empty turn: boss opens a deal, fails it and the turn ends', async ({ brows
     await expect(sound).toHaveAttribute('aria-pressed', 'false');
 
     const boss = await findBossPage(game.pages);
+    // Turn 1 starts on space 1 and the boss cannot open a deal yet.
+    await expect(boss.getByTestId('game-room')).toContainText('เทิร์น 1');
+    await expect(boss.getByTestId('open-deal')).toHaveCount(0);
+    await expect(boss.getByTestId('roll-dice')).toBeVisible();
+    await expect(boss.getByTestId('deal-panel')).toContainText('ทอยเต๋าก่อน');
+
     await openDeal(boss);
     await boss.getByTestId('fail-deal').click();
     await expect(boss.getByTestId('game-log')).toContainText('ล้มดีลช่อง', {
@@ -268,15 +268,26 @@ test('empty turn: boss opens a deal, fails it and the turn ends', async ({ brows
 });
 
 test('three players close the first deal with table offers', async ({ browser }) => {
-  const game = await startThreePlayerGame(browser, 3);
+  const game = await startThreePlayerGame(browser);
   try {
     const boss = await findBossPage(game.pages);
     await openDeal(boss);
 
-    const requiredColors = ['red', 'blue', 'black'];
+    const title = await boss.getByTestId('deal-panel').locator('h2').innerText();
+    const space = Number(/ดีลช่อง\s+(\d+)/.exec(title)?.[1]);
+    expect(Number.isInteger(space) && space > 0).toBe(true);
+    const requirements = getDealSpace(space);
+    const value = getDealTile(1).valuePerDividend;
+
     const bossColors = await myInvestorColors(boss);
-    const missingColors = requiredColors.filter((color) => !bossColors.includes(color));
-    expect(missingColors.length).toBeGreaterThan(0);
+    const missingColors: string[] = [];
+    for (const group of requirements.groups) {
+      const bossCount = group.colors.filter((color) => bossColors.includes(color)).length;
+      const needed = Math.max(0, group.pick - bossCount);
+      missingColors.push(
+        ...group.colors.filter((color) => !bossColors.includes(color)).slice(0, needed),
+      );
+    }
 
     const offeredByPage = new Map<Page, number>();
     for (const color of missingColors) {
@@ -295,25 +306,27 @@ test('three players close the first deal with table offers', async ({ browser })
       offeredByPage.set(owner!, (offeredByPage.get(owner!) ?? 0) + 1);
     }
 
-    await expect(boss.getByTestId('deal-capacity')).toHaveText('รับแล้ว 0/4 ส่วน');
+    await expect(boss.getByTestId('deal-capacity')).toHaveText(
+      `รับแล้ว 0/${requirements.dividends} ส่วน`,
+    );
     for (const color of missingColors) {
       await acceptOffer(boss, color);
     }
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
-      `รับแล้ว ${missingColors.length}/4 ส่วน`,
+      `รับแล้ว ${missingColors.length}/${requirements.dividends} ส่วน`,
     );
-    const firstColor = missingColors[0];
-    await boss.getByTestId(`unaccept-offer-${firstColor}`).click();
-    await expect(
-      boss.locator(`[data-testid^="accept-offer-"][data-offer-color="${firstColor}"]`),
-    ).toBeVisible({ timeout: 20_000 });
-    await expect(boss.getByTestId('deal-capacity')).toHaveText(
-      `รับแล้ว ${missingColors.length - 1}/4 ส่วน`,
-    );
-    await acceptOffer(boss, firstColor);
-    await expect(boss.getByTestId('deal-capacity')).toHaveText(
-      `รับแล้ว ${missingColors.length}/4 ส่วน`,
-    );
+
+    if (missingColors.length > 0) {
+      const firstColor = missingColors[0];
+      await boss.getByTestId(`unaccept-offer-${firstColor}`).click();
+      await expect(
+        boss.locator(`[data-testid^="accept-offer-"][data-offer-color="${firstColor}"]`),
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(boss.getByTestId('deal-capacity')).toHaveText(
+        `รับแล้ว ${missingColors.length - 1}/${requirements.dividends} ส่วน`,
+      );
+      await acceptOffer(boss, firstColor);
+    }
 
     const lock = boss.getByTestId('lock-deal');
     await expect(lock).toBeEnabled();
@@ -333,17 +346,17 @@ test('three players close the first deal with table offers', async ({ browser })
     await expect(boss.getByTestId('interrupt-bar')).toBeVisible({
       timeout: 20_000,
     });
-    await expect(boss.getByTestId('game-log')).toContainText('ปิดดีลช่อง 3', {
+    await expect(boss.getByTestId('game-log')).toContainText(`ปิดดีลช่อง ${space}`, {
       timeout: 30_000,
     });
 
-    const bossShare = (4 - missingColors.length) * 2;
+    const bossShare = (requirements.dividends - missingColors.length) * value;
     await expect(boss.getByTestId('my-money')).toHaveText(`${bossShare} ล้าน`, {
       timeout: 20_000,
     });
     await expect(boss.getByTestId('money-delta')).toBeVisible();
     for (const [page, count] of offeredByPage) {
-      await expect(page.getByTestId('my-money')).toHaveText(`${count * 2} ล้าน`, {
+      await expect(page.getByTestId('my-money')).toHaveText(`${count * value} ล้าน`, {
         timeout: 20_000,
       });
       await expect(page.getByTestId('money-delta')).toBeVisible();
@@ -499,7 +512,7 @@ test('dice turn: boss rolls, draws three cards and finishes the turn', async ({ 
 
 test('closing the host tab migrates the host and keeps the table state', async ({ browser }) => {
   test.setTimeout(90_000);
-  const game = await startThreePlayerGame(browser, 1);
+  const game = await startThreePlayerGame(browser);
   const [host, guest] = game.pages;
 
   try {
@@ -538,7 +551,7 @@ test('closing the host tab migrates the host and keeps the table state', async (
 
 test('a new browser can reclaim a disconnected seat after host approval', async ({ browser }) => {
   test.setTimeout(90_000);
-  const game = await startThreePlayerGame(browser, 1);
+  const game = await startThreePlayerGame(browser);
   const [host, , third] = game.pages;
   let replacementContext: Awaited<ReturnType<Browser['newContext']>> | null = null;
 

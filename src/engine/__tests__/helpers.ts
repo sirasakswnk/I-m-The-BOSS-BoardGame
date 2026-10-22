@@ -34,13 +34,9 @@ export function rejected(state: FullGameState, action: GameAction, now: number):
   return result.error;
 }
 
-/** Starts a game and lets the start picker choose space 1. */
+/** Starts a game at turn 1 with the pawn on space 1. */
 export function startGame(playerCount = 3, seed = 1): FullGameState {
-  let state = ok(makeLobby(playerCount, seed), { type: 'START_GAME', uid: 'p1' }, 1000).state;
-  const picker = state.startPickerUid;
-  if (!picker) throw new Error('No start picker');
-  state = ok(state, { type: 'SET_START_SPACE', uid: picker, space: 1 }, 2000).state;
-  return state;
+  return ok(makeLobby(playerCount, seed), { type: 'START_GAME', uid: 'p1' }, 1000).state;
 }
 
 export function getPlayer(state: FullGameState, uid: string): PlayerState {
@@ -73,7 +69,6 @@ export function arrangeTurn(state: FullGameState, uid: string, space: number): v
   state.phase = 'turnStart';
   state.bossUid = uid;
   state.pawnSpace = space;
-  state.startPickerUid = null;
   state.deal = null;
   state.window = null;
   state.pendingCards = [];

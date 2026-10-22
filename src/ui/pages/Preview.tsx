@@ -133,7 +133,6 @@ function buildPreviewGame(): {
   gameOverDie: FullGameState;
   gameOverFifteen: FullGameState;
   bossUid: string;
-  pickerUid: string;
 } {
   const started = applyAction(
     createInitialState(66, PREVIEW_PLAYERS),
@@ -144,27 +143,13 @@ function buildPreviewGame(): {
     throw new Error(`Preview START_GAME failed: ${started.error}`);
   }
 
-  const pickerUid = started.state.startPickerUid;
-  if (!pickerUid) {
-    throw new Error('Preview START_GAME did not select a start picker');
-  }
-
-  const picked = applyAction(
-    started.state,
-    { type: 'SET_START_SPACE', uid: pickerUid, space: 7 },
-    PREVIEW_NOW + 1_000,
-  );
-  if ('error' in picked) {
-    throw new Error(`Preview SET_START_SPACE failed: ${picked.error}`);
-  }
-
-  const bossUid = picked.state.bossUid;
+  const bossUid = started.state.bossUid;
   if (!bossUid) {
-    throw new Error('Preview SET_START_SPACE did not select a boss');
+    throw new Error('Preview START_GAME did not pick a first player');
   }
 
   const rolled = applyAction(
-    picked.state,
+    started.state,
     { type: 'ROLL_DICE', uid: bossUid },
     PREVIEW_NOW + 2_000,
   );
@@ -187,24 +172,23 @@ function buildPreviewGame(): {
 
   return {
     setup: started.state,
-    turn: picked.state,
+    turn: started.state,
     afterMove: rolled.state,
     dealOpen: opened.state,
-    discard: buildDiscardState(picked.state),
-    gameOverDie: buildGameOverState(picked.state, 12, {
+    discard: buildDiscardState(started.state),
+    gameOverDie: buildGameOverState(started.state, 12, {
       [PREVIEW_HOST]: 42,
       [PREVIEW_VIEWER]: 42,
       p3: 25,
       [PREVIEW_OFFLINE]: 11,
     }),
-    gameOverFifteen: buildGameOverState(picked.state, 15, {
+    gameOverFifteen: buildGameOverState(started.state, 15, {
       [PREVIEW_HOST]: 55,
       [PREVIEW_VIEWER]: 41,
       p3: 36,
       [PREVIEW_OFFLINE]: 12,
     }),
     bossUid,
-    pickerUid,
   };
 }
 
@@ -590,12 +574,9 @@ function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
   const isEndgamePreview =
     mode === 'game' &&
     (tableState === 'discard' || tableState === 'gameOverDie' || tableState === 'gameOverFifteen');
-  const viewerUid =
-    mode === 'setup'
-      ? (state.startPickerUid ?? PREVIEW_GAME.pickerUid)
-      : isEndgamePreview
-        ? PREVIEW_HOST
-        : (state.bossUid ?? PREVIEW_GAME.bossUid);
+  const viewerUid = isEndgamePreview
+    ? PREVIEW_HOST
+    : (state.bossUid ?? PREVIEW_GAME.bossUid);
   const projected = project(state);
   const privateState = projected.private[viewerUid] ?? null;
 

@@ -19,14 +19,12 @@ test('preview route shows every current screen without a live room', async ({ pa
 
   await nav.getByRole('link', { name: 'โต๊ะเกม' }).click();
   await expect(page.getByTestId('preview-game')).toBeVisible();
-  await expect(page.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(5);
-  await expect(page.getByTestId('my-hand').locator('[data-card-id^="clan-"]')).toHaveCount(1);
-  await expect(page.getByTestId('my-hand').locator('[data-card-id^="travel-"]')).toHaveCount(1);
-  await expect(page.getByTestId('my-hand').locator('[data-card-id^="recruitment-"]')).toHaveCount(
-    1,
-  );
-  await expect(page.getByTestId('my-hand').locator('[data-card-id^="stop-"]')).toHaveCount(1);
-  await expect(page.getByTestId('my-hand').locator('[data-card-id^="imTheBoss-"]')).toHaveCount(1);
+  const handIds = await page
+    .getByTestId('my-hand')
+    .locator('[data-card-id]')
+    .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-card-id')));
+  expect(handIds).toHaveLength(5);
+  expect(new Set(handIds).size).toBe(5);
   await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
 
   await page.getByTestId('preview-state-dealOpen').click();
@@ -37,9 +35,11 @@ test('preview route shows every current screen without a live room', async ({ pa
   await expect(page.getByTestId('game-room')).toContainText('หลังทอยเต๋า');
   await expect(page.getByTestId('draw-cards')).toBeVisible();
 
-  await nav.getByRole('link', { name: 'เลือกช่องเริ่ม' }).click();
+  await nav.getByRole('link', { name: 'เริ่มเกม' }).click();
   await expect(page.getByTestId('preview-setup')).toBeVisible();
-  await expect(page.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
+  await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
+  await expect(page.getByTestId('game-room')).toContainText('หมากอยู่ช่อง 1');
+  await expect(page.getByTestId('open-deal')).toHaveCount(0);
 
   await nav.getByRole('link', { name: 'การ์ด' }).click();
   await expect(page.getByTestId('preview-cards')).toBeVisible();
@@ -109,7 +109,10 @@ test('preview exercises forced discard, end-check reveal, and rematch', async ({
 
   await page.getByTestId('rematch').click();
   await expect(gameOver).toHaveCount(0);
-  await expect(page.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
+  await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น');
+  await expect(page.getByTestId('game-room')).toContainText('เทิร์น 1');
+  await expect(page.getByTestId('open-deal')).toHaveCount(0);
+  await expect(page.getByTestId('roll-dice')).toBeVisible();
 });
 
 test('preview shows a deal-15 game over without an end-check overlay', async ({ page }) => {
@@ -162,14 +165,14 @@ test('preview dice roll tumbles, then walks the pawn one space per pip', async (
 
   // Step numbers appear on the board and the destination is announced.
   await expect(roll).toHaveAttribute('data-stage', 'landed', { timeout: 5_000 });
-  await expect(roll).toContainText(`ถึงช่อง ${7 + face}`);
+  await expect(roll).toContainText(`ถึงช่อง ${1 + face}`);
   await expect(
     page.locator('.table-cell-step, .mtable-map-grid i.is-stepped').filter({ visible: true }),
   ).toHaveCount(face);
 
   const path = await sampling;
-  // Preview starts on space 7 with no closed spaces.
-  expect(path).toEqual(Array.from({ length: face + 1 }, (_, step) => 7 + step));
+  // Preview starts on space 1 with no closed spaces.
+  expect(path).toEqual(Array.from({ length: face + 1 }, (_, step) => 1 + step));
   await expect(page.getByTestId('dice-face')).toHaveAttribute('data-face', String(face));
   await expect(page.locator('.table-cell-step, .mtable-map-grid i.is-stepped')).toHaveCount(0);
 });

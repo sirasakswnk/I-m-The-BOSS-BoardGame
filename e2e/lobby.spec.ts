@@ -70,20 +70,12 @@ test('host starts a three-player game and every player sees only their own hand'
       await expect(page.getByTestId('game-room')).toContainText('เห็นเฉพาะคุณเท่านั้น');
     }
 
-    await expect(host.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
-    await expect(guest.getByTestId('game-room')).toContainText('เลือกช่องเริ่มต้น');
-
-    for (const page of pages) {
-      if (await page.getByTestId('start-space-1').isVisible()) {
-        await page.getByTestId('start-space-1').click();
-        break;
-      }
-    }
-
     for (const page of pages) {
       await expect(page.getByTestId('game-room')).toContainText('ต้นเทิร์น', {
         timeout: 20_000,
       });
+      await expect(page.getByTestId('game-room')).toContainText('เทิร์น 1');
+      await expect(page.getByTestId('start-space-1')).toHaveCount(0);
     }
   } finally {
     await Promise.allSettled([

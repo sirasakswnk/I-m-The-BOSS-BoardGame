@@ -29,7 +29,6 @@ import {
   getAcceptedOffers,
   isDealComplete,
   isColorRequired,
-  isOpeningTurn,
   isValidSpace,
   leftOf,
   movePawn,
@@ -68,7 +67,6 @@ function beginTurn(state: FullGameState, uid: string, at: number, events: GameEv
   state.phase = 'turnStart';
   state.bossUid = uid;
   state.turnNumber += 1;
-  state.startPickerUid = null;
   state.nextTurnUid = null;
   state.pendingDiscardUids = [];
   emit(events, at, { type: 'turnStarted', uid, turnNumber: state.turnNumber });
@@ -177,26 +175,6 @@ function handleStartGame(
   events.push(...startGame(state, at));
 }
 
-function handleSetStartSpace(
-  state: FullGameState,
-  action: ActionOf<'SET_START_SPACE'>,
-  at: number,
-  events: GameEvent[],
-): void {
-  requirePhase(state, 'setupPickStart');
-  if (state.startPickerUid !== action.uid) reject('NOT_START_PICKER');
-  if (!isValidSpace(action.space)) reject('INVALID_SPACE');
-  if (state.closedSpaces.includes(action.space)) reject('SPACE_CLOSED');
-
-  const firstUid = state.bossUid;
-  if (!firstUid) reject('WRONG_PHASE');
-
-  state.pawnSpace = action.space;
-  state.startPickerUid = null;
-  emit(events, at, { type: 'startSpacePicked', uid: action.uid, space: action.space });
-  beginTurn(state, firstUid, at, events);
-}
-
 function handleRollDice(
   state: FullGameState,
   action: ActionOf<'ROLL_DICE'>,
@@ -225,8 +203,7 @@ function handleOpenDeal(
   at: number,
   events: GameEvent[],
 ): void {
-  requirePhase(state, 'turnStart', 'afterMove');
-  if (state.phase === 'turnStart' && !isOpeningTurn(state)) reject('WRONG_PHASE');
+  requirePhase(state, 'afterMove');
   if (state.bossUid !== action.uid) reject('NOT_YOUR_TURN');
   if (state.deal) reject('DEAL_ALREADY_OPEN');
 
@@ -1201,9 +1178,6 @@ export function applyAction(state: FullGameState, action: GameAction, now: numbe
         break;
       case 'START_GAME':
         handleStartGame(next, action, at, events);
-        break;
-      case 'SET_START_SPACE':
-        handleSetStartSpace(next, action, at, events);
         break;
       case 'ROLL_DICE':
         handleRollDice(next, action, at, events);

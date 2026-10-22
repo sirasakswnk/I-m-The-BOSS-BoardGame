@@ -11,7 +11,6 @@ import {
   getAllowedColors,
   getParticipatingColors,
   isDealComplete,
-  isOpeningTurn,
   requireDealSpace,
 } from '../validators';
 
@@ -374,16 +373,6 @@ export function playSimulation(seed: number): SimulationSummary {
   record(result.events);
   state = result.state;
 
-  const picker = state.startPickerUid;
-  if (!picker) throw new Error('No start picker');
-  result = mustAct(
-    state,
-    { type: 'SET_START_SPACE', uid: picker, space: botInt(rng, 1, 16) },
-    clock,
-  );
-  record(result.events);
-  state = result.state;
-
   let steps = 0;
   while (state.phase !== 'gameOver') {
     steps += 1;
@@ -406,17 +395,7 @@ export function playSimulation(seed: number): SimulationSummary {
     } else if (state.phase === 'turnStart') {
       const bossUid = state.bossUid;
       if (!bossUid) throw new Error('No boss at turn start');
-      if (
-        !isOpeningTurn(state) ||
-        state.pawnSpace < 1 ||
-        state.closedSpaces.includes(state.pawnSpace)
-      ) {
-        result = mustAct(state, { type: 'ROLL_DICE', uid: bossUid }, clock);
-      } else if (botInt(rng, 0, 99) < 65) {
-        result = mustAct(state, openDealAction(state), clock);
-      } else {
-        result = mustAct(state, { type: 'ROLL_DICE', uid: bossUid }, clock);
-      }
+      result = mustAct(state, { type: 'ROLL_DICE', uid: bossUid }, clock);
       record(result.events);
       state = result.state;
     } else if (state.phase === 'afterMove') {
@@ -433,16 +412,6 @@ export function playSimulation(seed: number): SimulationSummary {
       state = result.state;
     } else if (state.phase === 'dealOpen') {
       state = negotiate(state, clock);
-    } else if (state.phase === 'setupPickStart') {
-      const currentPicker = state.startPickerUid;
-      if (!currentPicker) throw new Error('Setup phase without picker');
-      result = mustAct(
-        state,
-        { type: 'SET_START_SPACE', uid: currentPicker, space: botInt(rng, 1, 16) },
-        clock,
-      );
-      record(result.events);
-      state = result.state;
     } else {
       throw new Error(`Unexpected phase ${state.phase}`);
     }

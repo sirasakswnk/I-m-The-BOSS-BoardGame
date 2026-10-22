@@ -90,7 +90,6 @@ export function project(state: FullGameState): ProjectedState {
     phase: state.phase,
     turnNumber: state.turnNumber,
     bossUid: state.bossUid,
-    startPickerUid: state.startPickerUid,
     pawnSpace: state.pawnSpace,
     closedSpaces: [...state.closedSpaces],
     dealsClosed: state.dealsClosed,
