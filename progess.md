@@ -843,8 +843,11 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 ### Deploy
 
-- [x] commit + push `main` เพื่อให้ Vercel auto-deploy
-- [ ] ตรวจ production ด้วย browser context ใหม่: ช่องชื่อและปุ่ม join
-      ต้องมองเห็นได้ทันทีโดยไม่ต้องเลื่อนหน้า
-- [ ] ลบห้องที่สร้างระหว่างตรวจ production
+- [x] commit + push `main` (commit `af1c07c`) และ Vercel auto-deploy สำเร็จ
+- [x] ตรวจ production ด้วย browser context ใหม่ทั้ง desktop 1280×900
+      และ mobile 375×667: ช่องชื่อและปุ่ม join มองเห็นเต็มปุ่มในจอแรก
+      โดยไม่ต้องเลื่อนหน้า
+- [x] ทดสอบกรอกชื่อแล้ว join จริงจากลิงก์คำเชิญบน production สำเร็จ
+      (เห็น lobby และชื่อผู้เล่นหลัง join)
+- [x] ลบห้องที่สร้างระหว่างตรวจ production (`53862`) แล้ว
 
