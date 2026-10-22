@@ -889,9 +889,10 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 ### Deploy production
 
 - [x] commit + push `main` (implementation `40a6eca`) และ Vercel deploy สถานะ Ready
-- [x] production ใช้ asset `index-C3nbtXlN.js`
+- [x] ตรวจ production bundle ว่ามี `rollFirstHint` / `openingTurnHint` ของกติกาใหม่
 - [x] smoke test ด้วย Chrome 3 browser contexts บน production:
       สร้างห้อง → เริ่มเกม → เลือกช่องเริ่มต้น 3 → เปิดดีลแรก → ล้มดีล
       → บอสคนถัดไป **ไม่มีปุ่มเปิดดีล** และเห็นปุ่มทอยเต๋า
       → กดทอย → เห็นข้อความ "หลังทอยเต๋า" และปุ่มเปิดดีลจึงปรากฏ
-- [x] ลบห้อง smoke test (`88568`) ออกจาก Realtime Database แล้ว
+      (รันซ้ำหลัง deploy รอบสุดท้ายผ่าน)
+- [x] ลบห้อง smoke test (`88568`, `72856`) ออกจาก Realtime Database แล้ว
