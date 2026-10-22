@@ -53,6 +53,15 @@ export function requirePhase(state: FullGameState, ...phases: FullGameState['pha
   if (!phases.includes(state.phase)) reject('WRONG_PHASE');
 }
 
+/**
+ * Only the opening turn may open the deal at the chosen start space without
+ * rolling. Every later turn starts with a forced dice roll, so a closed deal
+ * cannot be chained straight into the next space.
+ */
+export function isOpeningTurn(state: Pick<FullGameState, 'turnNumber' | 'dealsClosed'>): boolean {
+  return state.turnNumber === 1 && state.dealsClosed === 0;
+}
+
 export function requireBoss(state: FullGameState, uid: string): PlayerState {
   const player = requirePlayer(state, uid);
   if (state.bossUid !== uid) reject('NOT_BOSS');
@@ -142,9 +151,7 @@ export function validateExclusions(
   excluded: readonly FamilyColor[],
 ): void {
   const allowed = getAllowedColors(requirements);
-  const autoJoin = investors.filter(
-    (color) => allowed.has(color) && !onVacation.includes(color),
-  );
+  const autoJoin = investors.filter((color) => allowed.has(color) && !onVacation.includes(color));
 
   for (const color of excluded) {
     if (!autoJoin.includes(color)) reject('INVALID_EXCLUSION');
@@ -177,11 +184,7 @@ export function nextOpenSpace(from: number, closedSpaces: readonly number[]): nu
 }
 
 /** Moves `steps` open spaces clockwise; closed spaces do not count as steps. */
-export function movePawn(
-  from: number,
-  steps: number,
-  closedSpaces: readonly number[],
-): number {
+export function movePawn(from: number, steps: number, closedSpaces: readonly number[]): number {
   let position = from;
   let moved = 0;
   while (moved < steps) {
@@ -330,11 +333,7 @@ export function validateAcceptOffer(
   return { offer, deal };
 }
 
-export function requireOfferNotAccepted(
-  deal: DealState,
-  uid: string,
-  color: FamilyColor,
-): void {
+export function requireOfferNotAccepted(deal: DealState, uid: string, color: FamilyColor): void {
   if (deal.accepted[color] === uid) reject('OFFER_ACCEPTED');
 }
 

@@ -107,11 +107,7 @@ describe('drawing cards', () => {
     expect(drawn.nextTurnUid).toBe(leftOfUid(state, boss));
 
     const cards = getPlayer(drawn, boss).hand;
-    const after = ok(
-      drawn,
-      { type: 'DISCARD', uid: boss, cardIds: [cards[0].id] },
-      4000,
-    ).state;
+    const after = ok(drawn, { type: 'DISCARD', uid: boss, cardIds: [cards[0].id] }, 4000).state;
     expect(getPlayer(after, boss).hand).toHaveLength(HAND_LIMIT);
     expect(after.phase).toBe('turnStart');
     expect(after.bossUid).toBe(leftOfUid(state, boss));
@@ -131,15 +127,15 @@ describe('drawing cards', () => {
     const drawn = ok(state, { type: 'DRAW_CARDS', uid: boss }, 3000).state;
     const hand = getPlayer(drawn, boss).hand;
 
-    expect(
-      rejected(drawn, { type: 'DISCARD', uid: boss, cardIds: [] }, 4000),
-    ).toBe('INVALID_DISCARD');
+    expect(rejected(drawn, { type: 'DISCARD', uid: boss, cardIds: [] }, 4000)).toBe(
+      'INVALID_DISCARD',
+    );
     expect(
       rejected(drawn, { type: 'DISCARD', uid: boss, cardIds: [hand[0].id, hand[1].id] }, 4000),
     ).toBe('INVALID_DISCARD');
-    expect(
-      rejected(drawn, { type: 'DISCARD', uid: boss, cardIds: ['not-in-hand'] }, 4000),
-    ).toBe('CARD_NOT_IN_HAND');
+    expect(rejected(drawn, { type: 'DISCARD', uid: boss, cardIds: ['not-in-hand'] }, 4000)).toBe(
+      'CARD_NOT_IN_HAND',
+    );
   });
 
   it('shuffles the discard pile into the deck when empty', () => {
@@ -172,7 +168,7 @@ describe('drawing cards', () => {
 });
 
 describe('opening a deal', () => {
-  it('opens at the pawn space from turnStart', () => {
+  it('opens the opening deal at the chosen start space on turn 1', () => {
     const state = startGame(3, 31);
     const boss = state.bossUid;
     if (!boss) throw new Error('no boss');
@@ -184,6 +180,23 @@ describe('opening a deal', () => {
     expect(result.state.deal?.tileNumber).toBe(1);
     expect(result.state.deal?.requirements.dividends).toBe(4);
     expect(result.events.some((event) => event.type === 'dealOpened')).toBe(true);
+  });
+
+  it('forces a roll before opening on every turn after the opening turn', () => {
+    const state = startGame(3, 36);
+    const boss = state.bossUid;
+    if (!boss) throw new Error('no boss');
+    state.phase = 'turnStart';
+    state.turnNumber = 2;
+    state.dealsClosed = 1;
+    state.pawnSpace = 6;
+
+    expect(rejected(state, { type: 'OPEN_DEAL', uid: boss }, 3000)).toBe('WRONG_PHASE');
+
+    const rolled = ok(state, { type: 'ROLL_DICE', uid: boss }, 3000).state;
+    expect(rolled.phase).toBe('afterMove');
+    const opened = ok(rolled, { type: 'OPEN_DEAL', uid: boss }, 3000).state;
+    expect(opened.phase).toBe('dealOpen');
   });
 
   it('opens at the new space after a move', () => {
@@ -201,6 +214,7 @@ describe('opening a deal', () => {
     const state = startGame(3, 33);
     const boss = state.bossUid;
     if (!boss) throw new Error('no boss');
+    state.phase = 'afterMove';
     state.pawnSpace = 5;
     state.closedSpaces = [5];
     expect(rejected(state, { type: 'OPEN_DEAL', uid: boss }, 3000)).toBe('SPACE_CLOSED');
@@ -212,6 +226,7 @@ describe('opening a deal', () => {
     if (!boss) throw new Error('no boss');
     const other = state.players.find((player) => player.uid !== boss);
     if (!other) throw new Error('no other player');
+    state.phase = 'afterMove';
 
     expect(rejected(state, { type: 'OPEN_DEAL', uid: other.uid }, 3000)).toBe('NOT_YOUR_TURN');
     const opened = ok(state, { type: 'OPEN_DEAL', uid: boss }, 3000).state;
@@ -222,6 +237,7 @@ describe('opening a deal', () => {
     const state = startGame(3, 35);
     const boss = state.bossUid;
     if (!boss) throw new Error('no boss');
+    state.phase = 'afterMove';
     expect(rejected(state, { type: 'OPEN_DEAL', uid: boss, clanCardIds: ['nope'] }, 3000)).toBe(
       'CARD_NOT_IN_HAND',
     );
@@ -236,9 +252,7 @@ describe('lobby', () => {
     expect(rejected(state, { type: 'START_GAME', uid: 'p1' }, 1002)).toBe('NOT_ENOUGH_PLAYERS');
     state = ok(state, { type: 'JOIN', uid: 'p3', name: 'Cara' }, 1003).state;
     expect(state.players.map((player) => player.seat)).toEqual([0, 1, 2]);
-    expect(rejected(state, { type: 'JOIN', uid: 'p1', name: 'Again' }, 1004)).toBe(
-      'PLAYER_EXISTS',
-    );
+    expect(rejected(state, { type: 'JOIN', uid: 'p1', name: 'Again' }, 1004)).toBe('PLAYER_EXISTS');
     expect(rejected(state, { type: 'JOIN', uid: 'p4', name: '   ' }, 1005)).toBe('INVALID_NAME');
     expect(rejected(state, { type: 'JOIN', uid: 'p4', name: 'x'.repeat(17) }, 1006)).toBe(
       'INVALID_NAME',
@@ -253,14 +267,14 @@ describe('lobby', () => {
     let state = makeLobby(3, 42);
     state = ok(state, { type: 'REASSIGN_SEAT', uid: 'p1', targetUid: 'p3', seat: 4 }, 1000).state;
     expect(getPlayer(state, 'p3').seat).toBe(4);
-    expect(rejected(state, { type: 'REASSIGN_SEAT', uid: 'p1', targetUid: 'p2', seat: 4 }, 1001)).toBe(
-      'SEAT_TAKEN',
-    );
+    expect(
+      rejected(state, { type: 'REASSIGN_SEAT', uid: 'p1', targetUid: 'p2', seat: 4 }, 1001),
+    ).toBe('SEAT_TAKEN');
     const started = ok(state, { type: 'START_GAME', uid: 'p1' }, 2000).state;
     expect(started.players.map((player) => player.seat)).toEqual([0, 1, 2]);
-    expect(rejected(started, { type: 'REASSIGN_SEAT', uid: 'p1', targetUid: 'p2', seat: 1 }, 3000)).toBe(
-      'WRONG_PHASE',
-    );
+    expect(
+      rejected(started, { type: 'REASSIGN_SEAT', uid: 'p1', targetUid: 'p2', seat: 1 }, 3000),
+    ).toBe('WRONG_PHASE');
   });
 
   it('leaves the lobby', () => {

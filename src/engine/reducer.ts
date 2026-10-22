@@ -29,6 +29,7 @@ import {
   getAcceptedOffers,
   isDealComplete,
   isColorRequired,
+  isOpeningTurn,
   isValidSpace,
   leftOf,
   movePawn,
@@ -73,12 +74,7 @@ function beginTurn(state: FullGameState, uid: string, at: number, events: GameEv
   emit(events, at, { type: 'turnStarted', uid, turnNumber: state.turnNumber });
 }
 
-function finishTurn(
-  state: FullGameState,
-  nextUid: string,
-  at: number,
-  events: GameEvent[],
-): void {
+function finishTurn(state: FullGameState, nextUid: string, at: number, events: GameEvent[]): void {
   state.deal = null;
   state.window = null;
   state.pendingCards = [];
@@ -230,6 +226,7 @@ function handleOpenDeal(
   events: GameEvent[],
 ): void {
   requirePhase(state, 'turnStart', 'afterMove');
+  if (state.phase === 'turnStart' && !isOpeningTurn(state)) reject('WRONG_PHASE');
   if (state.bossUid !== action.uid) reject('NOT_YOUR_TURN');
   if (state.deal) reject('DEAL_ALREADY_OPEN');
 
@@ -246,10 +243,7 @@ function handleOpenDeal(
     const card = requireCard(boss, cardId);
     if (card.kind !== 'clan') reject('WRONG_CARD_KIND');
     if (!isColorRequired(requirements, card.color)) reject('COLOR_NOT_REQUIRED');
-    if (
-      boss.investors.includes(card.color) &&
-      !state.onVacation.includes(card.color)
-    ) {
+    if (boss.investors.includes(card.color) && !state.onVacation.includes(card.color)) {
       reject('COLOR_ALREADY_IN_DEAL');
     }
     return card;
@@ -270,12 +264,7 @@ function handleOpenDeal(
     if (!isColorRequired(requirements, color)) reject('COLOR_NOT_REQUIRED');
   }
 
-  validateExclusions(
-    requirements,
-    boss.investors,
-    state.onVacation,
-    [...uniqueExclusions],
-  );
+  validateExclusions(requirements, boss.investors, state.onVacation, [...uniqueExclusions]);
 
   const placedIds = new Set(clanCardIds);
   boss.hand = boss.hand.filter((card) => !placedIds.has(card.id));
@@ -438,10 +427,7 @@ function handleBossAddClan(
   const card = requireCard(boss, action.cardId);
   if (card.kind !== 'clan') reject('WRONG_CARD_KIND');
   if (!isColorRequired(deal.requirements, card.color)) reject('COLOR_NOT_REQUIRED');
-  if (
-    boss.investors.includes(card.color) &&
-    !state.onVacation.includes(card.color)
-  ) {
+  if (boss.investors.includes(card.color) && !state.onVacation.includes(card.color)) {
     reject('COLOR_ALREADY_IN_DEAL');
   }
   if (deal.bossClanCards.some((placed) => placed.color === card.color)) {
@@ -476,12 +462,7 @@ function handleSetExcludedColors(
     if (!isColorRequired(deal.requirements, color)) reject('COLOR_NOT_REQUIRED');
   }
 
-  validateExclusions(
-    deal.requirements,
-    boss.investors,
-    state.onVacation,
-    [...unique],
-  );
+  validateExclusions(deal.requirements, boss.investors, state.onVacation, [...unique]);
 
   deal.excludedColors = [...unique];
 
@@ -1203,8 +1184,7 @@ export function closeWindow(state: FullGameState, at: number, events: GameEvent[
 /* ------------------------------------------------------------------ */
 
 export function applyAction(state: FullGameState, action: GameAction, now: number): ApplyResult {
-  const at =
-    typeof action.ts === 'number' && Number.isFinite(action.ts) ? action.ts : now;
+  const at = typeof action.ts === 'number' && Number.isFinite(action.ts) ? action.ts : now;
 
   try {
     if (state.window && at > state.window.deadline + GRACE_MS) reject('TOO_LATE');

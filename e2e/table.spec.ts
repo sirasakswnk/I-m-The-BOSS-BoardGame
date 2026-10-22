@@ -80,7 +80,9 @@ async function startThreePlayerGame(
 
 async function findBossPage(pages: Page[]): Promise<Page> {
   for (const page of pages) {
-    if (await page.getByTestId('open-deal').isVisible()) return page;
+    for (const testId of ['roll-dice', 'open-deal', 'draw-cards']) {
+      if (await page.getByTestId(testId).isVisible()) return page;
+    }
   }
   throw new Error('No boss page found');
 }
@@ -346,6 +348,17 @@ test('three players close the first deal with table offers', async ({ browser })
       });
       await expect(page.getByTestId('money-delta')).toBeVisible();
     }
+
+    // The next boss cannot chain straight into the following space: they must
+    // roll first, then the open-deal action becomes available.
+    const nextBoss = await findBossPage(game.pages);
+    await expect(nextBoss.getByTestId('open-deal')).toHaveCount(0);
+    await expect(nextBoss.getByTestId('roll-dice')).toBeVisible();
+    await nextBoss.getByTestId('roll-dice').click();
+    await expect(nextBoss.getByTestId('game-room')).toContainText('หลังทอยเต๋า', {
+      timeout: 20_000,
+    });
+    await expect(nextBoss.getByTestId('open-deal')).toBeVisible({ timeout: 20_000 });
   } finally {
     await game.close();
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { isDealComplete } from '../validators';
 import {
-  arrangeTurn,
+  arrangeAfterMove,
   clanCard,
   getPlayer,
   lockAndResolve,
@@ -36,6 +36,8 @@ describe('deal resolution', () => {
     expect(resolved.bossUid).toBe('p2');
     expect(getPlayer(resolved, 'p1').money).toBe(6);
     expect(resolved.log.some((event) => event.type === 'dealResolved')).toBe(true);
+    // The next boss must roll instead of opening the following space directly.
+    expect(rejected(resolved, { type: 'OPEN_DEAL', uid: 'p2' }, 5000)).toBe('WRONG_PHASE');
   });
 
   it('splits dividends with the offer owner', () => {
@@ -182,10 +184,8 @@ describe('completeness on multi-group spaces', () => {
     const overfilled = startGame(3, 66);
     setTableInvestors(overfilled, { p1: ['yellow', 'red', 'blue', 'green'] });
     setHand(overfilled, 'p1', []);
-    arrangeTurn(overfilled, 'p1', 14);
-    expect(
-      rejected(overfilled, { type: 'OPEN_DEAL', uid: 'p1' }, 3000),
-    ).toBe('INVALID_EXCLUSION');
+    arrangeAfterMove(overfilled, 'p1', 14);
+    expect(rejected(overfilled, { type: 'OPEN_DEAL', uid: 'p1' }, 3000)).toBe('INVALID_EXCLUSION');
     const resolved = ok(
       overfilled,
       { type: 'OPEN_DEAL', uid: 'p1', excludeColors: ['blue'] },
@@ -203,7 +203,7 @@ describe('boss exclusions and clans', () => {
       p1: ['red', 'blue', 'green', 'yellow', 'purple'],
     });
     setHand(state, 'p1', []);
-    arrangeTurn(state, 'p1', 2);
+    arrangeAfterMove(state, 'p1', 2);
 
     expect(rejected(state, { type: 'OPEN_DEAL', uid: 'p1' }, 3000)).toBe('INVALID_EXCLUSION');
 
@@ -220,11 +220,11 @@ describe('boss exclusions and clans', () => {
     const state = startGame(4, 44);
     setTableInvestors(state, { p1: ['red', 'blue', 'black'] });
     setHand(state, 'p1', []);
-    arrangeTurn(state, 'p1', 3);
+    arrangeAfterMove(state, 'p1', 3);
 
-    expect(
-      rejected(state, { type: 'OPEN_DEAL', uid: 'p1', excludeColors: ['red'] }, 3000),
-    ).toBe('INVALID_EXCLUSION');
+    expect(rejected(state, { type: 'OPEN_DEAL', uid: 'p1', excludeColors: ['red'] }, 3000)).toBe(
+      'INVALID_EXCLUSION',
+    );
 
     const opened = ok(state, { type: 'OPEN_DEAL', uid: 'p1' }, 3000).state;
     expect(isDealComplete(opened)).toBe(true);
@@ -257,11 +257,7 @@ describe('boss exclusions and clans', () => {
     const opened = openDealAt(state, 'p1', 8);
     expect(isDealComplete(opened)).toBe(false);
 
-    const added = ok(
-      opened,
-      { type: 'BOSS_ADD_CLAN', uid: 'p1', cardId: card.id },
-      3100,
-    ).state;
+    const added = ok(opened, { type: 'BOSS_ADD_CLAN', uid: 'p1', cardId: card.id }, 3100).state;
     expect(isDealComplete(added)).toBe(true);
     expect(getPlayer(added, 'p1').hand).toHaveLength(0);
 
@@ -276,9 +272,9 @@ describe('boss exclusions and clans', () => {
     const opened = openDealAt(state, 'p1', 4, { excludeColors: ['green'] });
     expect(opened.deal?.excludedColors).toEqual(['green']);
 
-    expect(
-      rejected(opened, { type: 'SET_EXCLUDED_COLORS', uid: 'p1', colors: [] }, 3100),
-    ).toBe('INVALID_EXCLUSION');
+    expect(rejected(opened, { type: 'SET_EXCLUDED_COLORS', uid: 'p1', colors: [] }, 3100)).toBe(
+      'INVALID_EXCLUSION',
+    );
 
     const kept = ok(
       opened,
@@ -318,11 +314,8 @@ describe('boss exclusions and clans', () => {
       3200,
     ).state;
     const accepted = ok(
-      ok(
-        offeredTable,
-        { type: 'ACCEPT_OFFER', uid: 'p1', color: 'blue', targetUid: 'p2' },
-        3300,
-      ).state,
+      ok(offeredTable, { type: 'ACCEPT_OFFER', uid: 'p1', color: 'blue', targetUid: 'p2' }, 3300)
+        .state,
       { type: 'ACCEPT_OFFER', uid: 'p1', color: 'black', targetUid: 'p3' },
       3400,
     ).state;
@@ -501,9 +494,9 @@ describe('offers', () => {
         3200,
       ),
     ).toBe('OFFER_SOURCE_MISMATCH');
-    expect(
-      rejected(handOffer, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3200),
-    ).toBe('INVALID_ACTION');
+    expect(rejected(handOffer, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3200)).toBe(
+      'INVALID_ACTION',
+    );
 
     const accepted = ok(
       handOffer,
@@ -513,13 +506,20 @@ describe('offers', () => {
     expect(
       rejected(
         accepted,
-        { type: 'SUBMIT_OFFER', uid: 'p2', color: 'yellow', source: 'hand', cardId: hand.id, amount: 2 },
+        {
+          type: 'SUBMIT_OFFER',
+          uid: 'p2',
+          color: 'yellow',
+          source: 'hand',
+          cardId: hand.id,
+          amount: 2,
+        },
         3400,
       ),
     ).toBe('OFFER_ACCEPTED');
-    expect(
-      rejected(accepted, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3400),
-    ).toBe('INVALID_ACTION');
+    expect(rejected(accepted, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3400)).toBe(
+      'INVALID_ACTION',
+    );
     expect(
       rejected(
         accepted,
@@ -554,9 +554,9 @@ describe('offers', () => {
       3400,
     ).state;
     expect(withdrawn.deal?.offers.p2).toEqual({});
-    expect(
-      rejected(withdrawn, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3500),
-    ).toBe('OFFER_NOT_FOUND');
+    expect(rejected(withdrawn, { type: 'WITHDRAW_OFFER', uid: 'p2', color: 'yellow' }, 3500)).toBe(
+      'OFFER_NOT_FOUND',
+    );
   });
 
   it('blocks offers while the lock window is open', () => {
@@ -611,11 +611,7 @@ describe('offers', () => {
       3300,
     ).state;
     expect(
-      rejected(
-        state,
-        { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p3' },
-        3400,
-      ),
+      rejected(state, { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p3' }, 3400),
     ).toBe('DIVIDENDS_EXCEEDED');
   });
 
@@ -633,18 +629,10 @@ describe('offers', () => {
       3100,
     ).state;
     expect(
-      rejected(
-        offered,
-        { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p4' },
-        3200,
-      ),
+      rejected(offered, { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p4' }, 3200),
     ).toBe('COLOR_NOT_REQUIRED');
     expect(
-      rejected(
-        offered,
-        { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p1' },
-        3200,
-      ),
+      rejected(offered, { type: 'ACCEPT_OFFER', uid: 'p1', color: 'green', targetUid: 'p1' }, 3200),
     ).toBe('CANNOT_ACCEPT_OWN_OFFER');
   });
 

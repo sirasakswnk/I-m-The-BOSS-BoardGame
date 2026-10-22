@@ -81,6 +81,12 @@ export function arrangeTurn(state: FullGameState, uid: string, space: number): v
   state.pendingDiscardUids = [];
 }
 
+/** Puts a player in the post-roll phase at `space`. */
+export function arrangeAfterMove(state: FullGameState, uid: string, space: number): void {
+  arrangeTurn(state, uid, space);
+  state.phase = 'afterMove';
+}
+
 let testCardSequence = 0;
 
 function nextTestCardId(prefix: string): string {
@@ -128,12 +134,8 @@ export function openDealAt(
   space: number,
   extras: { clanCardIds?: string[]; excludeColors?: FamilyColor[] } = {},
 ): FullGameState {
-  arrangeTurn(state, uid, space);
-  return ok(
-    state,
-    { type: 'OPEN_DEAL', uid, ...extras },
-    3000,
-  ).state;
+  arrangeAfterMove(state, uid, space);
+  return ok(state, { type: 'OPEN_DEAL', uid, ...extras }, 3000).state;
 }
 
 export function lockAndResolve(state: FullGameState, uid: string, at = 4000): FullGameState {

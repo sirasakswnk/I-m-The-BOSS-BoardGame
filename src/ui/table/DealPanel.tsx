@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
 import type { FamilyColor } from '@/engine/config/families';
 import type { PrivateState, PublicState } from '@/engine/types';
+import { isOpeningTurn } from '@/engine/validators';
 import { th } from '@/i18n/th';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { Button } from '@/ui/common/Button';
@@ -219,9 +220,17 @@ function TurnPanel({
           publicState.onVacation,
         )
       : [];
-  const canOpen = space ? isExclusionPlanValid(space, autoJoin, exclusions) : false;
   const dice = diceRolling ? null : (publicState.lastDice?.[0] ?? null);
   const isAfterMove = publicState.phase === 'afterMove';
+  const openingTurn = isOpeningTurn(publicState);
+  // After the opening turn, every turn must roll before a deal can be opened.
+  const canOpenNow = isAfterMove || (publicState.phase === 'turnStart' && openingTurn);
+  const canOpen = canOpenNow && space ? isExclusionPlanValid(space, autoJoin, exclusions) : false;
+  const hint = isAfterMove
+    ? th.game.table.openDealHint
+    : openingTurn
+      ? th.game.table.openingTurnHint
+      : th.game.table.rollFirstHint;
   const title =
     publicState.phase === 'afterMove' ? th.game.table.afterMoveTitle : th.game.table.turnTitle;
 
@@ -263,11 +272,11 @@ function TurnPanel({
                     ? th.game.table.diceResult.replace('{face}', String(dice))
                     : th.game.table.diceNotRolled}
               </strong>
-              <span>{th.game.table.openDealHint}</span>
+              <span>{hint}</span>
             </div>
           </div>
 
-          {getOverfilledGroups(space, autoJoin).length > 0 && (
+          {canOpenNow && getOverfilledGroups(space, autoJoin).length > 0 && (
             <ExclusionPicker
               requirements={space}
               autoJoin={autoJoin}
@@ -301,19 +310,21 @@ function TurnPanel({
                 />
               </Button>
             )}
-            <Button
-              variant="dark"
-              className="table-btn"
-              data-testid="open-deal"
-              disabled={pendingAction !== null || !canOpen}
-              title={!canOpen ? th.game.table.openDealBlocked : undefined}
-              onClick={onOpenDeal}
-            >
-              <LoadingLabel
-                loading={pendingAction === 'open'}
-                label={text(th.game.table.openDeal, { space: space.index })}
-              />
-            </Button>
+            {canOpenNow && (
+              <Button
+                variant="dark"
+                className="table-btn"
+                data-testid="open-deal"
+                disabled={pendingAction !== null || !canOpen}
+                title={!canOpen ? th.game.table.openDealBlocked : undefined}
+                onClick={onOpenDeal}
+              >
+                <LoadingLabel
+                  loading={pendingAction === 'open'}
+                  label={text(th.game.table.openDeal, { space: space.index })}
+                />
+              </Button>
+            )}
           </div>
         </>
       )}

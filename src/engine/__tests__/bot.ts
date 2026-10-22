@@ -11,6 +11,7 @@ import {
   getAllowedColors,
   getParticipatingColors,
   isDealComplete,
+  isOpeningTurn,
   requireDealSpace,
 } from '../validators';
 
@@ -405,7 +406,11 @@ export function playSimulation(seed: number): SimulationSummary {
     } else if (state.phase === 'turnStart') {
       const bossUid = state.bossUid;
       if (!bossUid) throw new Error('No boss at turn start');
-      if (state.pawnSpace < 1 || state.closedSpaces.includes(state.pawnSpace)) {
+      if (
+        !isOpeningTurn(state) ||
+        state.pawnSpace < 1 ||
+        state.closedSpaces.includes(state.pawnSpace)
+      ) {
         result = mustAct(state, { type: 'ROLL_DICE', uid: bossUid }, clock);
       } else if (botInt(rng, 0, 99) < 65) {
         result = mustAct(state, openDealAction(state), clock);
