@@ -20,6 +20,7 @@ export interface SimulationSummary {
   deals: number;
   totalPaid: number;
   finalScores: Record<string, number>;
+  endReason: 'endCheck' | 'fifteenDeals';
 }
 
 interface BotRng {
@@ -33,6 +34,7 @@ interface InternalSummary {
   spaces: Set<number>;
   gameOverEvents: number;
   winners: string[];
+  endReason: SimulationSummary['endReason'] | null;
 }
 
 interface ActResult {
@@ -306,6 +308,7 @@ export function playSimulation(seed: number): SimulationSummary {
     spaces: new Set<number>(),
     gameOverEvents: 0,
     winners: [],
+    endReason: null,
   };
 
   const record = (events: GameEvent[]): void => {
@@ -355,11 +358,13 @@ export function playSimulation(seed: number): SimulationSummary {
         if (event.ends !== tile.endCheckFaces.includes(event.face)) {
           throw new Error('End check result mismatch');
         }
+        if (event.ends) summary.endReason = 'endCheck';
       }
 
       if (event.type === 'gameOver') {
         summary.gameOverEvents += 1;
         summary.winners = [...event.winners];
+        summary.endReason ??= 'fifteenDeals';
       }
     }
   };
@@ -492,5 +497,6 @@ export function playSimulation(seed: number): SimulationSummary {
     deals: summary.deals,
     totalPaid: summary.totalPaid,
     finalScores: { ...state.finalScores },
+    endReason: summary.endReason ?? 'fifteenDeals',
   };
 }

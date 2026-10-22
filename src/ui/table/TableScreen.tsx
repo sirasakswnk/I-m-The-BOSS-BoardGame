@@ -19,7 +19,11 @@ import { hasPlayableAction, getWindowPassInfo } from './actionUtils';
 import { ClanPlaceModal } from './ClanPlaceModal';
 import { DealBoard } from './DealBoard';
 import { DealPanel } from './DealPanel';
+import { DiscardModal } from './DiscardModal';
+import { EndCheckOverlay } from './EndCheckOverlay';
+import { endCheckKey, getDiscardNeed, getEndCheckToShow } from './endgameUtils';
 import { GameLog } from './GameLog';
+import { GameOverOverlay } from './GameOverOverlay';
 import { HandFan } from './HandFan';
 import { InterruptBar } from './InterruptBar';
 import { OfferModal, type OfferInput } from './OfferModal';
@@ -67,6 +71,7 @@ export function TableScreen({
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [moneyDelta, setMoneyDelta] = useState<number | null>(null);
   const [moneyDeltaKey, setMoneyDeltaKey] = useState(0);
+  const [dismissedEndCheckKey, setDismissedEndCheckKey] = useState<string | null>(null);
   const previousMoneyRef = useRef(privateState.money);
   const previewMode = onAction !== undefined;
 
@@ -77,12 +82,7 @@ export function TableScreen({
 
   useEffect(() => {
     setExclusions([]);
-  }, [
-    publicState.phase,
-    publicState.turnNumber,
-    publicState.bossUid,
-    publicState.deal?.space,
-  ]);
+  }, [publicState.phase, publicState.turnNumber, publicState.bossUid, publicState.deal?.space]);
 
   useEffect(() => {
     setPendingAction(null);
@@ -248,9 +248,7 @@ export function TableScreen({
       )
     : null;
   const requiredColors = deal
-    ? new Set<FamilyColor>(
-        deal.requirements.groups.flatMap((group) => group.colors),
-      )
+    ? new Set<FamilyColor>(deal.requirements.groups.flatMap((group) => group.colors))
     : new Set<FamilyColor>();
   const neededColors = new Set<FamilyColor>();
   if (deal && dealParticipation) {
@@ -267,10 +265,10 @@ export function TableScreen({
 
   const canManageOffers = Boolean(
     deal &&
-      publicState.bossUid === uid &&
-      publicState.phase === 'dealOpen' &&
-      !deal.locked &&
-      !publicState.window,
+    publicState.bossUid === uid &&
+    publicState.phase === 'dealOpen' &&
+    !deal.locked &&
+    !publicState.window,
   );
   const acceptedTotal =
     dealParticipation?.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0) ?? 0;
@@ -284,9 +282,7 @@ export function TableScreen({
             return { disabled: true, title: th.game.table.offerColorTaken };
           }
           const currentUid = deal.acceptedOffers[color];
-          const currentAmount = currentUid
-            ? (deal.offers[currentUid]?.[color]?.amount ?? 0)
-            : 0;
+          const currentAmount = currentUid ? (deal.offers[currentUid]?.[color]?.amount ?? 0) : 0;
           const capacity = deal.requirements.dividends - (acceptedTotal - currentAmount);
           if (offer.amount > capacity) {
             return { disabled: true, title: th.game.table.offerTooLarge };
@@ -318,23 +314,20 @@ export function TableScreen({
     : [];
   const canPlaceClan = Boolean(
     deal &&
-      privateState.hand.some(
-        (card) =>
-          card.kind === 'clan' &&
-          requiredColors.has(card.color) &&
-          !deal.bossClans.includes(card.color) &&
-          !acceptedOfferColors.has(card.color) &&
-          !(
-            bossInvestors.includes(card.color) &&
-            !publicState.onVacation.includes(card.color)
-          ),
-      ),
+    privateState.hand.some(
+      (card) =>
+        card.kind === 'clan' &&
+        requiredColors.has(card.color) &&
+        !deal.bossClans.includes(card.color) &&
+        !acceptedOfferColors.has(card.color) &&
+        !(bossInvestors.includes(card.color) && !publicState.onVacation.includes(card.color)),
+    ),
   );
 
   const canPlayCard = Boolean(
     deal &&
-      publicState.phase === 'dealOpen' &&
-      hasPlayableAction(publicState, uid, privateState.hand),
+    publicState.phase === 'dealOpen' &&
+    hasPlayableAction(publicState, uid, privateState.hand),
   );
   let playDisabledTitle: string | undefined;
   if (!deal || publicState.phase !== 'dealOpen') {
@@ -356,9 +349,7 @@ export function TableScreen({
     passDisabledTitle = th.game.table.passAlready;
   }
 
-  const canCancelLock = Boolean(
-    publicState.window && deal?.locked && publicState.bossUid === uid,
-  );
+  const canCancelLock = Boolean(publicState.window && deal?.locked && publicState.bossUid === uid);
 
   function handlePlayAction(intent: ActionIntent): void {
     void act(`action:${intent.type}`, intent);
@@ -372,6 +363,26 @@ export function TableScreen({
   function handleCancelLock(): void {
     if (!canCancelLock) return;
     void act('cancel-lock', { type: 'CANCEL_LOCK' });
+  }
+
+  const endCheckEvent = getEndCheckToShow(publicState.log, publicState.phase);
+  const activeEndCheckKey = endCheckEvent ? endCheckKey(endCheckEvent) : null;
+  const showEndCheck = endCheckEvent !== null && activeEndCheckKey !== dismissedEndCheckKey;
+  const discardNeed = getDiscardNeed(privateState.hand.length);
+  const showDiscard =
+    publicState.phase === 'turnEndDiscard' &&
+    publicState.pendingDiscardUids.includes(uid) &&
+    discardNeed > 0 &&
+    !showEndCheck;
+  const showGameOver = publicState.phase === 'gameOver' && !showEndCheck;
+
+  function handleDiscard(cardIds: string[]): void {
+    void act('discard', { type: 'DISCARD', cardIds });
+  }
+
+  function handleRematch(): void {
+    if (hostUid !== uid || publicState.phase !== 'gameOver') return;
+    void act('rematch', { type: 'REMATCH' });
   }
 
   const renderSeat = (entry: SeatEntry, variant: 'top' | 'side') => {
@@ -437,10 +448,7 @@ export function TableScreen({
             </div>
           )}
 
-          <aside
-            className="table-side table-side-left"
-            style={{ gridColumn: 1, gridRow: mainRow }}
-          >
+          <aside className="table-side table-side-left" style={{ gridColumn: 1, gridRow: mainRow }}>
             {layout.left && renderSeat(layout.left, 'side')}
             <UnclaimedPanel
               colors={publicState.unclaimedInvestors}
@@ -455,6 +463,7 @@ export function TableScreen({
                 uid={uid}
                 players={players}
                 publicState={publicState}
+                privateState={privateState}
                 pendingAction={pendingAction}
                 exclusions={exclusions}
                 onToggleExclusion={handleToggleExclusion}
@@ -551,9 +560,7 @@ export function TableScreen({
             {pendingAction === 'pass' && (
               <Loader2 size={15} className="animate-spin" aria-hidden="true" />
             )}
-            {hasPassedWindow
-              ? th.game.table.interrupt.passed
-              : th.game.table.interrupt.pass}
+            {hasPassedWindow ? th.game.table.interrupt.passed : th.game.table.interrupt.pass}
           </Button>
         </div>
       </section>
@@ -598,6 +605,34 @@ export function TableScreen({
           pendingAction={pendingAction}
           onClose={() => setActionModalOpen(false)}
           onSubmit={handlePlayAction}
+        />
+      )}
+
+      {showDiscard && (
+        <DiscardModal
+          privateState={privateState}
+          pendingAction={pendingAction}
+          onDiscard={handleDiscard}
+        />
+      )}
+
+      {showEndCheck && endCheckEvent && (
+        <EndCheckOverlay
+          key={activeEndCheckKey ?? undefined}
+          event={endCheckEvent}
+          onDone={() => setDismissedEndCheckKey(activeEndCheckKey)}
+        />
+      )}
+
+      {showGameOver && (
+        <GameOverOverlay
+          uid={uid}
+          hostUid={hostUid}
+          players={players}
+          publicState={publicState}
+          pendingAction={pendingAction}
+          isHost={hostUid === uid}
+          onRematch={handleRematch}
         />
       )}
     </>

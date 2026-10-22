@@ -14,6 +14,12 @@ interface ModalProps {
   onClose: () => void;
   testId?: string;
   className?: string;
+  /**
+   * End-of-turn and game-over modals must stay open until the game state
+   * changes. Set this to false to hide the close button and ignore Escape or
+   * backdrop clicks.
+   */
+  dismissible?: boolean;
 }
 
 /**
@@ -27,14 +33,20 @@ export function Modal({
   onClose,
   testId,
   className,
+  dismissible = true,
 }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    dismissibleRef.current = dismissible;
+  }, [dismissible]);
 
   useEffect(() => {
     const previousFocus =
@@ -46,7 +58,7 @@ export function Modal({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCloseRef.current();
+        if (dismissibleRef.current) onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel) return;
@@ -86,7 +98,7 @@ export function Modal({
     <div
       className="app-modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (dismissible && event.target === event.currentTarget) onClose();
       }}
     >
       <div
@@ -103,15 +115,17 @@ export function Modal({
             {eyebrow && <p className="app-modal-eyebrow">{eyebrow}</p>}
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button
-            type="button"
-            className="app-modal-close"
-            aria-label={th.common.close}
-            data-autofocus
-            onClick={onClose}
-          >
-            <X size={21} strokeWidth={3} aria-hidden="true" />
-          </button>
+          {dismissible && (
+            <button
+              type="button"
+              className="app-modal-close"
+              aria-label={th.common.close}
+              data-autofocus
+              onClick={onClose}
+            >
+              <X size={21} strokeWidth={3} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <div className="app-modal-body">{children}</div>
       </div>

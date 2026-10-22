@@ -547,3 +547,76 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 - Milestone ถัดไปคือ **M7 — End of Turn & Game End**
 - M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel
+
+## M7 — End of Turn & Game End — เสร็จสมบูรณ์ (22/10/2026)
+
+### สถานะ
+
+- งาน UI, integration, animation และเทสต์ของ M7 เสร็จและผ่าน final gate ครบทุกข้อ
+- engine มี `DISCARD`, `END_CHECK`, `finalScores` และ `REMATCH` อยู่แล้ว จึงไม่แก้กติกาใน `reducer.ts`; งานรอบนี้อยู่ที่การเชื่อม state เข้ากับ UI, host cleanup และการพิสูจน์เส้นทางจบเกม
+- ไม่แตะ `agent.md` หรือไฟล์ออกแบบใน `design/`
+
+### สิ่งที่ทำ
+
+- เพิ่ม `endgameUtils` สำหรับคำนวณจำนวนการ์ดที่ต้องทิ้ง, เลือกเหตุการณ์ end-check ที่ควรแสดงตาม transition, สร้าง key กัน overlay เล่นซ้ำ และจัดอันดับคะแนนแบบ competition rank (1, 1, 3)
+- เพิ่ม `DiscardModal` บังคับเลือกทิ้งให้เหลือ 12 ใบพอดี ปิดด้วย Escape/backdrop ไม่ได้ แสดงการ์ดทั้งมือเรียงตามชนิด และปุ่มยืนยันจะเปิดเมื่อเลือกครบ
+- เพิ่ม `EndCheckOverlay` แสดงผลทอยเต๋าอัตโนมัติเมื่อปิดดีลที่ 10–14: อนิเมชัน 1 วินาที, ผลลัพธ์ค้าง 2.2 วินาที, ปุ่มไปต่อ/ดูคะแนน และรองรับ reduced motion
+- เพิ่ม `GameOverOverlay` เปิดเงินของผู้เล่นทีละคน, ปุ่มเปิดทั้งหมด, อันดับ, ผู้ชนะ/ผู้ชนะร่วม และปุ่ม REMATCH สำหรับ host พร้อมข้อความรอ host สำหรับคนอื่น
+- เชื่อม overlay ทั้งสามเข้ากับ `TableScreen` โดยให้ end-check แสดงก่อน แล้วจึงเปิด discard หรือ game-over ตามสถานะจริง
+- เปลี่ยน `DiscardPanel` ให้ใช้ทั้ง public state และมือของผู้เล่น เพื่อแสดงความคืบหน้าการทิ้งและรายชื่อผู้เล่นที่ค้าง
+- ทำ preview โต๊ะเกมให้กดเล่นได้จริงผ่าน `applyAction` พร้อม fixture สำหรับบังคับทิ้ง, จบจากเต๋า และจบที่ดีล 15
+- host loop ก่อน REMATCH จะอ่านรายชื่อในห้อง, ตัดผู้เล่นที่ offline หรือไม่มีที่นั่งออก, เริ่มเกมใหม่ด้วยผู้เล่นที่เหลือ, อัปเดตที่นั่งใน room record และลบ player/private ของคนที่ถูกถอด
+- เพิ่มการลบ private projection ที่ค้างอยู่ของผู้เล่นซึ่งไม่อยู่ใน state ใหม่ เพื่อไม่ให้ข้อมูลมือเกมก่อนหลุดค้างในฐานข้อมูล
+- เพิ่ม unit tests ของ `endgameUtils` และ `prepareRematchState`, เพิ่ม `endReason` ใน bot simulation แล้วยืนยันว่าเกม 200 seed มีทั้งจบจากเต๋าและจบที่ดีล 15
+- เพิ่ม e2e: ผู้เล่นจริงจั่วครบ 3 เทิร์นจนมือเกิน 12 ใบแล้วถูกบังคับทิ้ง 2 ใบ; preview ตรวจอนิเมชันเต๋า, reveal คะแนน, ผู้ชนะร่วม และ REMATCH; preview ตรวจจบเกมที่ดีล 15 โดยไม่มี end-check overlay
+- เพิ่ม Thai copy, CSS ของ discard/die/game-over และ review screenshots ที่ 1440px
+
+### บั๊กที่พบและแก้ในรอบนี้
+
+- `Preview` ใช้ตาราง `th.errors` กับ reject reason ของ engine ทำให้ typecheck fail; เปลี่ยนไปใช้ `th.rejections`
+- `GameOverOverlay` อ่านชื่อ host จาก `bossUid` ทำให้ข้อความรอ host ผิดคน; เปลี่ยนไปใช้ `hostUid`
+- การจัดอันดับเดิมให้คะแนนเท่ากันเป็น 1, 1, 2; แก้เป็น competition rank 1, 1, 3 ให้ตรงกับความหมายของอันดับ
+- `DiscardModal` ต้องรักษารายการที่เลือกเมื่อ hand projection เปลี่ยน แต่ต้องไม่ set state ซ้ำเมื่อไม่มีอะไรเปลี่ยน เพื่อกัน render เกินจำเป็น
+- host rematch ต้องไม่อัปเดต `players/{uid}/seat` ของผู้เล่นที่ไม่มี room record แล้ว เพื่อไม่ให้ Firebase validation ล้มจาก record ที่ขาด field บังคับ
+- ต้องลบ private projection ของผู้เล่นที่ถูกถอดใน REMATCH; เพิ่ม deletion pass ใน `writeProjection`
+- toast แจ้ง error เดิมอยู่ใต้ modal ทำให้ไม่เห็นข้อความเมื่อ DISCARD/REMATCH ถูกปฏิเสธ; ยก z-index ของ toast ให้อยู่เหนือ modal
+
+### ไฟล์ที่สร้าง/แก้
+
+- `src/ui/table/DiscardModal.tsx`, `EndCheckOverlay.tsx`, `GameOverOverlay.tsx`, `endgameUtils.ts`
+- `src/ui/table/endgameUtils.test.ts`, `src/net/host/rematch.ts`, `src/net/host/rematch.test.ts`
+- `src/ui/table/TableScreen.tsx`, `DealPanel.tsx`
+- `src/net/host/hostLoop.ts`
+- `src/ui/common/Modal.tsx`
+- `src/ui/pages/Preview.tsx`
+- `src/engine/__tests__/bot.ts`, `simulation.test.ts`
+- `e2e/table.spec.ts`, `e2e/preview.spec.ts`
+- `src/i18n/th.ts`, `src/styles/global.css`
+- `review/m7/01-discard.png`, `02-discard-selected.png`, `03-endcheck-rolling.png`, `04-endcheck-result.png`, `05-gameover-die.png`, `06-gameover-fifteen.png`
+- `progess.md`
+
+### ผลการรันคำสั่ง
+
+- `npm run typecheck`: ผ่าน
+- `npm run lint`: ผ่าน
+- `npm run test`: ผ่าน **150/150 tests** (17 files)
+- `npm run test:e2e`: ผ่าน **11/11 tests** รวม forced discard จากห้องจริง และ preview end-check/game-over/rematch
+- `npm run build`: ผ่าน — JS 739.71 kB (gzip 221.08 kB), CSS 91.71 kB (gzip 17.17 kB); มี warning เดิมเรื่อง bundle ใหญ่กว่า 500 kB
+- `npm run test:rules`: ผ่าน **12/12 tests**; ไม่มีการแก้ `database.rules.json`
+- ตรวจภาพ UI ที่ 1440px: discard modal, end-check ระหว่างทอย/ผลลัพธ์, game-over จากเต๋าและดีล 15; ไม่พบ layout แตก
+
+### Definition of Done (M7)
+
+- [x] ผู้เล่นที่มือเกิน 12 ใบถูกบังคับทิ้งก่อนเริ่มเทิร์นถัดไป
+- [x] ปิดดีลที่ 10–14 แล้วทอยเช็กจบเกมอัตโนมัติพร้อมอนิเมชัน และเล่นต่อได้เมื่อไม่จบ
+- [x] GAME_OVER เผยเงินครบทุกคน แสดงอันดับและผู้ชนะ/ผู้ชนะร่วม
+- [x] REMATCH ใช้ห้องเดิม ที่นั่งถูก normalize ใหม่ เงิน/มือ/กระดาน/ดีลถูกรีเซ็ต และเลือกผู้เล่นเริ่มคนใหม่
+- [x] host ถอดผู้เล่นที่ offline หรือไม่มีที่นั่งออกก่อนเริ่มรอบใหม่ และลบ player/private record ที่ค้าง
+- [x] เล่นจบได้ทั้งจากเต๋าและจากการปิดดีลที่ 15; simulation 200 เกมยืนยันว่าทั้งสองเส้นทางเกิดขึ้นจริง
+- [x] typecheck, lint, unit, e2e, build และ rules tests ผ่านครบ
+- [x] commit M7
+
+### ขั้นถัดไป
+
+- Milestone ถัดไปคือ **M8 — Mobile Responsive**
+- M9 ยังติดเรื่องผูก Firebase project จริง, เปิด Anonymous Auth และตัดสินใจ GitHub Pages vs Vercel

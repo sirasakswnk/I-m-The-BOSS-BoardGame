@@ -6,8 +6,9 @@ import type { FamilyColor } from '@/engine/config/families';
 import { project } from '@/engine/project';
 import { applyAction } from '@/engine/reducer';
 import { createInitialState } from '@/engine/setup';
-import type { FullGameState } from '@/engine/types';
+import type { FullGameState, GameAction } from '@/engine/types';
 import { th } from '@/i18n/th';
+import type { ActionIntent } from '@/net/actions';
 import {
   NICKNAME_MAX_LENGTH,
   ROOM_CODE_LENGTH,
@@ -61,11 +62,76 @@ function previewExclusions(state: FullGameState): FamilyColor[] {
   return colors;
 }
 
+function buildDiscardState(base: FullGameState): FullGameState {
+  const state = structuredClone(base);
+  state.phase = 'turnEndDiscard';
+  state.deal = null;
+  state.window = null;
+  state.pendingCards = [];
+  state.onVacation = [];
+  state.pendingDiscardUids = [PREVIEW_HOST];
+  state.nextTurnUid = state.players.find((player) => player.uid !== PREVIEW_HOST)?.uid ?? null;
+
+  const host = state.players.find((player) => player.uid === PREVIEW_HOST);
+  if (host) {
+    const extra = state.deck.splice(0, Math.max(0, 14 - host.hand.length));
+    host.hand.push(...extra);
+  }
+
+  state.log = [
+    ...state.log,
+    { type: 'discardRequired', at: PREVIEW_NOW + 10_000, uids: [PREVIEW_HOST] },
+  ];
+  return state;
+}
+
+function buildGameOverState(
+  base: FullGameState,
+  tileNumber: number,
+  scores: Record<string, number>,
+): FullGameState {
+  const state = structuredClone(base);
+  const at = PREVIEW_NOW + 20_000;
+  const finalScores = Object.fromEntries(
+    state.players.map((player) => [player.uid, scores[player.uid] ?? 0]),
+  );
+  const best = Math.max(...Object.values(finalScores));
+  const winners = Object.keys(finalScores).filter((uid) => finalScores[uid] === best);
+
+  state.phase = 'gameOver';
+  state.dealsClosed = tileNumber;
+  state.deal = null;
+  state.window = null;
+  state.pendingCards = [];
+  state.onVacation = [];
+  state.pendingDiscardUids = [];
+  state.nextTurnUid = null;
+  state.finalScores = finalScores;
+  for (const player of state.players) player.money = finalScores[player.uid] ?? 0;
+
+  if (tileNumber < 15) {
+    state.lastDice = [2];
+    state.log = [
+      ...state.log,
+      { type: 'endCheckRolled', at, tileNumber, face: 2, ends: true },
+      { type: 'gameOver', at, finalScores, winners },
+    ];
+  } else {
+    state.lastDice = null;
+    state.log = [...state.log, { type: 'gameOver', at, finalScores, winners }];
+  }
+
+  return state;
+}
+
 function buildPreviewGame(): {
   setup: FullGameState;
   turn: FullGameState;
   afterMove: FullGameState;
   dealOpen: FullGameState;
+  discard: FullGameState;
+  gameOverDie: FullGameState;
+  gameOverFifteen: FullGameState;
   bossUid: string;
   pickerUid: string;
 } {
@@ -124,6 +190,19 @@ function buildPreviewGame(): {
     turn: picked.state,
     afterMove: rolled.state,
     dealOpen: opened.state,
+    discard: buildDiscardState(picked.state),
+    gameOverDie: buildGameOverState(picked.state, 12, {
+      [PREVIEW_HOST]: 42,
+      [PREVIEW_VIEWER]: 42,
+      p3: 25,
+      [PREVIEW_OFFLINE]: 11,
+    }),
+    gameOverFifteen: buildGameOverState(picked.state, 15, {
+      [PREVIEW_HOST]: 55,
+      [PREVIEW_VIEWER]: 41,
+      p3: 36,
+      [PREVIEW_OFFLINE]: 12,
+    }),
     bossUid,
     pickerUid,
   };
@@ -203,13 +282,9 @@ function PreviewFrame({ screen, children }: { screen: PreviewScreenId; children:
       <div className="grain-overlay" aria-hidden="true" />
       <PreviewToolbar wide={wide} />
       <div className={`relative mx-auto w-full px-4 pt-3 ${frameWidth}`}>
-        <p className="text-center text-[13px] text-ink-soft">
-          {th.preview.descriptions[screen]}
-        </p>
+        <p className="text-center text-[13px] text-ink-soft">{th.preview.descriptions[screen]}</p>
       </div>
-      <main className={`relative mx-auto w-full px-4 pb-16 ${frameWidth}`}>
-        {children}
-      </main>
+      <main className={`relative mx-auto w-full px-4 pb-16 ${frameWidth}`}>{children}</main>
     </div>
   );
 }
@@ -297,9 +372,7 @@ function PreviewHome() {
               );
             })}
           </div>
-          <p className="-mt-2 text-center text-[14px] text-ink-soft">
-            {th.home.boardCaption}
-          </p>
+          <p className="-mt-2 text-center text-[14px] text-ink-soft">{th.home.boardCaption}</p>
 
           <form
             className="rounded-panel border-2 border-ink bg-white px-[22px] py-5 shadow-hard"
@@ -320,9 +393,7 @@ function PreviewHome() {
               aria-describedby="preview-nickname-hint"
             />
             <p className="hint" id="preview-nickname-hint">
-              {nickname.trim().length > 0
-                ? th.home.nicknameHint
-                : th.home.nicknameTooShort}
+              {nickname.trim().length > 0 ? th.home.nicknameHint : th.home.nicknameTooShort}
             </p>
           </form>
 
@@ -472,10 +543,7 @@ function PreviewStatus() {
           <Button variant="dark" onClick={() => navigate('/')}>
             {th.common.backToHome}
           </Button>
-          <Button
-            variant="light"
-            onClick={() => showToast(th.preview.nonInteractive, 'info')}
-          >
+          <Button variant="light" onClick={() => showToast(th.preview.nonInteractive, 'info')}>
             {th.common.retry}
           </Button>
         </div>
@@ -484,26 +552,62 @@ function PreviewStatus() {
   );
 }
 
-const PREVIEW_TABLE_STATES = ['turnStart', 'dealOpen', 'afterMove'] as const;
+const PREVIEW_TABLE_STATES = [
+  'turnStart',
+  'dealOpen',
+  'afterMove',
+  'discard',
+  'gameOverDie',
+  'gameOverFifteen',
+] as const;
 type PreviewTableState = (typeof PREVIEW_TABLE_STATES)[number];
+
+function previewStateFor(tableState: PreviewTableState): FullGameState {
+  switch (tableState) {
+    case 'afterMove':
+      return PREVIEW_GAME.afterMove;
+    case 'dealOpen':
+      return PREVIEW_GAME.dealOpen;
+    case 'discard':
+      return PREVIEW_GAME.discard;
+    case 'gameOverDie':
+      return PREVIEW_GAME.gameOverDie;
+    case 'gameOverFifteen':
+      return PREVIEW_GAME.gameOverFifteen;
+    default:
+      return PREVIEW_GAME.turn;
+  }
+}
 
 function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
   const showToast = useUiStore((state) => state.showToast);
   const [tableState, setTableState] = useState<PreviewTableState>('turnStart');
-  const state =
-    mode === 'setup'
-      ? PREVIEW_GAME.setup
-      : tableState === 'afterMove'
-        ? PREVIEW_GAME.afterMove
-        : tableState === 'dealOpen'
-          ? PREVIEW_GAME.dealOpen
-          : PREVIEW_GAME.turn;
+  const [liveState, setLiveState] = useState<FullGameState | null>(null);
+  const [liveStateKey, setLiveStateKey] = useState<string | null>(null);
+  const stateKey = `${mode}:${tableState}`;
+  const baseState = mode === 'setup' ? PREVIEW_GAME.setup : previewStateFor(tableState);
+  const state = liveStateKey === stateKey && liveState ? liveState : baseState;
+  const isEndgamePreview =
+    mode === 'game' &&
+    (tableState === 'discard' || tableState === 'gameOverDie' || tableState === 'gameOverFifteen');
   const viewerUid =
     mode === 'setup'
       ? (state.startPickerUid ?? PREVIEW_GAME.pickerUid)
-      : (state.bossUid ?? PREVIEW_GAME.bossUid);
+      : isEndgamePreview
+        ? PREVIEW_HOST
+        : (state.bossUid ?? PREVIEW_GAME.bossUid);
   const projected = project(state);
   const privateState = projected.private[viewerUid] ?? null;
+
+  function handleAction(intent: ActionIntent): void {
+    const result = applyAction(state, { ...intent, uid: viewerUid } as GameAction, Date.now());
+    if ('error' in result) {
+      showToast(th.rejections[result.error] ?? th.rejections.INVALID_ACTION, 'error');
+      return;
+    }
+    setLiveStateKey(stateKey);
+    setLiveState(result.state);
+  }
 
   return (
     <div>
@@ -519,9 +623,7 @@ function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
               key={id}
               type="button"
               className={`rounded-full border-2 border-ink px-3 py-1.5 font-display text-[13px] font-bold transition-colors ${
-                tableState === id
-                  ? 'bg-ink text-paper'
-                  : 'bg-white text-ink hover:bg-gold'
+                tableState === id ? 'bg-ink text-paper' : 'bg-white text-ink hover:bg-gold'
               }`}
               data-testid={`preview-state-${id}`}
               aria-pressed={tableState === id}
@@ -542,7 +644,7 @@ function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
         loading={false}
         errorCode={null}
         onRetry={() => undefined}
-        onAction={() => showToast(th.preview.nonInteractive, 'info')}
+        onAction={handleAction}
         showChrome={false}
       />
     </div>

@@ -3,12 +3,13 @@ import type { CSSProperties } from 'react';
 
 import { DEAL_BOARD_SPACES } from '@/engine/config/dealBoard';
 import type { FamilyColor } from '@/engine/config/families';
-import type { PublicState } from '@/engine/types';
+import type { PrivateState, PublicState } from '@/engine/types';
 import { th } from '@/i18n/th';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { Button } from '@/ui/common/Button';
 import { FAMILY_BY_ID } from '@/ui/common/families';
 
+import { getDiscardNeed } from './endgameUtils';
 import { DiceFace, FamilyChip, GroupSymbols } from './TableBits';
 import { PendingQueue } from './PendingQueue';
 import {
@@ -31,6 +32,7 @@ interface DealPanelProps {
   uid: string;
   players: RoomPlayers;
   publicState: PublicState;
+  privateState: PrivateState;
   pendingAction: string | null;
   exclusions: FamilyColor[];
   onToggleExclusion: (color: FamilyColor) => void;
@@ -82,11 +84,7 @@ function StartPickerPanel({
       {canPick ? (
         <>
           <p className="table-deal-copy">{th.game.startSpaceDescription}</p>
-          <div
-            className="table-start-grid"
-            role="group"
-            aria-label={th.game.startSpaceTitle}
-          >
+          <div className="table-start-grid" role="group" aria-label={th.game.startSpaceTitle}>
             {DEAL_BOARD_SPACES.map((space) => {
               const loading = pendingAction === `start:${space.index}`;
               return (
@@ -221,15 +219,15 @@ function TurnPanel({
   const dice = publicState.lastDice?.[0] ?? null;
   const isAfterMove = publicState.phase === 'afterMove';
   const title =
-    publicState.phase === 'afterMove'
-      ? th.game.table.afterMoveTitle
-      : th.game.table.turnTitle;
+    publicState.phase === 'afterMove' ? th.game.table.afterMoveTitle : th.game.table.turnTitle;
 
   if (!space) {
     return (
       <div className="table-deal-body">
         <p className="table-deal-eyebrow">{phaseLabel(publicState)}</p>
-        <p className="table-deal-waiting">{th.game.table.waitingTurn.replace('{name}', bossName)}</p>
+        <p className="table-deal-waiting">
+          {th.game.table.waitingTurn.replace('{name}', bossName)}
+        </p>
       </div>
     );
   }
@@ -340,9 +338,7 @@ function DealSegments({
             ? `var(${FAMILY_BY_ID[segment.color].cssVar})`
             : 'var(--gold)';
         const color =
-          isBoss || segment.color === 'yellow' || !segment.color
-            ? 'var(--ink)'
-            : 'var(--white)';
+          isBoss || segment.color === 'yellow' || !segment.color ? 'var(--ink)' : 'var(--white)';
         return (
           <span
             key={index}
@@ -400,10 +396,7 @@ function OpenDealPanel({
   const value = getDealTileValue(deal.tileNumber);
   const total = value * deal.requirements.dividends;
   const segments = getDealSegments(deal, participation);
-  const acceptedTotal = participation.accepted.reduce(
-    (sum, entry) => sum + entry.offer.amount,
-    0,
-  );
+  const acceptedTotal = participation.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0);
   const dealComplete = isDealComplete(deal, participation.allColors);
   const offerCount = Object.values(deal.offers).reduce(
     (sum, offers) => sum + Object.keys(offers ?? {}).length,
@@ -431,11 +424,7 @@ function OpenDealPanel({
         </span>
       </div>
 
-      <DealSegments
-        players={players}
-        segments={segments}
-        dividends={deal.requirements.dividends}
-      />
+      <DealSegments players={players} segments={segments} dividends={deal.requirements.dividends} />
 
       <p className="table-deal-capacity" data-testid="deal-capacity">
         {text(th.game.table.acceptedDividends, {
@@ -444,10 +433,7 @@ function OpenDealPanel({
         })}
       </p>
 
-      <PendingQueue
-        players={players}
-        pendingCards={publicState.pendingCards}
-      />
+      <PendingQueue players={players} pendingCards={publicState.pendingCards} />
 
       {isBoss && offerCount > 0 && !deal.locked && (
         <p className="table-deal-hint">{th.game.table.offerActionHint}</p>
@@ -518,11 +504,7 @@ function OpenDealPanel({
               className="table-btn"
               data-testid="place-clan-open"
               disabled={pendingAction !== null || !canPlaceClan}
-              title={
-                !canPlaceClan
-                  ? th.game.table.placeClanEmpty
-                  : th.game.table.placeClanHint
-              }
+              title={!canPlaceClan ? th.game.table.placeClanEmpty : th.game.table.placeClanHint}
               onClick={onPlaceClan}
             >
               {th.game.table.placeClan}
@@ -558,15 +540,38 @@ function OpenDealPanel({
   );
 }
 
-function DiscardPanel({ publicState, players }: Pick<DealPanelProps, 'publicState' | 'players'>) {
+function DiscardPanel({
+  uid,
+  publicState,
+  players,
+  privateState,
+}: Pick<DealPanelProps, 'uid' | 'publicState' | 'players' | 'privateState'>) {
+  const isPending = publicState.pendingDiscardUids.includes(uid);
+  const need = getDiscardNeed(privateState.hand.length);
+  const otherNames = publicState.pendingDiscardUids
+    .filter((discardUid) => discardUid !== uid)
+    .map((discardUid) => getPlayerName(players, discardUid))
+    .join(', ');
+
   return (
-    <div className="table-deal-body">
+    <div className="table-deal-body table-discard-panel" data-testid="discard-panel">
       <p className="table-deal-eyebrow">{phaseLabel(publicState)}</p>
       <h2>{th.game.table.discardTitle}</h2>
       <p className="table-deal-copy">{th.game.table.discardDescription}</p>
+      {isPending && need > 0 ? (
+        <p className="table-discard-your-turn" data-testid="discard-your-turn">
+          {text(th.game.table.discardYourTurn, { count: need })}
+        </p>
+      ) : publicState.pendingDiscardUids.length > 0 ? (
+        <p className="table-deal-waiting">
+          {isPending
+            ? th.game.table.discardYourTurnDone
+            : text(th.game.table.discardWaiting, { names: otherNames })}
+        </p>
+      ) : null}
       <ul className="table-discard-list">
         {publicState.pendingDiscardUids.map((discardUid) => (
-          <li key={discardUid}>
+          <li key={discardUid} className={discardUid === uid ? 'is-me' : ''}>
             <span>{getPlayerName(players, discardUid)}</span>
             <strong>{publicState.handCounts[discardUid] ?? 0}</strong>
           </li>
@@ -610,6 +615,7 @@ export function DealPanel({
   uid,
   players,
   publicState,
+  privateState,
   pendingAction,
   exclusions,
   onToggleExclusion,
@@ -663,7 +669,12 @@ export function DealPanel({
         />
       )}
       {publicState.phase === 'turnEndDiscard' && (
-        <DiscardPanel publicState={publicState} players={players} />
+        <DiscardPanel
+          uid={uid}
+          publicState={publicState}
+          players={players}
+          privateState={privateState}
+        />
       )}
       {publicState.phase === 'gameOver' && (
         <GameOverPanel publicState={publicState} players={players} />

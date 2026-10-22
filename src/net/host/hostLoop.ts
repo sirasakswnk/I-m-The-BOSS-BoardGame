@@ -12,18 +12,14 @@ import { project } from '@/engine/project';
 import { applyAction } from '@/engine/reducer';
 import { createInitialState, type NewPlayer } from '@/engine/setup';
 import { tick } from '@/engine/tick';
-import type {
-  FullGameState,
-  GameAction,
-  PublicState,
-  RejectReason,
-} from '@/engine/types';
+import type { FullGameState, GameAction, PublicState, RejectReason } from '@/engine/types';
 import type { RoomMeta, RoomPlayers } from '@/net/roomTypes';
 
 import { serverNow, startServerClockSync } from '../clock';
 import { getFirebase } from '../firebase';
 import { normalizeHostState } from '../gameState';
 import type { StoredAction } from '../gameTypes';
+import { prepareRematchState } from './rematch';
 
 const TICK_INTERVAL_MS = 500;
 const LOOP_STOP_DELAY_MS = 250;
@@ -97,8 +93,7 @@ function parseStoredAction(raw: unknown, fallbackNow: number): GameAction | null
   if (typeof raw.type !== 'string' || !ACTION_TYPES.has(raw.type)) return null;
 
   const payload = isRecord(raw.payload) ? raw.payload : {};
-  const ts =
-    typeof raw.ts === 'number' && Number.isFinite(raw.ts) ? raw.ts : fallbackNow;
+  const ts = typeof raw.ts === 'number' && Number.isFinite(raw.ts) ? raw.ts : fallbackNow;
 
   return {
     ...payload,
@@ -180,20 +175,22 @@ function createHostLoop(options: HostLoopOptions): () => void {
 
     for (const key of Object.keys(nextProjection.public) as (keyof PublicState)[]) {
       const value = nextProjection.public[key];
-      if (
-        !previousProjection ||
-        !sameValue(previousProjection.public[key], value)
-      ) {
+      if (!previousProjection || !sameValue(previousProjection.public[key], value)) {
         paths[`public/${String(key)}`] = value;
       }
     }
 
     for (const [uid, privateState] of Object.entries(nextProjection.private)) {
-      if (
-        !previousProjection ||
-        !sameValue(previousProjection.private[uid], privateState)
-      ) {
+      if (!previousProjection || !sameValue(previousProjection.private[uid], privateState)) {
         paths[`private/${uid}`] = privateState;
+      }
+    }
+
+    if (previousProjection) {
+      for (const uid of Object.keys(previousProjection.private)) {
+        if (!(uid in nextProjection.private)) {
+          paths[`private/${uid}`] = null;
+        }
       }
     }
 
@@ -266,11 +263,7 @@ function createHostLoop(options: HostLoopOptions): () => void {
     }
   }
 
-  async function gameAction(
-    actionId: string,
-    action: GameAction,
-    meta: RoomMeta,
-  ): Promise<void> {
+  async function gameAction(actionId: string, action: GameAction, meta: RoomMeta): Promise<void> {
     if (action.type === 'START_GAME') {
       await rejectAction(actionId, action.uid, 'WRONG_PHASE');
       return;
@@ -288,9 +281,20 @@ function createHostLoop(options: HostLoopOptions): () => void {
       return;
     }
 
+    let nextState = current;
+    let roomPlayers: RoomPlayers | null = null;
+    let removedUids: string[] = [];
+    if (action.type === 'REMATCH') {
+      const playersSnapshot = await get(ref(database, `rooms/${options.code}/players`));
+      roomPlayers = (playersSnapshot.val() as RoomPlayers | null) ?? {};
+      const prepared = prepareRematchState(current, roomPlayers, action.uid);
+      nextState = prepared.state;
+      removedUids = prepared.removedUids;
+    }
+
     let result;
     try {
-      result = applyAction(current, action, serverNow());
+      result = applyAction(nextState, action, serverNow());
     } catch {
       await rejectAction(actionId, action.uid, 'INVALID_ACTION');
       return;
@@ -303,6 +307,21 @@ function createHostLoop(options: HostLoopOptions): () => void {
 
     await writeProjection(current, result.state, actionId, false);
     cachedState = result.state;
+
+    if (action.type === 'REMATCH' && roomPlayers) {
+      const updates: Record<string, unknown> = {};
+      for (const uid of removedUids) {
+        updates[`players/${uid}`] = null;
+        updates[`private/${uid}`] = null;
+      }
+      for (const player of result.state.players) {
+        const roomPlayer = roomPlayers[player.uid];
+        if (roomPlayer && roomPlayer.seat !== player.seat) {
+          updates[`players/${player.uid}/seat`] = player.seat;
+        }
+      }
+      if (Object.keys(updates).length > 0) await update(root, updates);
+    }
   }
 
   async function processAction(entry: QueuedAction): Promise<void> {
@@ -391,9 +410,7 @@ function createHostLoop(options: HostLoopOptions): () => void {
       if (!id || stopped) return;
       const raw = snapshot.val() as StoredAction | null;
       const ts =
-        raw && typeof raw.ts === 'number' && Number.isFinite(raw.ts)
-          ? raw.ts
-          : serverNow();
+        raw && typeof raw.ts === 'number' && Number.isFinite(raw.ts) ? raw.ts : serverNow();
       queue.push({ id, raw, ts });
       void drain();
     },

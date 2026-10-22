@@ -28,7 +28,11 @@ async function startThreePlayerGame(
   pages: Page[];
   close: () => Promise<void>;
 }> {
-  const contexts = [await browser.newContext(), await browser.newContext(), await browser.newContext()];
+  const contexts = [
+    await browser.newContext(),
+    await browser.newContext(),
+    await browser.newContext(),
+  ];
   const pages = await Promise.all(contexts.map((context) => context.newPage()));
   const [host, guest, third] = pages;
 
@@ -112,9 +116,7 @@ async function submitTableOffer(page: Page, color: string): Promise<void> {
 }
 
 async function acceptOffer(page: Page, color: string): Promise<void> {
-  const accept = page.locator(
-    `[data-testid^="accept-offer-"][data-offer-color="${color}"]`,
-  );
+  const accept = page.locator(`[data-testid^="accept-offer-"][data-offer-color="${color}"]`);
   await expect(accept).toBeVisible({ timeout: 20_000 });
   await expect(accept).toBeEnabled();
   await accept.click();
@@ -128,10 +130,7 @@ async function acceptOffer(page: Page, color: string): Promise<void> {
  * recruitment play needs three cards; the modal grid exposes enough state to
  * click the whole triptych before choosing a target.
  */
-async function playAnyAction(
-  pages: Page[],
-  preferNonStop = false,
-): Promise<Page | null> {
+async function playAnyAction(pages: Page[], preferNonStop = false): Promise<Page | null> {
   for (const page of pages) {
     const open = page.getByTestId('play-card-open');
     if ((await open.count()) === 0) continue;
@@ -152,19 +151,14 @@ async function playAnyAction(
     );
     const order = kinds.map((kind, index) => ({ kind, index }));
     if (preferNonStop) {
-      order.sort(
-        (left, right) =>
-          Number(left.kind === 'stop') - Number(right.kind === 'stop'),
-      );
+      order.sort((left, right) => Number(left.kind === 'stop') - Number(right.kind === 'stop'));
     }
     for (const { kind, index } of order) {
       const card = cards.nth(index);
       await card.click();
 
       if (kind === 'recruitment') {
-        const parts = modal.locator(
-          '[data-action-kind="recruitment"]:not([disabled])',
-        );
+        const parts = modal.locator('[data-action-kind="recruitment"]:not([disabled])');
         const partCount = await parts.count();
         for (let part = 0; part < partCount; part += 1) {
           const choice = parts.nth(part);
@@ -174,9 +168,7 @@ async function playAnyAction(
         }
       }
 
-      const targets = modal.locator(
-        '[data-testid^="action-target-"]:not([disabled])',
-      );
+      const targets = modal.locator('[data-testid^="action-target-"]:not([disabled])');
       if ((await targets.count()) > 0) {
         await targets.first().click();
       }
@@ -207,9 +199,7 @@ async function playAnyAction(
           await page.waitForTimeout(100);
         }
 
-        throw new Error(
-          `Action ${kind ?? 'unknown'} was not accepted: game log did not change`,
-        );
+        throw new Error(`Action ${kind ?? 'unknown'} was not accepted: game log did not change`);
       }
     }
 
@@ -289,9 +279,7 @@ test('three players close the first deal with table offers', async ({ browser })
     const firstColor = missingColors[0];
     await boss.getByTestId(`unaccept-offer-${firstColor}`).click();
     await expect(
-      boss.locator(
-        `[data-testid^="accept-offer-"][data-offer-color="${firstColor}"]`,
-      ),
+      boss.locator(`[data-testid^="accept-offer-"][data-offer-color="${firstColor}"]`),
     ).toBeVisible({ timeout: 20_000 });
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
       `รับแล้ว ${missingColors.length - 1}/4 ส่วน`,
@@ -339,9 +327,7 @@ test('three players close the first deal with table offers', async ({ browser })
   }
 });
 
-test('action cards stack, reset the window and close when all others pass', async ({
-  browser,
-}) => {
+test('action cards stack, reset the window and close when all others pass', async ({ browser }) => {
   const game = await startThreePlayerGame(browser);
   try {
     const boss = await findBossPage(game.pages);
@@ -357,22 +343,16 @@ test('action cards stack, reset the window and close when all others pass', asyn
     await expect(firstActor.getByTestId('pending-count')).toHaveText('1 ใบ');
 
     const remainingBefore = Number(
-      await firstActor
-        .getByTestId('interrupt-countdown')
-        .getAttribute('data-remaining-ms'),
+      await firstActor.getByTestId('interrupt-countdown').getAttribute('data-remaining-ms'),
     );
     await firstActor.waitForTimeout(1_100);
     const remainingAfter = Number(
-      await firstActor
-        .getByTestId('interrupt-countdown')
-        .getAttribute('data-remaining-ms'),
+      await firstActor.getByTestId('interrupt-countdown').getAttribute('data-remaining-ms'),
     );
     expect(remainingAfter).toBeLessThan(remainingBefore - 500);
 
     const deadlineBefore = Number(
-      await firstActor
-        .getByTestId('interrupt-countdown')
-        .getAttribute('data-deadline'),
+      await firstActor.getByTestId('interrupt-countdown').getAttribute('data-deadline'),
     );
 
     const secondPage = await playAnyAction(game.pages, true);
@@ -385,18 +365,12 @@ test('action cards stack, reset the window and close when all others pass', asyn
     await expect
       .poll(
         async () =>
-          Number(
-            await trigger
-              .getByTestId('interrupt-countdown')
-              .getAttribute('data-deadline'),
-          ),
+          Number(await trigger.getByTestId('interrupt-countdown').getAttribute('data-deadline')),
         { timeout: 20_000 },
       )
       .toBeGreaterThan(deadlineBefore);
     const deadlineAfter = Number(
-      await trigger
-        .getByTestId('interrupt-countdown')
-        .getAttribute('data-deadline'),
+      await trigger.getByTestId('interrupt-countdown').getAttribute('data-deadline'),
     );
     expect(deadlineAfter).toBeGreaterThan(deadlineBefore);
 
@@ -407,9 +381,9 @@ test('action cards stack, reset the window and close when all others pass', asyn
     const delayedPass = otherPages[0].getByTestId('interrupt-pass');
     await expect(delayedPass).toBeEnabled();
     await delayedPass.click();
-    await expect(
-      otherPages[0].getByTestId('interrupt-pass-count'),
-    ).toContainText('1/2', { timeout: 5_000 });
+    await expect(otherPages[0].getByTestId('interrupt-pass-count')).toContainText('1/2', {
+      timeout: 5_000,
+    });
     await expect(delayedPass).toBeDisabled();
 
     const lastPass = otherPages[1].getByTestId('interrupt-pass');
@@ -450,6 +424,54 @@ test('dice turn: boss rolls, draws three cards and finishes the turn', async ({ 
     await expect(hand).toHaveCount(8, { timeout: 20_000 });
     await expect(boss.getByTestId('game-log')).toContainText('จั่วการ์ด 3 ใบ');
     await expect(boss.getByTestId('draw-cards')).toHaveCount(0);
+  } finally {
+    await game.close();
+  }
+});
+
+test('drawing over the hand limit forces a discard before the next turn', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const game = await startThreePlayerGame(browser);
+  try {
+    // The first boss draws on turns 1, 4 and 7; the third draw takes them to 14.
+    let discardingBoss: Page | null = null;
+    for (let turn = 1; turn <= 7; turn += 1) {
+      const boss = await findBossPage(game.pages);
+      await boss.getByTestId('roll-dice').click();
+      await expect(boss.getByTestId('draw-cards')).toBeVisible({ timeout: 20_000 });
+      await boss.getByTestId('draw-cards').click();
+
+      if (turn === 7) {
+        discardingBoss = boss;
+        break;
+      }
+      await expect(boss.getByTestId('draw-cards')).toHaveCount(0, {
+        timeout: 20_000,
+      });
+    }
+
+    expect(discardingBoss).not.toBeNull();
+    const boss = discardingBoss!;
+    const modal = boss.getByTestId('discard-modal');
+    await expect(modal).toBeVisible({ timeout: 20_000 });
+    await expect(boss.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(14);
+    await expect(boss.getByTestId('discard-count')).toContainText('0/2');
+
+    await boss.keyboard.press('Escape');
+    await expect(modal).toBeVisible();
+
+    const cards = modal.locator('[data-testid^="discard-card-"]');
+    await cards.nth(0).click();
+    await cards.nth(1).click();
+    await expect(boss.getByTestId('discard-count')).toContainText('2/2');
+    await boss.getByTestId('discard-submit').click();
+
+    await expect(modal).toHaveCount(0, { timeout: 20_000 });
+    await expect(boss.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(12);
+    await expect(boss.getByTestId('game-log')).toContainText('ทิ้งการ์ด 2 ใบ');
+    await expect(boss.getByTestId('game-room')).toContainText('ต้นเทิร์น', {
+      timeout: 20_000,
+    });
   } finally {
     await game.close();
   }
