@@ -21,6 +21,7 @@ import {
   normalizeNickname,
   normalizeRoomCode,
 } from './roomCode';
+import { shouldCleanupOldRoom } from './roomCleanup';
 import {
   ROOM_MAX_PLAYERS,
   type RoomErrorCode,
@@ -183,6 +184,46 @@ export async function markRoomOffline(code: string, uid: string): Promise<void> 
 }
 
 /**
+ * Best-effort Spark-plan housekeeping: when a player starts a new room, remove
+ * their previous room if it is over a day old and nobody is connected.
+ */
+async function cleanupPreviousRoom(
+  database: Database,
+  uid: string,
+): Promise<void> {
+  const code = getLastRoomCode();
+  if (!code || !isValidRoomCode(code)) {
+    if (code) clearLastRoomCode();
+    return;
+  }
+
+  try {
+    const [metaSnapshot, playersSnapshot] = await Promise.all([
+      get(ref(database, `rooms/${code}/meta`)),
+      get(ref(database, `rooms/${code}/players`)),
+    ]);
+    if (!metaSnapshot.exists()) {
+      clearLastRoomCode();
+      return;
+    }
+
+    const meta = metaSnapshot.val() as RoomMeta;
+    const players = (playersSnapshot.val() as RoomPlayers | null) ?? {};
+    const belongsToMe = meta.hostUid === uid || Boolean(players[uid]);
+    if (!belongsToMe) {
+      clearLastRoomCode();
+      return;
+    }
+    if (!shouldCleanupOldRoom(meta, players)) return;
+
+    await remove(ref(database, `rooms/${code}`));
+    clearLastRoomCode();
+  } catch {
+    // Cleanup must never block creating a fresh room.
+  }
+}
+
+/**
  * Creates a room and claims a random five-digit code with a transaction.
  * Retries on collisions, then writes the host's player record.
  */
@@ -198,6 +239,8 @@ export async function createRoom(rawNickname: string): Promise<{ code: string; n
   }
 
   const database = db();
+  await cleanupPreviousRoom(database, uid);
+
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const code = generateRoomCode();
     let committed: boolean;

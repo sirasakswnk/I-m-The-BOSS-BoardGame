@@ -8,6 +8,7 @@ import { ROOM_MAX_PLAYERS, type RoomPlayer, type RoomPlayers } from '@/net/roomT
 import { Brand } from '@/ui/common/Brand';
 import { Button } from '@/ui/common/Button';
 import { Chip } from '@/ui/common/Chip';
+import { HowToPlayButton } from '@/ui/common/HowToPlay';
 import { TextInput } from '@/ui/common/TextInput';
 
 const CODE_COLORS = ['--red', '--blue', '--green', '--yellow', '--purple', '--black'] as const;
@@ -25,9 +26,7 @@ export function RoomHeader({ canLeave, leaving, onLeave }: RoomHeaderProps) {
     <header className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-[22px]">
       <Brand />
       <nav className="flex flex-wrap items-center gap-2.5" aria-label={th.room.headerNavAria}>
-        <a href="/#how" className="nav-link">
-          {th.home.navHowTo}
-        </a>
+        <HowToPlayButton className="nav-link">{th.home.navHowTo}</HowToPlayButton>
         <Link to="/" className="nav-link">
           {th.common.backToHome}
         </Link>

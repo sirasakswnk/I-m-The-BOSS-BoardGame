@@ -32,6 +32,7 @@ import { GameLog } from './GameLog';
 import { GameOverOverlay } from './GameOverOverlay';
 import { HandDock } from './HandDock';
 import { HandFan } from './HandFan';
+import { HostRecoveryBar } from './HostRecoveryBar';
 import { InterruptBar } from './InterruptBar';
 import { OfferModal, type OfferInput } from './OfferModal';
 import { InvestorTile } from './TableBits';
@@ -474,6 +475,11 @@ export function TableScreen({
     void act('rematch', { type: 'REMATCH' });
   }
 
+  function handleSkipDisconnectedBoss(): void {
+    if (hostUid !== uid) return;
+    void act('skip-disconnected-boss', { type: 'SKIP_DISCONNECTED_BOSS' });
+  }
+
   const renderSeat = (entry: SeatEntry, variant: 'top' | 'side' | 'strip') => {
     const player = entry.player;
     return (
@@ -603,6 +609,16 @@ export function TableScreen({
 
   return (
     <>
+      <HostRecoveryBar
+        uid={uid}
+        hostUid={hostUid}
+        players={players}
+        bossUid={publicState.bossUid}
+        phase={publicState.phase}
+        pending={pendingAction !== null}
+        onSkip={handleSkipDisconnectedBoss}
+      />
+
       {publicState.window && (
         <InterruptBar
           uid={uid}

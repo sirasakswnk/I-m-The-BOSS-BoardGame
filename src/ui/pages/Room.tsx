@@ -29,13 +29,17 @@ import {
 } from '@/net/storage';
 import { useActionFeedback, useGameState } from '@/net/useGameState';
 import { useHostLoop } from '@/net/useHostLoop';
+import { useHostMigration } from '@/net/useHostMigration';
 import { useRoom } from '@/net/useRoom';
+import { useSeatReclaims } from '@/net/useSeatReclaims';
 import { useUiStore } from '@/store/uiStore';
 import { Button } from '@/ui/common/Button';
 import { Chip } from '@/ui/common/Chip';
 import { Panel } from '@/ui/common/Panel';
 import { GameRoom } from '@/ui/pages/GameRoom';
+import { HostMigrationNotice } from '@/ui/room/HostMigrationNotice';
 import { JoinRoomView, LobbyView, RoomHeader } from '@/ui/room/LobbyView';
+import { HostReclaimPanel, ReclaimSeatView } from '@/ui/room/ReclaimViews';
 
 function errorCodeOf(error: unknown): RoomErrorCode {
   return error instanceof RoomServiceError ? error.code : 'UNKNOWN';
@@ -158,6 +162,18 @@ export function Room() {
     codeIsValid ? code : '',
     room.uid,
     Boolean(room.uid && isMember && room.meta?.status === 'playing'),
+  );
+
+  const hostMigration = useHostMigration(
+    codeIsValid ? code : '',
+    room.uid,
+    room.meta,
+    room.players,
+    Boolean(room.uid && isMember),
+  );
+  const reclaimRequests = useSeatReclaims(
+    codeIsValid ? code : '',
+    Boolean(room.uid && isHost && room.meta?.status === 'playing'),
   );
 
   useActionFeedback(
@@ -350,6 +366,19 @@ export function Room() {
 
     if (room.meta.status === 'playing') {
       if (!isMember || !uid) {
+        if (uid) {
+          return (
+            <ReclaimSeatView
+              code={code}
+              uid={uid}
+              players={room.players}
+              nickname={nickname}
+              nicknameValid={nicknameValid}
+              onNicknameChange={setNickname}
+            />
+          );
+        }
+
         return (
           <RoomStatus
             title={th.room.startedTitle}
@@ -439,8 +468,22 @@ export function Room() {
             : 'mx-auto w-full max-w-[1200px] px-4 pb-16'
         }
       >
+        {uid &&
+          isMember &&
+          room.meta?.status !== 'finished' &&
+          room.meta?.hostConnected === false && (
+            <HostMigrationNotice status={hostMigration} />
+          )}
         {renderContent()}
       </main>
+      {uid && isHost && room.meta?.status === 'playing' && (
+        <HostReclaimPanel
+          code={code}
+          hostUid={uid}
+          players={room.players}
+          requests={reclaimRequests}
+        />
+      )}
     </div>
   );
 }

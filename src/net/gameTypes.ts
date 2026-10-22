@@ -6,13 +6,25 @@ import type {
   RejectReason,
 } from '@/engine/types';
 
+/** A room-level recovery action handled by the host before the engine. */
+export interface SeatReclaimAction {
+  type: 'RECLAIM_SEAT';
+  uid: string;
+  oldUid: string;
+  newUid: string;
+  name: string;
+  ts?: number;
+}
+
+export type StoredActionType = ActionType | SeatReclaimAction['type'];
+
 /**
  * Shape of one child under rooms/{code}/actions (plan.md section 5).
  * The client writes uid/type/payload/ts; the host reconstructs a GameAction.
  */
 export interface StoredAction {
   uid: string;
-  type: ActionType;
+  type: StoredActionType;
   payload?: Record<string, unknown>;
   ts?: number;
 }

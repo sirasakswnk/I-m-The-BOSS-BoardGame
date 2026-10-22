@@ -18,7 +18,8 @@ import type { RoomMeta, RoomPlayers } from '@/net/roomTypes';
 import { serverNow, startServerClockSync } from '../clock';
 import { getFirebase } from '../firebase';
 import { normalizeHostState } from '../gameState';
-import type { StoredAction } from '../gameTypes';
+import type { SeatReclaimAction, StoredAction } from '../gameTypes';
+import { migratePlayerUid, type SeatReclaimRequest } from './reclaim';
 import { prepareRematchState } from './rematch';
 
 const TICK_INTERVAL_MS = 500;
@@ -50,12 +51,14 @@ const ACTION_TYPES: ReadonlySet<string> = new Set([
   'SKIP_DISCONNECTED_BOSS',
   'REMATCH',
   'REASSIGN_SEAT',
+  'RECLAIM_SEAT',
 ]);
 
-const HOST_ONLY_ACTIONS: ReadonlySet<GameAction['type']> = new Set([
+const HOST_ONLY_ACTIONS: ReadonlySet<string> = new Set([
   'SKIP_DISCONNECTED_BOSS',
   'REMATCH',
   'REASSIGN_SEAT',
+  'RECLAIM_SEAT',
 ]);
 
 interface HostLoopOptions {
@@ -87,7 +90,10 @@ function actionUid(raw: unknown): string | null {
   return typeof raw.uid === 'string' && raw.uid.length > 0 ? raw.uid : null;
 }
 
-function parseStoredAction(raw: unknown, fallbackNow: number): GameAction | null {
+function parseStoredAction(
+  raw: unknown,
+  fallbackNow: number,
+): GameAction | SeatReclaimAction | null {
   if (!isRecord(raw)) return null;
   if (typeof raw.uid !== 'string' || raw.uid.length === 0) return null;
   if (typeof raw.type !== 'string' || !ACTION_TYPES.has(raw.type)) return null;
@@ -100,7 +106,7 @@ function parseStoredAction(raw: unknown, fallbackNow: number): GameAction | null
     type: raw.type,
     uid: raw.uid,
     ts,
-  } as unknown as GameAction;
+  } as unknown as GameAction | SeatReclaimAction;
 }
 
 function randomSeed(): number {
@@ -263,7 +269,92 @@ function createHostLoop(options: HostLoopOptions): () => void {
     }
   }
 
-  async function gameAction(actionId: string, action: GameAction, meta: RoomMeta): Promise<void> {
+  async function reclaimSeatAction(
+    actionId: string,
+    action: SeatReclaimAction,
+    meta: RoomMeta,
+  ): Promise<void> {
+    if (
+      action.uid !== meta.hostUid ||
+      typeof action.oldUid !== 'string' ||
+      typeof action.newUid !== 'string' ||
+      typeof action.name !== 'string' ||
+      !action.oldUid ||
+      !action.newUid ||
+      action.oldUid === action.newUid ||
+      action.newUid.includes('/')
+    ) {
+      await rejectAction(actionId, action.uid, 'INVALID_ACTION');
+      return;
+    }
+
+    const [requestSnapshot, stateSnapshot, playersSnapshot] = await Promise.all([
+      get(ref(database, `rooms/${options.code}/reclaims/${action.newUid}`)),
+      get(hostStateRef),
+      get(ref(database, `rooms/${options.code}/players`)),
+    ]);
+    const request = requestSnapshot.exists()
+      ? (requestSnapshot.val() as SeatReclaimRequest)
+      : null;
+    const current = normalizeHostState(stateSnapshot.val());
+    const roomPlayers = (playersSnapshot.val() as RoomPlayers | null) ?? {};
+
+    if (
+      !request ||
+      request.oldUid !== action.oldUid ||
+      !current ||
+      !roomPlayers[action.oldUid] ||
+      roomPlayers[action.newUid] ||
+      roomPlayers[action.oldUid].connected !== false
+    ) {
+      await rejectAction(actionId, action.uid, 'INVALID_ACTION');
+      return;
+    }
+
+    const requestedName =
+      typeof request.name === 'string' ? request.name : action.name;
+    const next = migratePlayerUid(
+      current,
+      action.oldUid,
+      action.newUid,
+      requestedName || action.name,
+    );
+    if (!next) {
+      await rejectAction(actionId, action.uid, 'INVALID_ACTION');
+      return;
+    }
+
+    const nextPlayer = next.players.find((player) => player.uid === action.newUid);
+    if (!nextPlayer) {
+      await rejectAction(actionId, action.uid, 'INVALID_ACTION');
+      return;
+    }
+
+    const paths = projectionUpdates(current, next);
+    paths[`players/${action.oldUid}`] = null;
+    paths[`players/${action.newUid}`] = {
+      ...roomPlayers[action.oldUid],
+      name: nextPlayer.name,
+      connected: true,
+      lastSeen: serverNow(),
+    };
+    paths[`reclaims/${action.newUid}`] = null;
+    paths[`actions/${actionId}`] = null;
+
+    await update(root, paths);
+    cachedState = next;
+  }
+
+  async function gameAction(
+    actionId: string,
+    action: GameAction | SeatReclaimAction,
+    meta: RoomMeta,
+  ): Promise<void> {
+    if (action.type === 'RECLAIM_SEAT') {
+      await reclaimSeatAction(actionId, action, meta);
+      return;
+    }
+
     if (action.type === 'START_GAME') {
       await rejectAction(actionId, action.uid, 'WRONG_PHASE');
       return;
@@ -379,7 +470,23 @@ function createHostLoop(options: HostLoopOptions): () => void {
         return;
       }
       const snapshot = await get(hostStateRef);
-      cachedState = normalizeHostState(snapshot.val());
+      const restored = normalizeHostState(snapshot.val());
+      if (!restored) return;
+
+      // A host that has just taken over may arrive after an interrupt deadline
+      // has passed. Give the table a fresh five-second window instead of
+      // dropping actions that were already in flight.
+      if (restored.window) {
+        const now = serverNow();
+        const deadline = Math.max(restored.window.deadline, now) + 5_000;
+        const extended = structuredClone(restored);
+        extended.window = { ...extended.window!, deadline };
+        await writeProjection(restored, extended, null, false);
+        cachedState = extended;
+        return;
+      }
+
+      cachedState = restored;
     } catch (error) {
       reportError(error);
     }

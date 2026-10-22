@@ -55,6 +55,14 @@
             }
           }
         },
+        "reclaims": {
+          ".read": "auth != null && root.child('rooms').child($code).child('meta').child('hostUid').val() === auth.uid",
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('rooms').child($code).child('meta').child('hostUid').val() === auth.uid)",
+            ".write": "(auth != null && auth.uid === $uid && !data.exists() && !root.child('rooms').child($code).child('players').child($uid).exists() && root.child('rooms').child($code).child('meta').child('status').val() === 'playing' && newData.child('oldUid').isString() && root.child('rooms').child($code).child('players').child(newData.child('oldUid').val()).exists() && root.child('rooms').child($code).child('players').child(newData.child('oldUid').val()).child('connected').val() === false) || (auth != null && (auth.uid === $uid || root.child('rooms').child($code).child('meta').child('hostUid').val() === auth.uid) && !newData.exists())",
+            ".validate": "newData.hasChildren(['oldUid', 'name', 'requestedAt']) && newData.child('oldUid').isString() && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 16 && newData.child('requestedAt').isNumber()"
+          }
+        },
         "public": {
           ".read": "auth != null && root.child('rooms').child($code).child('players').child(auth.uid).exists()",
           ".write": "auth != null && root.child('rooms').child($code).child('meta').child('hostUid').val() === auth.uid"

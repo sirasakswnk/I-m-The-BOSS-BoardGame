@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { th } from '@/i18n/th';
+import { playSound } from '@/ui/common/sound';
 import { matchesQuery, PHONE_QUERY } from '@/ui/common/useMediaQuery';
 
 import { getPawnWalk, type DiceRollEvent, type PawnWalkState } from './diceRollUtils';
@@ -167,6 +168,10 @@ export function DiceRollOverlay({
   const walkRef = useRef(safeWalk);
   const onWalkRef = useRef(onWalk);
   const onDoneRef = useRef(onDone);
+
+  useEffect(() => {
+    playSound('dice');
+  }, []);
 
   useEffect(() => {
     walkRef.current = safeWalk;

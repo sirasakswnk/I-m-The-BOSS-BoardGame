@@ -32,6 +32,7 @@ import { Button } from '@/ui/common/Button';
 import { Chip } from '@/ui/common/Chip';
 import { FamilyCard } from '@/ui/common/FamilyCard';
 import { FAMILY_PRESENTATION } from '@/ui/common/families';
+import { HowToPlayButton } from '@/ui/common/HowToPlay';
 import { Pawn } from '@/ui/common/Pawn';
 import { TextInput } from '@/ui/common/TextInput';
 
@@ -211,12 +212,9 @@ export function Home() {
 
       <header className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-[22px]">
         <Brand />
-        <a
-          href="#how"
-          className="rounded-full border-2 border-ink bg-white px-3.5 py-2.5 font-display text-[17px] font-medium text-ink no-underline shadow-hard-sm transition-colors hover:bg-gold hover:text-ink max-md:px-3 max-md:py-2 max-md:text-[15px]"
-        >
+        <HowToPlayButton className="rounded-full border-2 border-ink bg-white px-3.5 py-2.5 font-display text-[17px] font-medium text-ink no-underline shadow-hard-sm transition-colors hover:bg-gold hover:text-ink max-md:px-3 max-md:py-2 max-md:text-[15px]">
           {th.home.navHowTo}
-        </a>
+        </HowToPlayButton>
       </header>
 
       <main className="mx-auto w-full max-w-[1200px] px-4">

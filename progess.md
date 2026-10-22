@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 22 ต.ค. 2026 (M8 mobile responsive)
+> อัปเดตล่าสุด: 22 ต.ค. 2026 (M9 ผ่าน gate ครบแล้ว — กำลัง deploy production)
 
 ## สถานะ Milestone
 
@@ -16,7 +16,7 @@
 | M6 | Action Cards & Interrupt Window | ✅ เสร็จ (21/10/2026) |
 | M7 | End of Turn & Game End | ✅ เสร็จ (22/10/2026) |
 | M8 | Mobile Responsive | ✅ เสร็จ (22/10/2026) |
-| M9 | Resilience, Polish, Deploy | ⬜ |
+| M9 | Resilience, Polish, Deploy | 🚧 ผ่าน gate แล้ว (รอ deploy) (22/10/2026) |
 
 ---
 
@@ -725,4 +725,74 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 - รีแฟกเตอร์: ตัวช่วยตำแหน่งบนจอของเต๋าย้ายเป็น `overlayGeometry.ts` ใช้ร่วมกัน; ลำดับไพ่ในพัดย้ายเป็น `sortHandForDisplay` ใน `drawUtils.ts`
 - ไฟล์: ใหม่ `DrawCardsOverlay.tsx`, `drawUtils.ts`, `drawUtils.test.ts`, `overlayGeometry.ts`; แก้ `TableScreen.tsx`, `HandFan.tsx`, `HandDock.tsx`, `TableSeat.tsx`, `TableBits.tsx`, `DiceRollOverlay.tsx`, `th.ts` (`th.game.table.draw`), `global.css`, `e2e/table.spec.ts`, `e2e/preview.spec.ts`, `review/draw/01–06`
 - ผล: `typecheck` ✅ `lint` ✅ unit **162/162** ✅ e2e **31/31** ✅ (ชุดจั่วการ์ดรันซ้ำ 3 รอบ × 2 project = 18/18) `build` ✅
+
+---
+
+## M9 — Resilience, Polish, Deploy 🚧 (22/10/2026)
+
+> **สถานะ: ผ่าน gate ครบทุกชุดแล้ว** เหลือ deploy production, smoke test และบันทึก URL จริง
+
+### สิ่งที่ทำ
+
+**Host migration**
+- ใหม่ `src/net/host/migration.ts` + `migration.test.ts`
+  - `findHostCandidate()` เลือกผู้เล่น connected ที่ seat ต่ำสุด (ตัดสินเสมอด้วย joinedAt/uid)
+  - `claimHost()` ใช้ transaction บน `meta/hostUid` แล้วตั้ง `meta/hostConnected = true`
+  - `isHostOffline()`, `HOST_MIGRATION_DELAY_MS = 10_000`
+- ใหม่ `src/net/useHostMigration.ts` — รอ 10 วิ เฉพาะ candidate เรียก claim
+  - สถานะ `online/waiting/claiming/claimed`; host เดิมที่กลับมาก่อน transaction สำเร็จยังชนะเพราะ rules บังคับ `hostConnected === false`
+- `src/ui/room/HostMigrationNotice.tsx` — แบนเนอร์แจ้งทุกคนระหว่างรอ/กำลังย้าย
+- `src/net/host/hostLoop.ts` — hydrate ของ host ใหม่ขยาย interrupt deadline อย่างน้อย 5 วินาที
+- `database.rules.json` — อนุญาต claim `hostUid` เฉพาะสมาชิกที่เขียนเป็นตัวเองและ host เดิมถูกทำเครื่องหมาย offline
+- `tests/rules/security.test.ts` — เทสต์โอน host, claim หลังหลุด และกัน claim ขณะ host ยัง online
+
+**Seat reclaim**
+- ใหม่ `src/net/host/reclaim.ts` + `reclaim.test.ts`
+  - `replaceUids()` เปลี่ยน uid ทั้ง key/value ทุกชั้น (players, offers, pending cards, logs, finalScores)
+  - `migratePlayerUid()` ย้ายชื่อ/ที่นั่งโดยกัน target ซ้ำหรือหาย
+  - `SeatReclaimRequest`, `SeatReclaims`, `findReclaimablePlayer()`
+- ใหม่ `src/net/reclaims.ts` + `src/net/useSeatReclaims.ts`
+  - ขอ/ยกเลิก/ติดตามคำขอของตัวเอง และ subscription คำขอสำหรับ host
+- `src/net/host/hostLoop.ts`
+  - action ระดับห้อง `RECLAIM_SEAT` แยกจาก engine (host-only)
+  - ตรวจว่ามีคำขอจริง, ที่นั่งเดิม offline, uid ใหม่ยังว่าง
+  - เขียน `hostState`, public/private projection, player เก่า/ใหม่, ลบ request และ action ใน update เดียว
+- ใหม่ `src/ui/room/ReclaimViews.tsx`
+  - guest ที่ยังไม่มีที่นั่งเลือกที่นั่ง offline + ตั้งชื่อ + รอ/ยกเลิกคำขอ
+  - host เห็นคิวคำขอและกดอนุมัติ/ปฏิเสธ
+- `database.rules.json` — `reclaims/$uid` เขียนได้เฉพาะ guest ที่ยังไม่เป็นสมาชิก ขอที่นั่ง offline ตอน playing; host อ่าน/ลบ; เจ้าของอ่าน/ยกเลิกของตัวเอง
+- `src/net/gameTypes.ts`, `src/net/actions.ts` — `SeatReclaimAction`, `sendSeatReclaim()`
+
+**Polish / resilience**
+- ใหม่ `src/ui/table/HostRecoveryBar.tsx` — host ข้ามเทิร์นบอสที่ offline ≥ 60 วิ ผ่าน `SKIP_DISCONNECTED_BOSS`
+- ใหม่ `src/ui/common/HowToPlay.tsx` — modal วิธีเล่น เข้าถึงได้จาก Home/Lobby/TableTopBar
+- ใหม่ `src/ui/common/sound.ts`, `SoundToggle.tsx`, `src/store/uiStore.ts`
+  - Web Audio synth สำหรับ dice/draw/win/toggle, default off, จำค่าใน localStorage
+  - ปุ่มใน TableTopBar ใช้ `aria-pressed` และ label ภาษาไทย
+- `src/net/rooms.ts` + ใหม่ `src/net/roomCleanup.ts` + test
+  - สร้างห้องใหม่แล้วลบห้องล่าสุดของเบราว์เซอร์เดิมเมื่ออายุ >24 ชม. และไม่มีใคร connected
+- `src/i18n/th.ts` — เพิ่มข้อความ M9 ครบ (how-to-play, migration, reclaim, sound, recovery)
+- `README.md` — วิธีติดตั้ง Firebase, env, deploy rules/Vercel, ข้อจำกัด host privacy, cleanup, Spark plan
+- `.env.example` — อธิบาย local vs Vercel production
+
+### Gate ผลจริง (22/10/2026)
+
+- `typecheck` ✅
+- `lint` ✅
+- unit **172/172** (22 ไฟล์) ✅
+- rules **16/16** ✅
+- e2e **35/35** ทั้ง desktop และ mobile (3.0 นาที) ✅
+  - host tab migration ผ่านใน **14.0–14.6 วินาที** และมือ/เงิน/เฟสเดิมอยู่ครบ
+  - reclaim จาก browser ใหม่ผ่านหลัง host อนุมัติ (4.9 วินาที)
+  - how-to-play modal และ sound toggle ผ่านทั้งสอง project
+- `build` ✅ — JS `788.66 kB` (gzip `234.27 kB`), CSS `107.65 kB` (gzip `20.09 kB`), Preview chunk แยก `16.15 kB`; ยังมี warning chunk >500 kB ตามเดิม
+
+### Deploy checklist
+
+- [ ] commit + push `main`
+- [ ] deploy `database.rules.json` ด้วย `firebase deploy --only database --project i-m-the-boss`
+- [ ] link Vercel project `im-the-boss-boardgame` กับ GitHub repo
+- [ ] ตั้ง Production env ครบ 5 `VITE_FIREBASE_*` + `VITE_USE_EMULATORS=false`
+- [ ] deploy production และ smoke test ด้วย 3 browser contexts
+- [ ] บันทึก URL จริงใน README/progess
 

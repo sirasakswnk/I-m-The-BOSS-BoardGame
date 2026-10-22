@@ -189,6 +189,28 @@ describe('presence and host ownership', () => {
     );
   });
 
+  it('completes host migration only while the old host is marked offline', async () => {
+    await seedRoom(lobbyRoom(3, { hostConnected: false }));
+
+    await assertSucceeds(
+      set(ref(dbFor('p1'), `rooms/${ROOM}/meta/hostUid`), 'p1'),
+    );
+    await assertSucceeds(
+      set(ref(dbFor('p1'), `rooms/${ROOM}/meta/hostConnected`), true),
+    );
+
+    await seedRoom(lobbyRoom(3, { hostUid: 'p1', hostConnected: false }));
+    await assertFails(
+      set(ref(dbFor('host'), `rooms/${ROOM}/meta/hostConnected`), true),
+    );
+    await assertSucceeds(
+      set(ref(dbFor('p1'), `rooms/${ROOM}/meta/hostConnected`), true),
+    );
+    await assertFails(
+      set(ref(dbFor('outsider'), `rooms/${ROOM}/meta/hostUid`), 'outsider'),
+    );
+  });
+
   it('only lets the host change game status', async () => {
     await seedRoom(lobbyRoom(3));
 
@@ -241,6 +263,84 @@ describe('game projections', () => {
     );
     await assertSucceeds(
       set(ref(dbFor('host'), hostStatePath), { phase: 'turnStart' }),
+    );
+  });
+});
+
+describe('seat reclaim requests', () => {
+  function playingWithOfflinePlayer(): Record<string, unknown> {
+    const room = lobbyRoom(3, { status: 'playing' });
+    const players = room.players as Record<string, SeedPlayer>;
+    players.p1.connected = false;
+    return room;
+  }
+
+  it('lets a new uid request an offline seat but not a connected one', async () => {
+    await seedRoom(playingWithOfflinePlayer());
+    const request = {
+      oldUid: 'p1',
+      name: 'New device',
+      requestedAt: NOW,
+    };
+
+    await assertSucceeds(
+      set(ref(dbFor('new-device'), `rooms/${ROOM}/reclaims/new-device`), request),
+    );
+    await assertSucceeds(
+      get(ref(dbFor('new-device'), `rooms/${ROOM}/reclaims/new-device`)),
+    );
+    await assertSucceeds(
+      get(ref(dbFor('host'), `rooms/${ROOM}/reclaims`)),
+    );
+    await assertFails(
+      get(ref(dbFor('p2'), `rooms/${ROOM}/reclaims`)),
+    );
+
+    await seedRoom(playingWithOfflinePlayer());
+    await assertFails(
+      set(ref(dbFor('new-device'), `rooms/${ROOM}/reclaims/new-device`), {
+        ...request,
+        oldUid: 'host',
+      }),
+    );
+  });
+
+  it('does not let members request a second seat or outsiders write player data', async () => {
+    await seedRoom(playingWithOfflinePlayer());
+
+    await assertFails(
+      set(ref(dbFor('p2'), `rooms/${ROOM}/reclaims/p2`), {
+        oldUid: 'p1',
+        name: 'Impostor',
+        requestedAt: NOW,
+      }),
+    );
+    await assertFails(
+      set(ref(dbFor('new-device'), `rooms/${ROOM}/players/new-device`), player(4)),
+    );
+  });
+
+  it('lets the host clear a request and migrate the seat data', async () => {
+    await seedRoom(playingWithOfflinePlayer());
+    await assertSucceeds(
+      set(ref(dbFor('new-device'), `rooms/${ROOM}/reclaims/new-device`), {
+        oldUid: 'p1',
+        name: 'New device',
+        requestedAt: NOW,
+      }),
+    );
+
+    await assertSucceeds(
+      set(ref(dbFor('host'), `rooms/${ROOM}/players/new-device`), {
+        ...player(1, 'New device'),
+        joinedAt: NOW,
+      }),
+    );
+    await assertSucceeds(
+      set(ref(dbFor('host'), `rooms/${ROOM}/players/p1`), null),
+    );
+    await assertSucceeds(
+      remove(ref(dbFor('host'), `rooms/${ROOM}/reclaims/new-device`)),
     );
   });
 });

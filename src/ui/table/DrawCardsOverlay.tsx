@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { InfluenceCard as InfluenceCardData } from '@/engine/types';
 import { th } from '@/i18n/th';
 import { CardBack, InfluenceCard } from '@/ui/common/influence';
+import { playSound } from '@/ui/common/sound';
 
 import type { DrawEvent } from './drawUtils';
 import {
@@ -158,6 +159,10 @@ export function DrawCardsOverlay({
   const finishedRef = useRef(false);
   const landedRef = useRef(0);
   const count = event.count;
+
+  useEffect(() => {
+    playSound('draw');
+  }, []);
 
   useEffect(() => {
     cardsRef.current = cards;

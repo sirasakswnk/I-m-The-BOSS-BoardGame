@@ -6,6 +6,7 @@ import { th } from '@/i18n/th';
 import type { RoomPlayers } from '@/net/roomTypes';
 import { Button } from '@/ui/common/Button';
 import { Modal } from '@/ui/common/Modal';
+import { playSound } from '@/ui/common/sound';
 
 import { buildFinalScoreRows } from './endgameUtils';
 
@@ -52,6 +53,10 @@ export function GameOverOverlay({
   const displayRows = allRevealed
     ? [...rows].sort((left, right) => left.rank - right.rank || left.seat - right.seat)
     : rows;
+
+  useEffect(() => {
+    playSound('win');
+  }, []);
 
   useEffect(() => {
     if (total === 0 || reducedMotion) {

@@ -5,6 +5,8 @@ import { DEAL_TILE_COUNT } from '@/engine/config/rules';
 import type { Phase } from '@/engine/types';
 import { th } from '@/i18n/th';
 import { Brand } from '@/ui/common/Brand';
+import { HowToPlayButton } from '@/ui/common/HowToPlay';
+import { SoundToggle } from '@/ui/common/SoundToggle';
 
 interface TableTopBarProps {
   code: string;
@@ -76,9 +78,8 @@ export function TableTopBar({
 
       {showChrome && (
         <nav className="table-topbar-nav" aria-label={th.room.headerNavAria}>
-          <Link to="/#how" className="table-top-btn">
-            {th.home.navHowTo}
-          </Link>
+          <HowToPlayButton className="table-top-btn">{th.home.navHowTo}</HowToPlayButton>
+          <SoundToggle />
           <Link to="/" className="table-top-btn">
             {th.common.backToHome}
           </Link>

@@ -25,6 +25,7 @@ async function startThreePlayerGame(
   browser: Browser,
   startSpace = 1,
 ): Promise<{
+  code: string;
   pages: Page[];
   close: () => Promise<void>;
 }> {
@@ -64,6 +65,7 @@ async function startThreePlayerGame(
   }
 
   return {
+    code,
     pages,
     close: async () => {
       await Promise.allSettled(contexts.map((context) => context.close()));
@@ -230,6 +232,23 @@ async function throttleNetwork(page: Page, latency: number) {
 test('empty turn: boss opens a deal, fails it and the turn ends', async ({ browser }) => {
   const game = await startThreePlayerGame(browser);
   try {
+    const host = game.pages[0];
+
+    // Rules are reachable from the table without leaving the game.
+    await host.getByTestId('how-to-play-trigger').click();
+    await expect(host.getByTestId('how-to-play')).toBeVisible();
+    await expect(host.getByTestId('how-to-play')).toContainText('วิธีเล่นโต๊ะเจรจาดีล');
+    await host.getByRole('button', { name: 'เข้าใจแล้ว กลับไปโต๊ะ' }).click();
+    await expect(host.getByTestId('how-to-play')).toHaveCount(0);
+
+    // Sound is opt-in and the toggle exposes its state.
+    const sound = host.getByTestId('sound-toggle');
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+    await sound.click();
+    await expect(sound).toHaveAttribute('aria-pressed', 'true');
+    await sound.click();
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+
     const boss = await findBossPage(game.pages);
     await openDeal(boss);
     await boss.getByTestId('fail-deal').click();
@@ -456,6 +475,85 @@ test('dice turn: boss rolls, draws three cards and finishes the turn', async ({ 
     const bossSeat = await boss.locator('.table-mine-seat').getAttribute('data-testid');
     await expect(watcher.getByTestId(bossSeat!).getByTestId('seat-hand-count')).toHaveText('+2 ×8');
   } finally {
+    await game.close();
+  }
+});
+
+test('closing the host tab migrates the host and keeps the table state', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const game = await startThreePlayerGame(browser, 1);
+  const [host, guest] = game.pages;
+
+  try {
+    const handBefore = await guest
+      .getByTestId('my-hand')
+      .locator('[data-card-id]')
+      .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-card-id')));
+    const moneyBefore = await guest.getByTestId('my-money').innerText();
+
+    await host.context().close();
+
+    await expect(guest.getByTestId('host-migration-notice')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(guest.getByTestId('host-migration-notice')).toHaveCount(0, {
+      timeout: 25_000,
+    });
+    // The compact layout hides the key icon, but the host mark is still in the DOM.
+    await expect(guest.locator('.table-mine-seat .table-host-mark')).toHaveCount(1, {
+      timeout: 20_000,
+    });
+
+    // The host loop and authoritative state survived the change of owner.
+    await expect(guest.getByTestId('game-room')).toContainText('ต้นเทิร์น');
+    await expect(guest.getByTestId('game-room')).toContainText('Host');
+    await expect(guest.getByTestId('my-money')).toHaveText(moneyBefore);
+    const handAfter = await guest
+      .getByTestId('my-hand')
+      .locator('[data-card-id]')
+      .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-card-id')));
+    expect(handAfter).toEqual(handBefore);
+  } finally {
+    await game.close();
+  }
+});
+
+test('a new browser can reclaim a disconnected seat after host approval', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const game = await startThreePlayerGame(browser, 1);
+  const [host, , third] = game.pages;
+  let replacementContext: Awaited<ReturnType<Browser['newContext']>> | null = null;
+
+  try {
+    await third.context().close();
+
+    replacementContext = await browser.newContext();
+    const replacement = await replacementContext.newPage();
+    await replacement.goto(`/${game.code}`);
+    await expect(replacement.getByTestId('reclaim-view')).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await replacement.getByTestId('reclaim-nickname-input').fill('Third Again');
+    await expect(replacement.getByTestId('reclaim-seat-2')).toBeVisible({
+      timeout: 20_000,
+    });
+    await replacement.getByTestId('reclaim-seat-2').click();
+    await expect(replacement.getByTestId('cancel-reclaim')).toBeVisible();
+
+    const approve = host.getByTestId(/^approve-reclaim-/);
+    await expect(approve).toBeVisible({ timeout: 20_000 });
+    await approve.click();
+
+    await expect(replacement.getByTestId('game-room')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(replacement.getByTestId('my-hand').locator('[data-card-id]')).toHaveCount(5);
+    await expect(host.getByTestId('game-room')).toContainText('Third Again', {
+      timeout: 20_000,
+    });
+  } finally {
+    await replacementContext?.close();
     await game.close();
   }
 });
