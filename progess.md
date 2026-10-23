@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 23 ต.ค. 2026 (Post-M9: ข้อเสนอเดียวต่อผู้เล่นแบบหลายการ์ด, บอสรับ/ยกเลิกทั้งข้อเสนอ, พร้อม deploy production)
+> อัปเดตล่าสุด: 23 ต.ค. 2026 (Post-M9: ข้อเสนอเดียวต่อผู้เล่นแบบหลายการ์ด, บอสรับ/ยกเลิกทั้งข้อเสนอ, deploy production + smoke ผ่าน)
 
 ## สถานะ Milestone
 
@@ -17,7 +17,7 @@
 | M7 | End of Turn & Game End | ✅ เสร็จ (22/10/2026) |
 | M8 | Mobile Responsive | ✅ เสร็จ (22/10/2026) |
 | M9 | Resilience, Polish, Deploy | ✅ เสร็จ + deploy production (22/10/2026) |
-| M10 | ข้อเสนอเดียวต่อผู้เล่น (Grouped Offer) | ✅ ตรวจรับในเครื่อง (23/10/2026) — รอ deploy production |
+| M10 | ข้อเสนอเดียวต่อผู้เล่น (Grouped Offer) | ✅ เสร็จ + deploy production + smoke ผ่าน (23/10/2026) |
 
 ---
 
@@ -996,11 +996,20 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 - e2e **35/35** ทั้ง desktop และ mobile ✅
 - `build` ✅ — ยังมี warning chunk > 500 kB ตามเดิม
 
-### Deploy / หมายเหตุที่ต้องระวัง
+### Deploy / Production Verification (23/10/2026)
 
-- [ ] commit + push `main` และ deploy Vercel production
-- [ ] production smoke test: สร้างห้อง 3 คน → เปิดดีล → ผู้เล่นยื่นข้อเสนอหลายการ์ด → บอสรับทั้งข้อเสนอ → แก้ข้อเสนอที่รับแล้วเห็นการรับถูกยกเลิก → บอสรับใหม่ → ปิดดีลและตรวจว่าจ่ายครั้งเดียวต่อข้อเสนอ → ลบห้อง smoke test
-- `schemaVersion` ยังเป็น `1` แต่รูป `public.deal.offers` เปลี่ยนจากรายสีเป็นรายผู้เล่น; ห้อง production ที่ยัง `playing` ด้วย state รูปเก่าจะไม่เข้ากัน ต้องปิด/ล้างห้องเก่าหรือเพิ่ม migration + bump schema ก่อนเปิดใช้งานจริง
+- [x] commit `6bdf40b` (`feat: use one grouped offer per player`) และ push `origin/main`
+- [x] deploy Vercel production สำเร็จ: deployment `dpl_9XPkMbkCWomVWjLbikDmCyBBWLfB` (`READY`)
+      — https://im-the-boss-boardgame.vercel.app
+- [x] production smoke test ผ่านด้วย Playwright (ไม่ใช้ emulator): สร้างห้อง 3 คน → เปิดดีลช่อง 5
+      → ผู้เล่นยื่นข้อเสนอ `purple` และข้อเสนอ group `red + blue` → บอสรับทั้งสองข้อเสนอ
+      → resubmit ข้อเสนอที่รับแล้วเพื่อตรวจว่าการถูกยกเลิก → บอสรับใหม่ → unaccept/reaccept
+      → ปิดดีล และตรวจว่า `red + blue` จ่ายครั้งเดียว 2 ล้าน (ไม่จ่าย 4 ล้าน) พร้อมส่วนแบ่งบอส 8 ล้าน
+- [x] ลบห้อง smoke test (`82174`, `58583`) และห้อง production schema เก่าที่ค้าง (`68293`, `82408`, `95885`;
+      host disconnected เกิน 24 ชม. และ `82408` มี locked deal รูปเก่าที่ไม่มี `offers`) — `/rooms` ว่างแล้ว
+- `schemaVersion` ยังเป็น `1` แต่รูป `public.deal.offers` เปลี่ยนจากรายสีเป็นรายผู้เล่น; ตอนนี้ล้างห้องเก่าแล้ว
+  แต่ควร bump schema หรือเพิ่ม compatibility guard ก่อนเปลี่ยนรูป state ครั้งใหญ่ครั้งถัดไป
+- หมายเหตุ: deploy นี้ยืนยันจาก production จริงแล้ว; ข้อเสนอ group หลายสีที่รับแล้วจ่ายครั้งเดียวตามสเปก
 - ทุก path ใหม่ต้องแก้ `accepted` ผ่าน helper (`clearOfferAcceptance`, `getAcceptedOffers`) เท่านั้น ห้ามรับ/ถอนบางสีของข้อเสนอ
 - Action payload ในอนาคตต้องละเว้น optional field แทนการส่ง `undefined`; ควรเพิ่ม guard/test ฝั่ง network serializer
 - `npm run test:e2e` ต้องรัน Firebase Emulator (auth/database) และ Vite พร้อมก่อน; Playwright จะ reuse Vite ที่มีอยู่

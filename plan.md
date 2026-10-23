@@ -794,11 +794,14 @@ README.md
 - rules ✅ **16/16**
 - e2e ✅ **35/35** (desktop + mobile; ครอบคลุม multi-card offer, แก้ข้อเสนอที่รับแล้ว, unaccept/reaccept, การจ่ายครั้งเดียวต่อข้อเสนอ)
 - `build` ✅ (มี warning chunk > 500 kB ตามเดิม)
+- deploy production ✅ `dpl_9XPkMbkCWomVWjLbikDmCyBBWLfB` — https://im-the-boss-boardgame.vercel.app
+- production smoke ✅ 3 ผู้เล่น, deal ช่อง 5, ข้อเสนอ `red + blue` ถูกบอสรับทั้งชุดและจ่ายครั้งเดียว 2 ล้าน; แก้ข้อเสนอที่รับแล้วถูกล้างการรับและรับใหม่ได้
 - พบบั๊กจริงระหว่าง e2e: ข้อเสนอที่เป็น `source = 'table'` ล้วนส่ง `cardId: undefined` ไป RTDB ทำให้เกิด connection error; แก้โดยไม่ใส่ property `cardId` เมื่อไม่มีการ์ดญาติ (ยืนยันด้วย e2e table offer flow)
+- พบ path แบ่งรับบางสีใน `SET_EXCLUDED_COLORS`; แก้เป็นบังคับ `UNACCEPT_OFFER` ก่อนรวมสีกลับ และมี unit test ครอบคลุม
 
 ### หมายเหตุ / งานที่ต้องระวังต่อ
 
-1. **Schema ของห้องเก่า** — `schemaVersion` ยังเป็น `1` แต่รูป `deal.offers` เปลี่ยนจากรายสีเป็นรายผู้เล่น ห้อง production ที่ยัง `playing` ด้วย state รูปเก่าจะอ่านไม่ได้; ก่อน deploy ต้องล้าง/ปิดห้องเก่าที่ค้าง หรือเพิ่ม migration/ bump schema แล้วปฏิเสธห้องเก่าให้ชัดเจน
+1. **Schema ของห้องเก่า** — `schemaVersion` ยังเป็น `1` แต่รูป `deal.offers` เปลี่ยนจากรายสีเป็นรายผู้เล่น; ล้างห้อง production รูปเก่าที่ค้างแล้วตอน deploy 23/10/2026 แต่ควร bump schema หรือเพิ่ม compatibility guard ก่อนเปลี่ยนรูป state ครั้งใหญ่ครั้งถัดไป เพื่อไม่ให้ client รุ่นเก่าที่เปิดค้างสร้างห้องที่อ่านไม่ได้
 2. **ห้ามแก้ `accepted` แบบบางสี** — ทุก path ใหม่ต้องใช้ `clearOfferAcceptance()` / `getAcceptedOffers()` เพื่อรักษาสัญญาว่ารับทั้งข้อเสนอ; ถ้าเพิ่ม action ในอนาคตต้องมี test ว่าข้อเสนอหลายสีไม่ถูกแบ่งรับ
 3. **RTDB ไม่รับ `undefined`** — action payload ทุกตัวที่เพิ่มในอนาคตต้องละเว้น optional field แทนการส่ง `undefined`; ควรเพิ่ม test/guard ฝั่ง network serializer เพื่อกันปัญหานี้ซ้ำ
 4. **ขอบเขต E2E** — ชุด e2e ต้องรัน Firebase Emulator (auth/database) ตามคำสั่งใน `progess.md`; `npm run test:e2e` เพียงอย่างเดียวไม่สตาร์ท emulator ให้
