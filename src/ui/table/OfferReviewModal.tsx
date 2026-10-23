@@ -12,6 +12,8 @@ import {
   getDealParticipation,
   getDealTileValue,
   getGroupProgress,
+  getMissingColors,
+  getOfferConflicts,
   getPlayerName,
   isOfferAccepted,
 } from './tableUtils';
@@ -30,6 +32,12 @@ interface OfferReviewModalProps {
 interface OfferIssue {
   key: string;
   label: string;
+  hint?: string;
+  resolve?: {
+    ownerUid: string;
+    label: string;
+    ariaLabel: string;
+  };
 }
 
 interface OfferEntry {
@@ -50,9 +58,7 @@ function colorNames(colors: readonly FamilyColor[]): string {
 }
 
 function sourceLabel(card: PublicOffer['cards'][number]): string {
-  return card.source === 'hand'
-    ? th.game.table.fromHand
-    : th.game.table.offerFromTableShort;
+  return card.source === 'hand' ? th.game.table.fromHand : th.game.table.offerFromTableShort;
 }
 
 /**
@@ -79,6 +85,7 @@ export function OfferReviewModal({
 
   if (!deal) return null;
 
+  const activeDeal = deal;
   const participation = getDealParticipation(
     deal,
     publicState.bossUid,
@@ -88,15 +95,10 @@ export function OfferReviewModal({
   const acceptedOffers = deal.acceptedOffers;
   const value = getDealTileValue(deal.tileNumber);
   const dividends = deal.requirements.dividends;
-  const acceptedTotal = participation.accepted.reduce(
-    (sum, entry) => sum + entry.offer.amount,
-    0,
-  );
+  const acceptedTotal = participation.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0);
   const bossLeft = Math.max(0, dividends - acceptedTotal) * value;
   const progress = getGroupProgress(deal.requirements, participation.allColors);
-  const requiredColors = new Set<FamilyColor>(
-    deal.requirements.groups.flatMap((group) => group.colors),
-  );
+  const missingColors = getMissingColors(deal.requirements, participation.allColors);
 
   const entries: OfferEntry[] = Object.entries(deal.offers)
     .filter(([, offer]) => offer.cards.length > 0)
@@ -108,9 +110,7 @@ export function OfferReviewModal({
     .sort(
       (left, right) =>
         left.seat - right.seat ||
-        getPlayerName(players, left.offerUid).localeCompare(
-          getPlayerName(players, right.offerUid),
-        ),
+        getPlayerName(players, left.offerUid).localeCompare(getPlayerName(players, right.offerUid)),
     );
   const acceptedEntries = entries.filter((entry) =>
     isOfferAccepted(entry.offer, entry.offerUid, acceptedOffers),
@@ -120,50 +120,55 @@ export function OfferReviewModal({
   );
 
   function issuesFor(offer: PublicOffer, offerUid: string): OfferIssue[] {
-    const colors = [...new Set(offer.cards.map((card) => card.color))];
-    const issues: OfferIssue[] = [];
+    const targetName = getPlayerName(players, offerUid);
+    return getOfferConflicts(offer, offerUid, activeDeal, participation).map((conflict) => {
+      if (conflict.kind === 'notRequired') {
+        return {
+          key: 'required',
+          label: format(th.game.table.offerReviewNotRequired, {
+            colors: colorNames(conflict.colors),
+          }),
+        };
+      }
+      if (conflict.kind === 'boss') {
+        return {
+          key: 'boss',
+          label: format(th.game.table.offerReviewColorTakenByBoss, {
+            colors: colorNames(conflict.colors),
+          }),
+        };
+      }
+      if (conflict.kind === 'capacity') {
+        return {
+          key: 'capacity',
+          label: th.game.table.offerReviewOverCapacity,
+          hint: th.game.table.offerReviewCapacityHint,
+        };
+      }
 
-    const notRequired = colors.filter((color) => !requiredColors.has(color));
-    if (notRequired.length > 0) {
-      issues.push({
-        key: 'required',
-        label: format(th.game.table.offerReviewNotRequired, {
-          colors: colorNames(notRequired),
-        }),
-      });
-    }
-
-    const bossTaken = colors.filter((color) => participation.bossFree.includes(color));
-    if (bossTaken.length > 0) {
-      issues.push({
-        key: 'boss',
-        label: format(th.game.table.offerReviewColorTakenByBoss, {
-          colors: colorNames(bossTaken),
-        }),
-      });
-    }
-
-    const takenBy = new Map<string, FamilyColor[]>();
-    for (const color of colors) {
-      const owner = acceptedOffers[color];
-      if (!owner || owner === offerUid) continue;
-      takenBy.set(owner, [...(takenBy.get(owner) ?? []), color]);
-    }
-    for (const [owner, ownerColors] of takenBy) {
-      issues.push({
-        key: `taken-${owner}`,
+      const ownerUid = conflict.ownerUid ?? '';
+      const ownerName = getPlayerName(players, ownerUid);
+      return {
+        key: `taken-${ownerUid}`,
         label: format(th.game.table.offerReviewColorConflict, {
-          colors: colorNames(ownerColors),
-          names: getPlayerName(players, owner),
+          colors: colorNames(conflict.colors),
+          names: ownerName,
         }),
-      });
-    }
+        resolve: {
+          ownerUid,
+          label: format(th.game.table.offerReviewCancelConflict, { name: ownerName }),
+          ariaLabel: format(th.game.table.offerReviewCancelConflictAria, {
+            name: ownerName,
+            target: targetName,
+          }),
+        },
+      };
+    });
+  }
 
-    if (acceptedTotal + offer.amount > dividends) {
-      issues.push({ key: 'capacity', label: th.game.table.offerReviewOverCapacity });
-    }
-
-    return issues;
+  function handleResolveConflict(ownerUid: string, pendingUid: string): void {
+    onUnacceptOffer(ownerUid);
+    rowRefs.current.get(pendingUid)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
   function renderRow(entry: OfferEntry) {
@@ -237,14 +242,44 @@ export function OfferReviewModal({
         </div>
 
         {issues.length > 0 && (
-          <ul className="table-review-issues">
-            {issues.map((issue) => (
-              <li key={issue.key}>
-                <TriangleAlert size={13} strokeWidth={2.6} aria-hidden="true" />
-                {issue.label}
-              </li>
-            ))}
-          </ul>
+          <div
+            className="table-review-conflicts"
+            data-testid={`offer-review-conflicts-${offerUid}`}
+          >
+            {issues.map((issue) => {
+              const resolve = issue.resolve;
+              const resolvePending = Boolean(
+                resolve && pendingAction === `offer:unaccept:${resolve.ownerUid}`,
+              );
+              return (
+                <div key={issue.key} className="table-review-conflict" role="note">
+                  <TriangleAlert size={14} strokeWidth={2.6} aria-hidden="true" />
+                  <div className="table-review-conflict-body">
+                    <span>{issue.label}</span>
+                    {issue.hint && <span className="table-review-conflict-hint">{issue.hint}</span>}
+                    {resolve && (
+                      <button
+                        type="button"
+                        className="table-review-conflict-action"
+                        data-testid={`resolve-conflict-${offerUid}-${resolve.ownerUid}`}
+                        disabled={busy}
+                        title={resolve.ariaLabel}
+                        aria-label={resolve.ariaLabel}
+                        onClick={() => handleResolveConflict(resolve.ownerUid, offerUid)}
+                      >
+                        {resolvePending ? (
+                          <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Undo2 size={13} strokeWidth={2.6} aria-hidden="true" />
+                        )}
+                        {resolve.label}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         <button
@@ -254,9 +289,7 @@ export function OfferReviewModal({
           disabled={busy || issues.length > 0}
           title={issues[0]?.label ?? actionLabel}
           aria-label={actionLabel}
-          onClick={() =>
-            accepted ? onUnacceptOffer(offerUid) : onAcceptOffer(offerUid)
-          }
+          onClick={() => (accepted ? onUnacceptOffer(offerUid) : onAcceptOffer(offerUid))}
         >
           {actionPending ? (
             <Loader2 size={15} className="animate-spin" aria-hidden="true" />
@@ -282,23 +315,57 @@ export function OfferReviewModal({
       testId="offer-review-modal"
       className="offer-review-modal"
     >
-      <div className="table-review-summary">
-        <div className="table-review-stat is-capacity">
-          <span>{th.game.table.offerReviewCapacity}</span>
-          <strong data-testid="offer-review-capacity">
+      <div
+        className="table-review-statusbar"
+        data-testid="offer-review-statusbar"
+        aria-label={th.game.table.offerReviewTitle}
+      >
+        <div className="table-review-status is-missing" data-testid="offer-review-missing">
+          <span className="table-review-status-label">{th.game.table.offerReviewMissing}</span>
+          {missingColors.length > 0 ? (
+            <div className="table-review-status-colors">
+              {missingColors.map((color) => (
+                <span key={color} data-testid={`offer-review-missing-color-${color}`}>
+                  <FamilyChip color={color} />
+                </span>
+              ))}
+            </div>
+          ) : (
+            <strong className="table-review-status-ok">
+              <Check size={14} strokeWidth={3} aria-hidden="true" />
+              {th.game.table.offerReviewMissingNone}
+            </strong>
+          )}
+        </div>
+
+        <div className="table-review-status is-shares" data-testid="offer-review-shares">
+          <span className="table-review-status-label">{th.game.table.offerReviewShares}</span>
+          <strong className="table-review-status-value" data-testid="offer-review-capacity">
             {acceptedTotal}/{dividends}
           </strong>
+          <span
+            className="table-review-meter"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={dividends}
+            aria-valuenow={acceptedTotal}
+            aria-label={th.game.table.offerReviewShares}
+          >
+            <i
+              style={{
+                width: `${Math.min(100, (acceptedTotal / dividends) * 100)}%`,
+              }}
+            />
+          </span>
+          <span className="table-review-status-note" data-testid="offer-review-payout">
+            {th.game.table.offerReviewPayout} {acceptedTotal * value} {th.game.million}
+            <em>{th.game.table.offerReviewPayoutHint}</em>
+          </span>
         </div>
-        <div className="table-review-stat">
-          <span>{th.game.table.offerReviewPayout}</span>
-          <strong data-testid="offer-review-payout">
-            {acceptedTotal * value} {th.game.million}
-          </strong>
-          <em>{th.game.table.offerReviewPayoutHint}</em>
-        </div>
-        <div className="table-review-stat">
-          <span>{th.game.table.offerReviewBossLeft}</span>
-          <strong data-testid="offer-review-boss-left">
+
+        <div className="table-review-status is-money" data-testid="offer-review-money">
+          <span className="table-review-status-label">{th.game.table.offerReviewBossMoney}</span>
+          <strong className="table-review-status-value" data-testid="offer-review-boss-left">
             {bossLeft} {th.game.million}
           </strong>
         </div>

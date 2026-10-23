@@ -104,9 +104,7 @@ export function getBossAutoJoinColors(
 ): FamilyColor[] {
   const allowed = new Set(requirements.groups.flatMap((group) => group.colors));
   return [
-    ...new Set(
-      investors.filter((color) => allowed.has(color) && !onVacation.includes(color)),
-    ),
+    ...new Set(investors.filter((color) => allowed.has(color) && !onVacation.includes(color))),
   ];
 }
 
@@ -173,10 +171,7 @@ export function isOfferAccepted(
   uid: string,
   acceptedOffers: Partial<Record<FamilyColor, string>>,
 ): boolean {
-  return (
-    offer.cards.length > 0 &&
-    offer.cards.every((card) => acceptedOffers[card.color] === uid)
-  );
+  return offer.cards.length > 0 && offer.cards.every((card) => acceptedOffers[card.color] === uid);
 }
 
 export function getDealParticipation(
@@ -191,18 +186,12 @@ export function getDealParticipation(
     ...new Set(
       bossInvestors.filter(
         (color) =>
-          allowed.has(color) &&
-          !deal.excludedColors.includes(color) &&
-          !onVacation.includes(color),
+          allowed.has(color) && !deal.excludedColors.includes(color) && !onVacation.includes(color),
       ),
     ),
   ];
   const bossClanFree = [
-    ...new Set(
-      deal.bossClans.filter(
-        (color) => allowed.has(color) && !onVacation.includes(color),
-      ),
-    ),
+    ...new Set(deal.bossClans.filter((color) => allowed.has(color) && !onVacation.includes(color))),
   ];
   const accepted: DealParticipation['accepted'] = [];
   for (const uid of Object.keys(deal.offers)) {
@@ -217,8 +206,7 @@ export function getDealParticipation(
   accepted.sort(
     (left, right) =>
       FAMILY_ORDER.indexOf(left.colors[0] ?? 'red') -
-        FAMILY_ORDER.indexOf(right.colors[0] ?? 'red') ||
-      left.uid.localeCompare(right.uid),
+        FAMILY_ORDER.indexOf(right.colors[0] ?? 'red') || left.uid.localeCompare(right.uid),
   );
   const bossFree = [...new Set([...bossInvestorFree, ...bossClanFree])];
   const allColors = new Set<FamilyColor>([
@@ -252,10 +240,80 @@ export function getGroupProgress(
   });
 }
 
-export function isDealComplete(
-  deal: PublicDeal,
+/**
+ * Colors that are still absent from requirement groups which have not reached
+ * their pick count. Complete groups may still have unused alternative colors;
+ * those are not reported as missing.
+ */
+export function getMissingColors(
+  requirements: DealSpace,
   participating: ReadonlySet<FamilyColor>,
-): boolean {
+): FamilyColor[] {
+  const missing = new Set<FamilyColor>();
+  for (const entry of getGroupProgress(requirements, participating)) {
+    if (entry.status !== 'missing') continue;
+    for (const color of entry.group.colors) {
+      if (!participating.has(color)) missing.add(color);
+    }
+  }
+  return FAMILY_ORDER.filter((color) => missing.has(color));
+}
+
+export type OfferConflictKind = 'notRequired' | 'boss' | 'accepted' | 'capacity';
+
+export interface OfferConflict {
+  kind: OfferConflictKind;
+  colors: FamilyColor[];
+  /** Accepted offer that owns one or more of the conflicting colors. */
+  ownerUid?: string;
+}
+
+/**
+ * Structured reasons why the boss cannot accept an offer as-is. Keeping this
+ * outside the modal lets the review panel offer a direct shortcut to unaccept
+ * the offer that blocks a color.
+ */
+export function getOfferConflicts(
+  offer: PublicOffer,
+  offerUid: string,
+  deal: PublicDeal,
+  participation: DealParticipation,
+): OfferConflict[] {
+  const required = new Set(deal.requirements.groups.flatMap((group) => group.colors));
+  const colors = [...new Set(offer.cards.map((card) => card.color))].sort(
+    (left, right) => FAMILY_ORDER.indexOf(left) - FAMILY_ORDER.indexOf(right),
+  );
+  const conflicts: OfferConflict[] = [];
+
+  const notRequired = colors.filter((color) => !required.has(color));
+  if (notRequired.length > 0) {
+    conflicts.push({ kind: 'notRequired', colors: notRequired });
+  }
+
+  const bossTaken = colors.filter((color) => participation.bossFree.includes(color));
+  if (bossTaken.length > 0) {
+    conflicts.push({ kind: 'boss', colors: bossTaken });
+  }
+
+  const acceptedByOwner = new Map<string, FamilyColor[]>();
+  for (const color of colors) {
+    const ownerUid = deal.acceptedOffers[color];
+    if (!ownerUid || ownerUid === offerUid) continue;
+    acceptedByOwner.set(ownerUid, [...(acceptedByOwner.get(ownerUid) ?? []), color]);
+  }
+  for (const [ownerUid, ownerColors] of acceptedByOwner) {
+    conflicts.push({ kind: 'accepted', colors: ownerColors, ownerUid });
+  }
+
+  const acceptedTotal = participation.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0);
+  if (acceptedTotal + offer.amount > deal.requirements.dividends) {
+    conflicts.push({ kind: 'capacity', colors: [] });
+  }
+
+  return conflicts;
+}
+
+export function isDealComplete(deal: PublicDeal, participating: ReadonlySet<FamilyColor>): boolean {
   if (participating.size !== deal.requirements.requiredInvestors) return false;
   const allowed = new Set(deal.requirements.groups.flatMap((group) => group.colors));
   for (const color of participating) {
@@ -273,10 +331,7 @@ export interface DealSegment {
   uid?: string;
 }
 
-export function getDealSegments(
-  deal: PublicDeal,
-  participation: DealParticipation,
-): DealSegment[] {
+export function getDealSegments(deal: PublicDeal, participation: DealParticipation): DealSegment[] {
   const segments: DealSegment[] = [];
   for (const entry of participation.accepted) {
     for (let index = 0; index < entry.offer.amount; index += 1) {

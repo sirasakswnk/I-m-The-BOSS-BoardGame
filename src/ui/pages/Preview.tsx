@@ -124,11 +124,59 @@ function buildGameOverState(
   return state;
 }
 
+/**
+ * Deal state with one accepted and one pending offer competing for the same
+ * required color, so the review panel's conflict shortcut is deterministic.
+ */
+function buildDealConflictState(base: FullGameState): FullGameState {
+  const state = structuredClone(base);
+  const deal = state.deal;
+  const boss = state.players.find((player) => player.uid === state.bossUid);
+  if (!deal || !boss) throw new Error('Preview conflict state needs an open deal');
+
+  const bossFree = new Set<FamilyColor>([
+    ...boss.investors,
+    ...deal.bossClanCards.map((card) => card.color),
+  ]);
+  const color = deal.requirements.groups
+    .flatMap((group) => group.colors)
+    .find(
+      (entry) =>
+        !bossFree.has(entry) &&
+        !state.onVacation.includes(entry) &&
+        !deal.excludedColors.includes(entry),
+    );
+  if (!color) throw new Error('Preview conflict state has no available required color');
+
+  const [acceptedOwner, pendingOwner] = state.players
+    .filter((player) => player.uid !== state.bossUid)
+    .sort((left, right) => left.seat - right.seat);
+  if (!acceptedOwner || !pendingOwner) {
+    throw new Error('Preview conflict state needs two non-boss players');
+  }
+
+  deal.offers = {
+    [acceptedOwner.uid]: {
+      cards: [{ color, source: 'table' }],
+      amount: 1,
+      submittedAt: PREVIEW_NOW + 4_000,
+    },
+    [pendingOwner.uid]: {
+      cards: [{ color, source: 'table' }],
+      amount: 1,
+      submittedAt: PREVIEW_NOW + 5_000,
+    },
+  };
+  deal.accepted = { [color]: acceptedOwner.uid };
+  return state;
+}
+
 function buildPreviewGame(): {
   setup: FullGameState;
   turn: FullGameState;
   afterMove: FullGameState;
   dealOpen: FullGameState;
+  dealConflict: FullGameState;
   discard: FullGameState;
   gameOverDie: FullGameState;
   gameOverFifteen: FullGameState;
@@ -175,6 +223,7 @@ function buildPreviewGame(): {
     turn: started.state,
     afterMove: rolled.state,
     dealOpen: opened.state,
+    dealConflict: buildDealConflictState(opened.state),
     discard: buildDiscardState(started.state),
     gameOverDie: buildGameOverState(started.state, 12, {
       [PREVIEW_HOST]: 42,
@@ -539,6 +588,7 @@ function PreviewStatus() {
 const PREVIEW_TABLE_STATES = [
   'turnStart',
   'dealOpen',
+  'dealConflict',
   'afterMove',
   'discard',
   'gameOverDie',
@@ -552,6 +602,8 @@ function previewStateFor(tableState: PreviewTableState): FullGameState {
       return PREVIEW_GAME.afterMove;
     case 'dealOpen':
       return PREVIEW_GAME.dealOpen;
+    case 'dealConflict':
+      return PREVIEW_GAME.dealConflict;
     case 'discard':
       return PREVIEW_GAME.discard;
     case 'gameOverDie':
@@ -574,9 +626,7 @@ function PreviewGame({ mode }: { mode: 'game' | 'setup' }) {
   const isEndgamePreview =
     mode === 'game' &&
     (tableState === 'discard' || tableState === 'gameOverDie' || tableState === 'gameOverFifteen');
-  const viewerUid = isEndgamePreview
-    ? PREVIEW_HOST
-    : (state.bossUid ?? PREVIEW_GAME.bossUid);
+  const viewerUid = isEndgamePreview ? PREVIEW_HOST : (state.bossUid ?? PREVIEW_GAME.bossUid);
   const projected = project(state);
   const privateState = projected.private[viewerUid] ?? null;
 

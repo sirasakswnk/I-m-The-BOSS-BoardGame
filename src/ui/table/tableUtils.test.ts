@@ -12,6 +12,8 @@ import {
   getDealSegments,
   getExclusionCandidates,
   getGroupProgress,
+  getMissingColors,
+  getOfferConflicts,
   getOverfilledGroups,
   getRemainingExclusionNeed,
   getSeatLayout,
@@ -108,9 +110,10 @@ describe('boss auto-join and exclusions', () => {
   it('ignores vacationing investors and colors outside the space', () => {
     const space = getSpaceByIndex(10);
     expect(space).not.toBeNull();
-    expect(
-      getBossAutoJoinColors(['red', 'black', 'blue', 'green'], space!, ['green']),
-    ).toEqual(['red', 'black']);
+    expect(getBossAutoJoinColors(['red', 'black', 'blue', 'green'], space!, ['green'])).toEqual([
+      'red',
+      'black',
+    ]);
   });
 
   it('requires enough exclusions to bring every group within its pick count', () => {
@@ -190,12 +193,7 @@ describe('deal participation and dividends', () => {
       },
       acceptedOffers: { red: 'p4' },
     });
-    const participation = getDealParticipation(
-      acceptedDeal,
-      'p2',
-      { p2: ['red'] },
-      [],
-    );
+    const participation = getDealParticipation(acceptedDeal, 'p2', { p2: ['red'] }, []);
     const segments = getDealSegments(acceptedDeal, participation);
     expect(segments).toHaveLength(3);
     expect(segments[0]).toMatchObject({ kind: 'accepted', colors: ['red'], uid: 'p4' });
@@ -215,9 +213,98 @@ describe('deal participation and dividends', () => {
     expect(isOfferAccepted(offer, 'p3', { red: 'p3', black: 'p3' })).toBe(true);
     expect(isOfferAccepted(offer, 'p3', { red: 'p3' })).toBe(false);
     expect(isOfferAccepted(offer, 'p3', { red: 'p4', black: 'p3' })).toBe(false);
+    expect(isOfferAccepted({ ...offer, cards: [] }, 'p3', { red: 'p3', black: 'p3' })).toBe(false);
+  });
+
+  it('lists only colors still missing from incomplete requirement groups', () => {
+    expect(getMissingColors(requirements, new Set())).toEqual(['red', 'black']);
+    expect(getMissingColors(requirements, new Set(['red']))).toEqual(['black']);
+    expect(getMissingColors(requirements, new Set(['red', 'black']))).toEqual([]);
+
+    // Space 6 has a pick-1 red/blue/yellow group and a pick-2 green/purple
+    // group. Red completes the first group, so blue/yellow are alternatives,
+    // not missing colors.
+    const pickOne = getSpaceByIndex(6)!;
+    expect(getMissingColors(pickOne, new Set(['red']))).toEqual(['green', 'purple']);
+    expect(getMissingColors(pickOne, new Set(['red', 'green', 'purple']))).toEqual([]);
+  });
+
+  it('reports conflicts with the accepted offer that owns a color', () => {
+    const acceptedDeal = deal({
+      offers: {
+        p4: {
+          cards: [
+            { color: 'red', source: 'table' },
+            { color: 'black', source: 'hand' },
+          ],
+          amount: 1,
+          submittedAt: 1,
+        },
+      },
+      acceptedOffers: { red: 'p4', black: 'p4' },
+    });
+    const participation = getDealParticipation(acceptedDeal, 'p2', {}, []);
+    const offer = {
+      cards: [
+        { color: 'black' as const, source: 'hand' as const },
+        { color: 'red' as const, source: 'table' as const },
+      ],
+      amount: 1,
+      submittedAt: 2,
+    };
+
+    expect(getOfferConflicts(offer, 'p3', acceptedDeal, participation)).toEqual([
+      { kind: 'accepted', colors: ['red', 'black'], ownerUid: 'p4' },
+    ]);
+  });
+
+  it('reports boss-owned colors and capacity separately from color conflicts', () => {
+    const bossDeal = deal();
+    const bossParticipation = getDealParticipation(bossDeal, 'p2', { p2: ['red'] }, []);
     expect(
-      isOfferAccepted({ ...offer, cards: [] }, 'p3', { red: 'p3', black: 'p3' }),
-    ).toBe(false);
+      getOfferConflicts(
+        { cards: [{ color: 'red', source: 'table' }], amount: 1, submittedAt: 1 },
+        'p3',
+        bossDeal,
+        bossParticipation,
+      ),
+    ).toEqual([{ kind: 'boss', colors: ['red'] }]);
+
+    const capacityDeal = deal({
+      offers: {
+        p4: {
+          cards: [{ color: 'red', source: 'table' }],
+          amount: 2,
+          submittedAt: 1,
+        },
+      },
+      acceptedOffers: { red: 'p4' },
+    });
+    const capacityParticipation = getDealParticipation(capacityDeal, 'p2', {}, []);
+    expect(
+      getOfferConflicts(
+        { cards: [{ color: 'green', source: 'hand' }], amount: 2, submittedAt: 2 },
+        'p3',
+        capacityDeal,
+        capacityParticipation,
+      ),
+    ).toEqual([
+      { kind: 'notRequired', colors: ['green'] },
+      { kind: 'capacity', colors: [] },
+    ]);
+  });
+
+  it('returns no conflicts for a required color with free capacity', () => {
+    const freeDeal = deal();
+    const participation = getDealParticipation(freeDeal, 'p2', {}, []);
+    expect(
+      getOfferConflicts(
+        { cards: [{ color: 'black', source: 'hand' }], amount: 1, submittedAt: 1 },
+        'p3',
+        freeDeal,
+        participation,
+      ),
+    ).toEqual([]);
   });
 
   it('checks each requirement group and the total investor count', () => {
@@ -241,8 +328,6 @@ describe('deal participation and dividends', () => {
     expect(participants.accepted).toHaveLength(1);
     expect(participants.accepted[0]?.colors).toEqual(['red', 'black']);
     expect(isDealComplete(completeDeal, participants.allColors)).toBe(true);
-    expect(
-      isDealComplete(completeDeal, new Set(['red'])),
-    ).toBe(false);
+    expect(isDealComplete(completeDeal, new Set(['red']))).toBe(false);
   });
 });

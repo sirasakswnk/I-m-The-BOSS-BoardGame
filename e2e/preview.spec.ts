@@ -115,6 +115,47 @@ test('preview exercises forced discard, end-check reveal, and rematch', async ({
   await expect(page.getByTestId('roll-dice')).toBeVisible();
 });
 
+test('preview resolves a color conflict from the boss review panel', async ({ page }) => {
+  await page.goto('/preview/game');
+  await page.getByTestId('preview-state-dealConflict').click();
+  await expect(page.getByTestId('preview-state-dealConflict')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await page.getByTestId('offer-review-open').click();
+  const review = page.getByTestId('offer-review-modal');
+  await expect(review).toBeVisible();
+  await expect(review.getByTestId('offer-review-statusbar')).toBeVisible();
+
+  // Space 2 needs four of six colors. The boss holds black and red is already
+  // accepted, so the remaining four colors are the only missing ones.
+  for (const color of ['blue', 'green', 'yellow', 'purple']) {
+    await expect(review.getByTestId(`offer-review-missing-color-${color}`)).toBeVisible();
+  }
+  await expect(review.getByTestId('offer-review-missing-color-red')).toHaveCount(0);
+  await expect(review.getByTestId('offer-review-missing-color-black')).toHaveCount(0);
+
+  const pendingRow = review.locator('[data-testid^="offer-review-row-"][data-accepted="false"]');
+  await expect(pendingRow).toHaveCount(1);
+  const pendingTestId = await pendingRow.getAttribute('data-testid');
+  const pendingUid = pendingTestId!.replace('offer-review-row-', '');
+  const accept = review.getByTestId(`accept-offer-${pendingUid}`);
+  await expect(accept).toBeDisabled();
+
+  const conflicts = review.locator('[data-testid^="offer-review-conflicts-"]');
+  await expect(conflicts).toHaveCount(1);
+  await expect(conflicts).toContainText('ซ้ำกับข้อเสนอของ');
+  const resolve = review.locator('[data-testid^="resolve-conflict-"]');
+  await expect(resolve).toHaveCount(1);
+  await resolve.click();
+
+  await expect(conflicts).toHaveCount(0);
+  await expect(accept).toBeEnabled();
+  await expect(review.getByTestId('offer-review-capacity')).toHaveText('0/5');
+  await expect(review.getByTestId('offer-review-missing-color-red')).toBeVisible();
+});
+
 test('preview shows a deal-15 game over without an end-check overlay', async ({ page }) => {
   await page.goto('/preview/game');
   await page.getByTestId('preview-state-gameOverFifteen').click();

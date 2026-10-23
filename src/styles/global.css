@@ -2381,43 +2381,99 @@
   width: min(820px, 100%);
 }
 
-.table-review-summary {
+.table-review-statusbar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.table-review-stat {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-  padding: 8px 10px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.85fr);
+  overflow: hidden;
   border: 2px solid var(--ink);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--white);
 }
 
-.table-review-stat.is-capacity {
+.table-review-status {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-left: 2px dashed rgba(29, 27, 46, 0.25);
+}
+
+.table-review-status:first-child {
+  border-left: 0;
+}
+
+.table-review-status.is-missing {
+  background: #fff3cd;
+}
+
+.table-review-status.is-shares {
+  background: var(--paper);
+}
+
+.table-review-status.is-money {
   background: var(--gold);
 }
 
-.table-review-stat span {
+.table-review-status-label {
   color: var(--ink-soft);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.table-review-stat strong {
+.table-review-status-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.table-review-status-colors .table-family-chip {
+  padding: 1px 7px 1px 5px;
+  font-size: 11px;
+}
+
+.table-review-status-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font-size: 12px;
+}
+
+.table-review-status-value {
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 18px;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
-.table-review-stat em {
+.table-review-status-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 5px;
   color: var(--ink-soft);
-  font-size: 9.5px;
+  font-size: 10px;
+}
+
+.table-review-status-note em {
+  font-size: 9px;
   font-style: normal;
+}
+
+.table-review-meter {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+}
+
+.table-review-meter i {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  transition: width 0.2s ease;
 }
 
 .table-review-groups {
@@ -2599,28 +2655,76 @@
   font-size: 14px;
 }
 
-.table-review-issues {
+.table-review-conflicts {
   display: flex;
   grid-column: 1 / -1;
   flex-direction: column;
-  gap: 3px;
-  margin: 0;
-  padding: 0;
+  gap: 6px;
+}
+
+.table-review-conflict {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1.5px solid rgba(200, 56, 45, 0.55);
+  border-radius: 10px;
+  background: #fdeceb;
   color: var(--red);
   font-size: 11px;
   font-weight: 600;
-  list-style: none;
 }
 
-.table-review-issues li {
+.table-review-conflict > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.table-review-conflict-body {
   display: flex;
-  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
   gap: 5px;
 }
 
-.table-review-issues svg {
-  flex: none;
-  margin-top: 1px;
+.table-review-conflict-hint {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.table-review-conflict-action {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid var(--red);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--red);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease;
+}
+
+.table-review-conflict-action:hover:not(:disabled) {
+  background: #f7d7d4;
+}
+
+.table-review-conflict-action:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.table-review-conflict-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .table-review-action {
@@ -4372,12 +4476,17 @@ button.table-family-chip:hover:not(:disabled) {
     font-size: 13px;
   }
 
-  .table-review-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .table-review-statusbar {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .table-review-stat.is-capacity {
-    grid-column: 1 / -1;
+  .table-review-status {
+    border-top: 2px dashed rgba(29, 27, 46, 0.25);
+    border-left: 0;
+  }
+
+  .table-review-status:first-child {
+    border-top: 0;
   }
 
   .table-review-row {

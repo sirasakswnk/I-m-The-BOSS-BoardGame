@@ -367,8 +367,19 @@ test('three players close the first deal with table offers', async ({ browser })
 
     // Every offer is reviewed in one boss panel, opened from the deal CTA.
     const review = await openOfferReview(boss);
+    await expect(review.getByTestId('offer-review-statusbar')).toBeVisible();
     await expect(review.getByTestId('offer-review-capacity')).toHaveText(
       `0/${requirements.dividends}`,
+    );
+    await expect(review.getByTestId('offer-review-shares')).toContainText(
+      `0/${requirements.dividends}`,
+    );
+    for (const color of missingColors) {
+      await expect(review.getByTestId(`offer-review-missing-color-${color}`)).toBeVisible();
+    }
+    await expect(review.getByTestId('offer-review-payout')).toContainText('0 ล้าน');
+    await expect(review.getByTestId('offer-review-boss-left')).toHaveText(
+      `${requirements.dividends * value} ล้าน`,
     );
     for (const entry of offeredByPage.values()) {
       const row = review.getByTestId(`offer-review-row-${entry.uid}`);
@@ -383,9 +394,7 @@ test('three players close the first deal with table offers', async ({ browser })
       await expect(review).toHaveCSS('border-top-left-radius', '18px');
       await expect(review).toHaveCSS('border-bottom-left-radius', '0px');
       const firstOffer = [...offeredByPage.values()][0]!;
-      const actionBox = await review
-        .getByTestId(`accept-offer-${firstOffer.uid}`)
-        .boundingBox();
+      const actionBox = await review.getByTestId(`accept-offer-${firstOffer.uid}`).boundingBox();
       expect(actionBox).not.toBeNull();
       expect(actionBox!.height).toBeGreaterThanOrEqual(44);
       const widths = await boss.evaluate(() => ({
@@ -404,6 +413,17 @@ test('three players close the first deal with table offers', async ({ browser })
     await expect(review.getByTestId('offer-review-capacity')).toHaveText(
       `${acceptedOffers}/${requirements.dividends}`,
     );
+    await expect(review.getByTestId('offer-review-missing')).toContainText('ครบทุกสี');
+    await expect(review.getByTestId('offer-review-payout')).toContainText(
+      `${acceptedOffers * value} ล้าน`,
+    );
+    await expect(review.getByTestId('offer-review-boss-left')).toHaveText(
+      `${(requirements.dividends - acceptedOffers) * value} ล้าน`,
+    );
+    await expect(review.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      String(acceptedOffers),
+    );
 
     if (acceptedOffers > 0) {
       const first = [...offeredByPage.values()][0]!;
@@ -412,9 +432,7 @@ test('three players close the first deal with table offers', async ({ browser })
       await closeOfferReview(boss);
       await boss.getByTestId(`offer-seat-${first.uid}`).click();
       await expect(review).toBeVisible({ timeout: 20_000 });
-      await expect(review.getByTestId(`offer-review-row-${first.uid}`)).toHaveClass(
-        /is-focused/,
-      );
+      await expect(review.getByTestId(`offer-review-row-${first.uid}`)).toHaveClass(/is-focused/);
 
       // Editing an accepted offer revokes the whole acceptance automatically.
       await resubmitOffer(first.page);

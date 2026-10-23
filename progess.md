@@ -1088,3 +1088,63 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 - ปุ่มรับในแผงใช้ `min-height: 46px` เพราะ Playwright mobile emulation วัด 44px ได้จริง 43.76px
 - `schemaVersion` ยังเป็น `1`; Phase 1 ไม่แตะ engine หรือรูป state จึงเข้ากันได้กับห้องเดิม
+
+---
+
+## Post-M9 — Phase 2: แถบสรุปและ conflict callout (23/10/2026)
+
+### สรุปการออกแบบ
+
+- ยุบการ์ดสรุปสามใบเดิมเป็น **แถบสรุปเดียว** ในแผงตรวจข้อเสนอของบอส:
+  - **สีที่ขาด** — ชิปสีเฉพาะกลุ่มเงื่อนไขที่ยังไม่ครบ pick; ถ้าครบทุกกลุ่มแสดง “ครบทุกสี”
+  - **ส่วนแบ่ง** — `รับแล้ว/ทั้งหมด` พร้อมหลอดความคืบหน้า และเงินที่จ่ายผู้เล่น (ครั้งเดียวต่อข้อเสนอ)
+  - **เงินบอส** — เงินที่เหลือของดีลหลังหักส่วนแบ่งที่รับแล้ว
+- เพิ่ม **conflict callout** ใต้แถวข้อเสนอที่รับไม่ได้ โดยแยกชนิดข้อชนเป็นโครงสร้าง:
+  `notRequired`, `boss`, `accepted`, `capacity`
+- ข้อชนกับสีของข้อเสนอที่รับแล้วแสดงปุ่ม **“ยกเลิกการรับข้อเสนอของ {ชื่อ}”** ในแผงเลย
+  เมื่อกดจะส่ง `UNACCEPT_OFFER` ของเจ้าของสีนั้น แล้วเลื่อนแถวข้อเสนอที่รออยู่กลับมาให้เห็น
+  (ยังคงรับ/ยกเลิกทั้งข้อเสนอ ไม่มี “รับทั้งหมด”)
+- ข้อชนเกินส่วนแบ่งแสดงข้อความบอกให้ยกเลิกข้อเสนอที่รับแล้ว; สีที่บอสใช้อยู่/ไม่อยู่ในเงื่อนไข
+  เป็นคำอธิบายเฉย ๆ เพราะไม่มีข้อเสนอใดให้ยกเลิกเพื่อแก้ได้
+- เพิ่ม preview state `dealConflict` ที่สร้างดีลช่อง 2 แบบกำหนดได้: บอสถือดำ, รับแดงจากผู้เล่นคนหนึ่ง
+  และมีข้อเสนอแดงรอจากอีกคน เพื่อทดสอบ conflict shortcut แบบ deterministic
+- ไม่แตะ engine/schema; เป็น UI + helper + tests + preview เท่านั้น
+
+### ไฟล์ที่เปลี่ยน
+
+- UI: `src/ui/table/OfferReviewModal.tsx`, `src/ui/table/tableUtils.ts`
+- Preview: `src/ui/pages/Preview.tsx` (`dealConflict`)
+- ข้อความ/CSS: `src/i18n/th.ts`, `src/styles/global.css`
+- Tests: `src/ui/table/tableUtils.test.ts`, `e2e/table.spec.ts`, `e2e/preview.spec.ts`
+- เอกสาร: `plan.md` (หัวข้อ 9.1/9.2)
+
+### Test IDs ใหม่
+
+- `offer-review-statusbar` — แถบสรุปทั้งสามช่วง
+- `offer-review-missing`, `offer-review-missing-color-<color>` — สีที่ขาดรายสี
+- `offer-review-shares`, `offer-review-money` — ช่วงส่วนแบ่งและเงินบอส
+- `offer-review-conflicts-<uid>` — กลุ่ม conflict callout ของข้อเสนอ
+- `resolve-conflict-<pendingUid>-<ownerUid>` — ปุ่มยกเลิกการรับข้อเสนอที่ชน
+- `preview-state-dealConflict` — ปุ่มเลือก preview state ดีลมีข้อชน
+- คง `offer-review-capacity`, `offer-review-payout`, `offer-review-boss-left` เดิม
+
+### Gate ผลจริง (23/10/2026)
+
+- `typecheck` ✅
+- `lint` ✅
+- unit **182/182** (22 ไฟล์) ✅ — เพิ่ม missing colors (ช่อง 10/6), accepted-owner conflict,
+  boss conflict, not-required + capacity และข้อเสนอที่ไม่มีข้อชน
+- rules **16/16** ✅
+- e2e **37/37** ทั้ง desktop และ mobile (2.8 นาที) ✅
+  - เปิดแผงแล้วเห็นแถบสรุป, ชิปสีที่ขาด, ส่วนแบ่ง `0/n`, payout `0 ล้าน`, เงินบอสเต็ม
+  - รับทุกข้อเสนอแล้วเห็น “ครบทุกสี”, payout/เงินบอสตรงตามส่วนที่รับ และ progressbar อัปเดต
+  - preview `dealConflict`: เห็น callout สีแดงซ้ำ, ปุ่มรับถูกปิด → กดปุ่มยกเลิกข้อเสนอที่ชน →
+    callout หาย, ปุ่มรับเปิด, capacity กลับเป็น `0/5` และแดงกลับไปอยู่ในสีที่ขาด
+  - มือถือ: แถบสรุปเรียงคอลัมน์, ปุ่มยกเลิกสูง ≥44px, ไม่มี horizontal scroll
+- `build` ✅ — JS `800.31 kB` (gzip `236.86 kB`), CSS `115.59 kB` (gzip `21.23 kB`),
+  Preview chunk แยก `16.70 kB` (gzip `5.31 kB`); ยังมี warning chunk >500 kB ตามเดิม
+
+### หมายเหตุ
+
+- ปุ่มยกเลิกข้อเสนอที่ชนใช้ `min-height: 44px` และคงไว้ใน mobile CSS
+- ยังไม่ push/deploy รอบนี้; รอคำสั่งก่อน
