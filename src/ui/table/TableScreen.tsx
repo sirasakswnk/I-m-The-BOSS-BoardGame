@@ -242,34 +242,30 @@ export function TableScreen({
   }
 
   function handleSubmitOffer(offer: OfferInput): void {
-    void act(`offer:${offer.color}`, {
+    void act('offer:submit', {
       type: 'SUBMIT_OFFER',
-      color: offer.color,
-      source: offer.source,
-      cardId: offer.cardId,
+      cards: offer.cards,
       amount: offer.amount,
     });
   }
 
-  function handleWithdrawOffer(color: FamilyColor): void {
-    void act(`offer:withdraw:${color}`, {
+  function handleWithdrawOffer(): void {
+    void act('offer:withdraw', {
       type: 'WITHDRAW_OFFER',
-      color,
     });
   }
 
-  function handleAcceptOffer(targetUid: string, color: FamilyColor): void {
-    void act(`offer:accept:${color}`, {
+  function handleAcceptOffer(targetUid: string): void {
+    void act(`offer:accept:${targetUid}`, {
       type: 'ACCEPT_OFFER',
-      color,
       targetUid,
     });
   }
 
-  function handleUnacceptOffer(color: FamilyColor): void {
-    void act(`offer:unaccept:${color}`, {
+  function handleUnacceptOffer(targetUid: string): void {
+    void act(`offer:unaccept:${targetUid}`, {
       type: 'UNACCEPT_OFFER',
-      color,
+      targetUid,
     });
   }
 
@@ -358,17 +354,18 @@ export function TableScreen({
     dealParticipation?.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0) ?? 0;
   const offerActionState =
     canManageOffers && deal && dealParticipation
-      ? (color: FamilyColor, offer: PublicOffer): { disabled: boolean; title: string } => {
-          if (!requiredColors.has(color)) {
+      ? (offer: PublicOffer): { disabled: boolean; title: string } => {
+          const colors = offer.cards.map((card) => card.color);
+          if (colors.some((color) => !requiredColors.has(color))) {
             return { disabled: true, title: th.game.table.offerNotRequired };
           }
-          if (dealParticipation.bossFree.includes(color)) {
+          if (colors.some((color) => dealParticipation.bossFree.includes(color))) {
             return { disabled: true, title: th.game.table.offerColorTaken };
           }
-          const currentUid = deal.acceptedOffers[color];
-          const currentAmount = currentUid ? (deal.offers[currentUid]?.[color]?.amount ?? 0) : 0;
-          const capacity = deal.requirements.dividends - (acceptedTotal - currentAmount);
-          if (offer.amount > capacity) {
+          if (colors.some((color) => Boolean(deal.acceptedOffers[color]))) {
+            return { disabled: true, title: th.game.table.offerColorTaken };
+          }
+          if (acceptedTotal + offer.amount > deal.requirements.dividends) {
             return { disabled: true, title: th.game.table.offerTooLarge };
           }
           return { disabled: false, title: th.game.table.acceptOffer };
@@ -491,7 +488,7 @@ export function TableScreen({
         onVacation={publicState.onVacation}
         handCount={seatHandCount(entry.uid)}
         receiving={showDraw && latestDraw.uid === entry.uid}
-        offers={publicState.deal?.offers[entry.uid]}
+        offer={publicState.deal?.offers[entry.uid]}
         acceptedOffers={publicState.deal?.acceptedOffers}
         valuePerDividend={dealValue}
         canManageOffers={canManageOffers}

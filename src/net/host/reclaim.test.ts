@@ -32,12 +32,9 @@ function startedState(): FullGameState {
     bossClanCards: [],
     offers: {
       p2: {
-        red: {
-          color: 'red',
-          source: 'table',
-          amount: 2,
-          submittedAt: 1_000,
-        },
+        cards: [{ color: 'red', source: 'table' }],
+        amount: 2,
+        submittedAt: 1_000,
       },
     },
     accepted: { red: 'p2' },

@@ -31,9 +31,7 @@ describe('projection privacy', () => {
       {
         type: 'SUBMIT_OFFER',
         uid: 'p2',
-        color: 'green',
-        source: 'hand',
-        cardId: offerClan.id,
+        cards: [{ color: 'green', source: 'hand', cardId: offerClan.id }],
         amount: 1,
       },
       3100,
@@ -53,10 +51,13 @@ describe('projection privacy', () => {
     const publicJson = JSON.stringify(projected.public);
 
     expect(projected.public.deal?.bossClans).toEqual(['yellow']);
-    const offer = projected.public.deal?.offers.p2?.green;
-    expect(offer).toMatchObject({ color: 'green', source: 'hand', amount: 1 });
-    expect(offer).not.toHaveProperty('card');
-    expect(offer).not.toHaveProperty('cardId');
+    const offer = projected.public.deal?.offers.p2;
+    expect(offer).toMatchObject({
+      cards: [{ color: 'green', source: 'hand' }],
+      amount: 1,
+    });
+    expect(offer?.cards[0]).not.toHaveProperty('card');
+    expect(offer?.cards[0]).not.toHaveProperty('cardId');
 
     const pending = projected.public.pendingCards[0];
     expect(pending).toBeDefined();

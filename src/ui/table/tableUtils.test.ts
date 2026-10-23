@@ -150,7 +150,9 @@ describe('deal participation and dividends', () => {
       deal({
         offers: {
           p4: {
-            red: { color: 'red', source: 'table', amount: 1, submittedAt: 3 },
+            cards: [{ color: 'red', source: 'table' }],
+            amount: 1,
+            submittedAt: 3,
           },
         },
         acceptedOffers: { red: 'p4' },
@@ -161,7 +163,7 @@ describe('deal participation and dividends', () => {
     );
 
     expect(participation.bossInvestorFree).toEqual(['red']);
-    expect(participation.accepted.map((entry) => entry.color)).toEqual(['red']);
+    expect(participation.accepted.map((entry) => entry.colors)).toEqual([['red']]);
     expect(participation.allColors.has('red')).toBe(true);
     expect(participation.allColors.has('blue')).toBe(false);
   });
@@ -180,7 +182,9 @@ describe('deal participation and dividends', () => {
     const acceptedDeal = deal({
       offers: {
         p4: {
-          red: { color: 'red', source: 'hand', amount: 2, submittedAt: 4 },
+          cards: [{ color: 'red', source: 'hand' }],
+          amount: 2,
+          submittedAt: 4,
         },
       },
       acceptedOffers: { red: 'p4' },
@@ -193,7 +197,7 @@ describe('deal participation and dividends', () => {
     );
     const segments = getDealSegments(acceptedDeal, participation);
     expect(segments).toHaveLength(3);
-    expect(segments[0]).toMatchObject({ kind: 'accepted', color: 'red', uid: 'p4' });
+    expect(segments[0]).toMatchObject({ kind: 'accepted', colors: ['red'], uid: 'p4' });
     expect(segments.filter((segment) => segment.kind === 'boss')).toHaveLength(1);
   });
 
@@ -204,13 +208,19 @@ describe('deal participation and dividends', () => {
     const completeDeal = deal({
       offers: {
         p3: {
-          red: { color: 'red', source: 'table', amount: 1, submittedAt: 5 },
-          black: { color: 'black', source: 'table', amount: 1, submittedAt: 5 },
+          cards: [
+            { color: 'red', source: 'table' },
+            { color: 'black', source: 'table' },
+          ],
+          amount: 1,
+          submittedAt: 5,
         },
       },
       acceptedOffers: { red: 'p3', black: 'p3' },
     });
     const participants = getDealParticipation(completeDeal, 'p2', {}, []);
+    expect(participants.accepted).toHaveLength(1);
+    expect(participants.accepted[0]?.colors).toEqual(['red', 'black']);
     expect(isDealComplete(completeDeal, participants.allColors)).toBe(true);
     expect(
       isDealComplete(completeDeal, new Set(['red'])),

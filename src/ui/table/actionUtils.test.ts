@@ -35,10 +35,14 @@ const baseDeal: PublicDeal = {
   bossClans: ['blue'],
   offers: {
     alice: {
-      green: { color: 'green', source: 'hand', amount: 1, submittedAt: 1 },
+      cards: [{ color: 'green', source: 'hand' }],
+      amount: 1,
+      submittedAt: 1,
     },
     bob: {
-      yellow: { color: 'yellow', source: 'table', amount: 1, submittedAt: 1 },
+      cards: [{ color: 'yellow', source: 'table' }],
+      amount: 1,
+      submittedAt: 1,
     },
   },
   acceptedOffers: {},

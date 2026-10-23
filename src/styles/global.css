@@ -1106,6 +1106,26 @@
   font-size: 12px;
 }
 
+.table-accepted-offer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border: 1.5px dashed rgba(29, 27, 46, 0.35);
+  border-radius: 999px;
+  background: rgba(226, 240, 223, 0.5);
+}
+
+.table-accepted-offer-label {
+  padding: 0 6px 0 3px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .table-deal-excluded {
   display: flex;
   flex-wrap: wrap;
@@ -1669,6 +1689,14 @@
   opacity: 0.58;
 }
 
+.table-offer-colors {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
 .table-offer em {
   color: var(--ink-soft);
   font-size: 8.5px;
@@ -1823,6 +1851,25 @@
 
 /* Offer modal -------------------------------------------------------- */
 
+.app-modal.offer-modal {
+  width: min(820px, 100%);
+}
+
+.table-offer-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.table-offer-picker h3 {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .table-source-tabs {
   display: flex;
   gap: 6px;
@@ -1969,11 +2016,72 @@
   align-items: center;
   gap: 6px;
   min-height: 30px;
+  padding: 3px 6px 3px 8px;
+  border: 1.5px solid rgba(29, 27, 46, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.table-offer-selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.table-offer-selected-count {
+  color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.table-offer-remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.table-offer-remove:hover:not(:disabled) {
+  background: #f2c9c6;
+}
+
+.table-offer-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.table-offer-accepted-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 2px solid var(--green);
+  border-radius: 12px;
+  background: #e2f0df;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.table-offer-accepted-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--green);
 }
 
 .table-offer-selected strong {
   font-family: 'Kanit', system-ui, sans-serif;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
 }
 

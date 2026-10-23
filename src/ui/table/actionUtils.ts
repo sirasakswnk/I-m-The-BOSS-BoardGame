@@ -125,10 +125,10 @@ export function getTravelTargets(
       });
     }
 
-    for (const [ownerUid, offers] of Object.entries(deal.offers)) {
-      for (const color of FAMILY_ORDER) {
-        const offer = offers?.[color];
-        if (offer?.source !== 'hand') continue;
+    for (const [ownerUid, offer] of Object.entries(deal.offers)) {
+      for (const offerCard of offer?.cards ?? []) {
+        if (offerCard.source !== 'hand') continue;
+        const color = offerCard.color;
         if (!matchesTravelColor(card, color)) continue;
         options.push({
           target: {

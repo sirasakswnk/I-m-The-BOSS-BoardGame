@@ -65,9 +65,7 @@ describe('travel', () => {
       {
         type: 'SUBMIT_OFFER',
         uid: 'p2',
-        color: 'purple',
-        source: 'hand',
-        cardId: offeredClan.id,
+        cards: [{ color: 'purple', source: 'hand', cardId: offeredClan.id }],
         amount: 1,
       },
       3100,
@@ -85,10 +83,58 @@ describe('travel', () => {
     ).state;
     const closed = passWindowAll(played, 3210);
 
-    expect(closed.deal?.offers.p2?.purple).toBeUndefined();
+    expect(closed.deal?.offers.p2).toBeUndefined();
     expect(closed.discardPile.some((card) => card.id === offeredClan.id)).toBe(true);
     expect(closed.discardPile.some((card) => card.id === travel.id)).toBe(true);
     expect(closed.log.some((event) => event.type === 'cardResolved')).toBe(true);
+  });
+
+  it('removes one card from an accepted multi-card offer and revokes acceptance', () => {
+    const state = startGame(4, 74);
+    setTableInvestors(state, { p1: ['red', 'blue'], p2: ['yellow'] });
+    const offeredClan = clanCard('purple');
+    const travel = travelCard('purple');
+    setHand(state, 'p2', [offeredClan]);
+    setHand(state, 'p3', [travel]);
+
+    const opened = openDealAt(state, 'p1', 4);
+    const offered = ok(
+      opened,
+      {
+        type: 'SUBMIT_OFFER',
+        uid: 'p2',
+        cards: [
+          { color: 'yellow', source: 'table' },
+          { color: 'purple', source: 'hand', cardId: offeredClan.id },
+        ],
+        amount: 1,
+      },
+      3100,
+    ).state;
+    const accepted = ok(
+      offered,
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
+      3200,
+    ).state;
+    expect(accepted.deal?.accepted).toEqual({ yellow: 'p2', purple: 'p2' });
+    expect(isDealComplete(accepted)).toBe(true);
+
+    const played = ok(
+      accepted,
+      {
+        type: 'PLAY_TRAVEL',
+        uid: 'p3',
+        cardId: travel.id,
+        target: { kind: 'clan', uid: 'p2', color: 'purple', placement: 'offer' },
+      },
+      3300,
+    ).state;
+    const closed = passWindowAll(played, 3310);
+
+    expect(closed.deal?.offers.p2?.cards).toEqual([{ color: 'yellow', source: 'table' }]);
+    expect(closed.deal?.accepted).toEqual({});
+    expect(closed.discardPile.some((card) => card.id === offeredClan.id)).toBe(true);
+    expect(isDealComplete(closed)).toBe(false);
   });
 
   it('discards a boss clan card when traveled', () => {
@@ -380,12 +426,12 @@ describe('recruitment', () => {
     const opened = openDealAt(state, 'p1', 10);
     const offered = ok(
       opened,
-      { type: 'SUBMIT_OFFER', uid: 'p2', color: 'black', source: 'table', amount: 1 },
+      { type: 'SUBMIT_OFFER', uid: 'p2', cards: [{ color: 'black', source: 'table' }], amount: 1 },
       3100,
     ).state;
     const accepted = ok(
       offered,
-      { type: 'ACCEPT_OFFER', uid: 'p1', color: 'black', targetUid: 'p2' },
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
       3200,
     ).state;
     expect(isDealComplete(accepted)).toBe(true);
@@ -399,8 +445,58 @@ describe('recruitment', () => {
 
     expect(getPlayer(closed, 'p2').investors).not.toContain('black');
     expect(getPlayer(closed, 'p3').investors).toContain('black');
-    expect(closed.deal?.offers.p2?.black).toBeUndefined();
+    expect(closed.deal?.offers.p2).toBeUndefined();
     expect(closed.deal?.accepted.black).toBeUndefined();
+    expect(isDealComplete(closed)).toBe(false);
+  });
+
+  it('removes a recruited investor from a multi-card accepted offer', () => {
+    const state = startGame(4, 95);
+    setTableInvestors(state, { p1: ['red', 'blue'], p2: ['yellow'] });
+    const offeredClan = clanCard('purple');
+    const cards = [recruitmentCard(), recruitmentCard(), recruitmentCard()];
+    setHand(state, 'p2', [offeredClan]);
+    setHand(state, 'p3', cards);
+
+    const opened = openDealAt(state, 'p1', 4);
+    const offered = ok(
+      opened,
+      {
+        type: 'SUBMIT_OFFER',
+        uid: 'p2',
+        cards: [
+          { color: 'yellow', source: 'table' },
+          { color: 'purple', source: 'hand', cardId: offeredClan.id },
+        ],
+        amount: 1,
+      },
+      3100,
+    ).state;
+    const accepted = ok(
+      offered,
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
+      3200,
+    ).state;
+    expect(isDealComplete(accepted)).toBe(true);
+
+    const played = ok(
+      accepted,
+      {
+        type: 'PLAY_RECRUITMENT',
+        uid: 'p3',
+        cardIds: cards.map((card) => card.id),
+        targetColor: 'yellow',
+      },
+      3300,
+    ).state;
+    const closed = passWindowAll(played, 3310);
+
+    expect(getPlayer(closed, 'p2').investors).not.toContain('yellow');
+    expect(getPlayer(closed, 'p3').investors).toContain('yellow');
+    expect(closed.deal?.offers.p2?.cards).toEqual([
+      { color: 'purple', source: 'hand', card: expect.objectContaining({ id: offeredClan.id }) },
+    ]);
+    expect(closed.deal?.accepted).toEqual({});
     expect(isDealComplete(closed)).toBe(false);
   });
 
@@ -441,16 +537,14 @@ describe('recruitment', () => {
       {
         type: 'SUBMIT_OFFER',
         uid: 'p2',
-        color: 'black',
-        source: 'hand',
-        cardId: blackClan.id,
+        cards: [{ color: 'black', source: 'hand', cardId: blackClan.id }],
         amount: 1,
       },
       3100,
     ).state;
     const accepted = ok(
       offered,
-      { type: 'ACCEPT_OFFER', uid: 'p1', color: 'black', targetUid: 'p2' },
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
       3200,
     ).state;
     expect(isDealComplete(accepted)).toBe(true);
@@ -472,6 +566,55 @@ describe('recruitment', () => {
     expect(closed.deal?.accepted.black).toBe('p2');
     expect(closed.onVacation).toEqual(['black']);
     expect(isDealComplete(closed)).toBe(true);
+  });
+
+  it('revokes a whole multi-card acceptance when the boss recruits its family', () => {
+    const state = startGame(4, 96);
+    setTableInvestors(state, { p1: ['red', 'blue'], p2: ['yellow'], p3: ['black'] });
+    const blackClan = clanCard('black');
+    const cards = [recruitmentCard(), recruitmentCard(), recruitmentCard()];
+    setHand(state, 'p1', cards);
+    setHand(state, 'p2', [blackClan]);
+    setHand(state, 'p3', []);
+
+    const opened = openDealAt(state, 'p1', 4);
+    const offered = ok(
+      opened,
+      {
+        type: 'SUBMIT_OFFER',
+        uid: 'p2',
+        cards: [
+          { color: 'yellow', source: 'table' },
+          { color: 'black', source: 'hand', cardId: blackClan.id },
+        ],
+        amount: 1,
+      },
+      3100,
+    ).state;
+    const accepted = ok(
+      offered,
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
+      3200,
+    ).state;
+    expect(accepted.deal?.accepted).toEqual({ yellow: 'p2', black: 'p2' });
+    expect(isDealComplete(accepted)).toBe(true);
+
+    const played = ok(
+      accepted,
+      {
+        type: 'PLAY_RECRUITMENT',
+        uid: 'p1',
+        cardIds: cards.map((card) => card.id),
+        targetColor: 'black',
+      },
+      3300,
+    ).state;
+    const closed = passWindowAll(played, 3310);
+
+    expect(getPlayer(closed, 'p1').investors).toContain('black');
+    expect(closed.deal?.offers.p2?.cards).toHaveLength(2);
+    expect(closed.deal?.accepted).toEqual({});
+    expect(isDealComplete(closed)).toBe(false);
   });
 
   it('rejects invalid card sets and targets', () => {
@@ -641,25 +784,23 @@ describe('imTheBoss', () => {
     expect(closed.deal?.locked).toBe(false);
     expect(closed.deal?.accepted).toEqual({});
     expect(closed.deal?.excludedColors).toEqual([]);
-    expect(closed.deal?.offers.p1?.green).toMatchObject({ source: 'table', amount: 1 });
-    expect(closed.deal?.offers.p1?.yellow).toMatchObject({ source: 'table', amount: 1 });
+    expect(closed.deal?.offers.p1?.cards).toEqual([
+      { color: 'green', source: 'table' },
+      { color: 'yellow', source: 'table' },
+    ]);
+    expect(closed.deal?.offers.p1?.amount).toBe(1);
     expect(closed.log.some((event) => event.type === 'bossStolen')).toBe(true);
 
-    const acceptedGreen = ok(
+    const accepted = ok(
       closed,
-      { type: 'ACCEPT_OFFER', uid: 'p2', color: 'green', targetUid: 'p1' },
+      { type: 'ACCEPT_OFFER', uid: 'p2', targetUid: 'p1' },
       4000,
     ).state;
-    const acceptedYellow = ok(
-      acceptedGreen,
-      { type: 'ACCEPT_OFFER', uid: 'p2', color: 'yellow', targetUid: 'p1' },
-      4100,
-    ).state;
-    expect(isDealComplete(acceptedYellow)).toBe(true);
+    expect(isDealComplete(accepted)).toBe(true);
 
-    const resolved = lockAndResolve(acceptedYellow, 'p2', 5000);
-    expect(getPlayer(resolved, 'p1').money).toBe(4);
-    expect(getPlayer(resolved, 'p2').money).toBe(2);
+    const resolved = lockAndResolve(accepted, 'p2', 5000);
+    expect(getPlayer(resolved, 'p1').money).toBe(2);
+    expect(getPlayer(resolved, 'p2').money).toBe(4);
     expect(resolved.discardPile.some((card) => card.id === steal.id)).toBe(true);
   });
 
@@ -678,24 +819,21 @@ describe('imTheBoss', () => {
       ok(opened, { type: 'PLAY_IM_THE_BOSS', uid: 'p2', cardId: steal.id }, 3100).state,
       3110,
     );
-    const handOffer = closed.deal?.offers.p1?.yellow;
-    expect(handOffer?.source).toBe('hand');
-    expect(handOffer?.card?.id).toBe(clan.id);
+    const handOffer = closed.deal?.offers.p1;
+    expect(handOffer?.cards).toEqual([
+      { color: 'green', source: 'table' },
+      { color: 'yellow', source: 'hand', card: expect.objectContaining({ id: clan.id }) },
+    ]);
     expect(handOffer?.amount).toBe(1);
 
-    const acceptedGreen = ok(
+    const accepted = ok(
       closed,
-      { type: 'ACCEPT_OFFER', uid: 'p2', color: 'green', targetUid: 'p1' },
+      { type: 'ACCEPT_OFFER', uid: 'p2', targetUid: 'p1' },
       4000,
     ).state;
-    const acceptedYellow = ok(
-      acceptedGreen,
-      { type: 'ACCEPT_OFFER', uid: 'p2', color: 'yellow', targetUid: 'p1' },
-      4100,
-    ).state;
-    const resolved = lockAndResolve(acceptedYellow, 'p2', 5000);
-    expect(getPlayer(resolved, 'p1').money).toBe(4);
-    expect(getPlayer(resolved, 'p2').money).toBe(2);
+    const resolved = lockAndResolve(accepted, 'p2', 5000);
+    expect(getPlayer(resolved, 'p1').money).toBe(2);
+    expect(getPlayer(resolved, 'p2').money).toBe(4);
     expect(resolved.discardPile.some((card) => card.id === clan.id)).toBe(true);
   });
 
@@ -712,16 +850,14 @@ describe('imTheBoss', () => {
       {
         type: 'SUBMIT_OFFER',
         uid: 'p2',
-        color: 'yellow',
-        source: 'hand',
-        cardId: clan.id,
+        cards: [{ color: 'yellow', source: 'hand', cardId: clan.id }],
         amount: 2,
       },
       3100,
     ).state;
     const accepted = ok(
       offered,
-      { type: 'ACCEPT_OFFER', uid: 'p1', color: 'yellow', targetUid: 'p2' },
+      { type: 'ACCEPT_OFFER', uid: 'p1', targetUid: 'p2' },
       3200,
     ).state;
     expect(isDealComplete(accepted)).toBe(true);
@@ -738,7 +874,7 @@ describe('imTheBoss', () => {
 
     const reAccepted = ok(
       closed,
-      { type: 'ACCEPT_OFFER', uid: 'p2', color: 'green', targetUid: 'p1' },
+      { type: 'ACCEPT_OFFER', uid: 'p2', targetUid: 'p1' },
       4000,
     ).state;
     expect(isDealComplete(reAccepted)).toBe(true);
@@ -765,8 +901,10 @@ describe('imTheBoss', () => {
     const closed = passWindowAll(two, 3210);
     expect(closed.bossUid).toBe('p3');
     expect(closed.log.filter((event) => event.type === 'bossStolen')).toHaveLength(2);
-    expect(closed.deal?.offers.p1?.green).toBeDefined();
-    expect(closed.deal?.offers.p1?.yellow).toBeDefined();
+    expect(closed.deal?.offers.p1?.cards.map((card) => card.color).sort()).toEqual([
+      'green',
+      'yellow',
+    ]);
   });
 
   it('rejects stealing when already the boss', () => {

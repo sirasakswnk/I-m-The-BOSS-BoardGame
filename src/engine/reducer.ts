@@ -24,6 +24,7 @@ import type {
 import {
   RuleError,
   findOffer,
+  findOfferCard,
   findPlayer,
   getAllowedColors,
   getAcceptedOffers,
@@ -288,6 +289,37 @@ function handleDrawCards(
   finishTurn(state, leftOf(state, player.uid).uid, at, events);
 }
 
+/** Clears every accepted family belonging to one player's offer. */
+function clearOfferAcceptance(deal: NonNullable<FullGameState['deal']>, uid: string): FamilyColor[] {
+  const colors: FamilyColor[] = [];
+  for (const color of Object.keys(deal.accepted) as FamilyColor[]) {
+    if (deal.accepted[color] !== uid) continue;
+    colors.push(color);
+    delete deal.accepted[color];
+  }
+  return colors;
+}
+
+/** Removes one card from a player's offer and clears acceptance for the offer. */
+function removeOfferCard(
+  deal: NonNullable<FullGameState['deal']>,
+  uid: string,
+  color: FamilyColor,
+  source?: 'table' | 'hand',
+): OfferState['cards'][number] | undefined {
+  const offer = findOffer(deal, uid);
+  if (!offer) return undefined;
+  const index = offer.cards.findIndex(
+    (card) => card.color === color && (source === undefined || card.source === source),
+  );
+  if (index < 0) return undefined;
+
+  const [removed] = offer.cards.splice(index, 1);
+  clearOfferAcceptance(deal, uid);
+  if (offer.cards.length === 0) delete deal.offers[uid];
+  return removed;
+}
+
 function handleSubmitOffer(
   state: FullGameState,
   action: ActionOf<'SUBMIT_OFFER'>,
@@ -295,39 +327,53 @@ function handleSubmitOffer(
   events: GameEvent[],
 ): void {
   const player = requirePlayer(state, action.uid);
-  const validated = validateSubmitOffer(state, player, {
-    color: action.color,
-    source: action.source,
-    cardId: action.cardId,
-    amount: action.amount,
-  });
+  const validated = validateSubmitOffer(state, player, action.cards, action.amount);
   const deal = requireDeal(state);
+  const existing = validated.existing;
+  const retainedIds = new Set(
+    validated.cards.flatMap((card) => (card.card ? [card.card.id] : [])),
+  );
 
-  if (validated.existing) {
-    validated.existing.amount = validated.amount;
-    validated.existing.submittedAt = at;
+  if (existing && validated.cards.length === 0) {
+    const colors = existing.cards.map((card) => card.color);
+    for (const card of existing.cards) {
+      if (card.source === 'hand' && card.card) player.hand.push(card.card);
+    }
+    clearOfferAcceptance(deal, player.uid);
+    delete deal.offers[player.uid];
+    emit(events, at, { type: 'offerWithdrawn', uid: player.uid, colors });
+    return;
+  }
+
+  if (existing) {
+    for (const card of existing.cards) {
+      if (card.source === 'hand' && card.card && !retainedIds.has(card.card.id)) {
+        player.hand.push(card.card);
+      }
+    }
+    // Editing any accepted offer revokes acceptance of the whole offer.
+    clearOfferAcceptance(deal, player.uid);
+    existing.cards = validated.cards;
+    existing.amount = validated.amount;
+    existing.submittedAt = at;
   } else {
-    const offer: OfferState = {
-      color: validated.color,
-      source: validated.source,
+    deal.offers[player.uid] = {
+      cards: validated.cards,
       amount: validated.amount,
       submittedAt: at,
     };
-    if (validated.source === 'hand') {
-      const card = validated.card;
-      if (!card) reject('CARD_NOT_IN_HAND');
-      offer.card = card;
-      player.hand = player.hand.filter((held) => held.id !== card.id);
+  }
+
+  for (const card of validated.cards) {
+    if (card.source === 'hand' && card.card) {
+      player.hand = player.hand.filter((held) => held.id !== card.card?.id);
     }
-    if (!deal.offers[player.uid]) deal.offers[player.uid] = {};
-    deal.offers[player.uid][offer.color] = offer;
   }
 
   emit(events, at, {
     type: 'offerSubmitted',
     uid: player.uid,
-    color: validated.color,
-    source: validated.source,
+    cards: validated.cards.map((card) => ({ color: card.color, source: card.source })),
     amount: validated.amount,
   });
 }
@@ -343,15 +389,18 @@ function handleWithdrawOffer(
   requirePhase(state, 'dealOpen');
   requireNoWindow(state);
   if (deal.locked) reject('DEAL_LOCKED');
-  if (!isFamilyColor(action.color)) reject('INVALID_ACTION');
 
-  const offer = findOffer(deal, player.uid, action.color);
+  const offer = findOffer(deal, player.uid);
   if (!offer) reject('OFFER_NOT_FOUND');
-  if (offer.source !== 'table') reject('INVALID_ACTION');
-  if (deal.accepted[action.color] === player.uid) reject('OFFER_ACCEPTED');
+  const colors = offer.cards.map((card) => card.color);
 
-  delete deal.offers[player.uid]?.[action.color];
-  emit(events, at, { type: 'offerWithdrawn', uid: player.uid, color: action.color });
+  for (const card of offer.cards) {
+    if (card.source === 'hand' && card.card) player.hand.push(card.card);
+  }
+  clearOfferAcceptance(deal, player.uid);
+  delete deal.offers[player.uid];
+
+  emit(events, at, { type: 'offerWithdrawn', uid: player.uid, colors });
 }
 
 function handleAcceptOffer(
@@ -361,12 +410,15 @@ function handleAcceptOffer(
   events: GameEvent[],
 ): void {
   const boss = requireBoss(state, action.uid);
-  const validated = validateAcceptOffer(state, boss, action.color, action.targetUid);
-  validated.deal.accepted[action.color] = action.targetUid;
+  const validated = validateAcceptOffer(state, boss, action.targetUid);
+  for (const color of validated.colors) {
+    validated.deal.accepted[color] = action.targetUid;
+  }
   emit(events, at, {
     type: 'offerAccepted',
-    uid: action.targetUid,
-    color: action.color,
+    uid: boss.uid,
+    targetUid: action.targetUid,
+    colors: validated.colors,
     amount: validated.offer.amount,
   });
 }
@@ -377,16 +429,26 @@ function handleUnacceptOffer(
   at: number,
   events: GameEvent[],
 ): void {
-  requireBoss(state, action.uid);
+  const boss = requireBoss(state, action.uid);
   const deal = requireDeal(state);
   requirePhase(state, 'dealOpen');
   requireNoWindow(state);
   if (deal.locked) reject('DEAL_LOCKED');
-  if (!isFamilyColor(action.color)) reject('INVALID_ACTION');
-  if (!deal.accepted[action.color]) reject('OFFER_NOT_FOUND');
 
-  delete deal.accepted[action.color];
-  emit(events, at, { type: 'offerUnaccepted', color: action.color });
+  const offer = findOffer(deal, action.targetUid);
+  if (!offer) reject('OFFER_NOT_FOUND');
+  const colors = offer.cards
+    .map((card) => card.color)
+    .filter((color) => deal.accepted[color] === action.targetUid);
+  if (colors.length === 0) reject('OFFER_NOT_FOUND');
+
+  for (const color of colors) delete deal.accepted[color];
+  emit(events, at, {
+    type: 'offerUnaccepted',
+    uid: boss.uid,
+    targetUid: action.targetUid,
+    colors,
+  });
 }
 
 function handleBossAddClan(
@@ -441,18 +503,18 @@ function handleSetExcludedColors(
 
   validateExclusions(deal.requirements, boss.investors, state.onVacation, [...unique]);
 
-  deal.excludedColors = [...unique];
-
-  // Re-including an investor makes it join for free; drop any accepted offer
-  // for that family so one family is not represented twice. A vacationing
-  // investor does not auto-join, so its accepted offer must survive.
+  // Re-including an investor makes it join for free. If an accepted offer uses
+  // that family, the boss must unaccept the whole offer first; never leave a
+  // grouped offer partially accepted.
   const allowed = getAllowedColors(deal.requirements);
   for (const color of boss.investors) {
     if (!allowed.has(color)) continue;
-    if (deal.excludedColors.includes(color)) continue;
+    if (unique.has(color)) continue;
     if (state.onVacation.includes(color)) continue;
-    if (deal.accepted[color]) delete deal.accepted[color];
+    if (deal.accepted[color]) reject('COLOR_ALREADY_IN_DEAL');
   }
+
+  deal.excludedColors = [...unique];
 
   emit(events, at, { type: 'excludedColorsSet', uid: boss.uid, colors: [...unique] });
 }
@@ -799,13 +861,12 @@ function failDealInternal(
   for (const card of deal.bossClanCards) boss.hand.push(card);
 
   for (const uid of Object.keys(deal.offers)) {
-    const byColor = deal.offers[uid];
-    if (!byColor) continue;
-    for (const offer of Object.values(byColor)) {
-      if (!offer) continue;
-      if (offer.source !== 'hand' || !offer.card) continue;
+    const offer = deal.offers[uid];
+    if (!offer) continue;
+    for (const card of offer.cards) {
+      if (card.source !== 'hand' || !card.card) continue;
       const owner = findPlayer(state, uid);
-      if (owner) owner.hand.push(offer.card);
+      if (owner) owner.hand.push(card.card);
     }
   }
 
@@ -855,20 +916,22 @@ function resolveDeal(state: FullGameState, at: number, events: GameEvent[]): voi
   }
 
   for (const entry of accepted) {
-    if (entry.offer.source === 'hand' && entry.offer.card) {
-      state.discardPile.push(entry.offer.card);
+    for (const card of entry.offer.cards) {
+      if (card.source === 'hand' && card.card) state.discardPile.push(card.card);
     }
   }
 
   for (const uid of Object.keys(deal.offers)) {
-    const byColor = deal.offers[uid];
-    if (!byColor) continue;
-    for (const offer of Object.values(byColor)) {
-      if (!offer) continue;
-      if (offer.source !== 'hand' || !offer.card) continue;
-      if (deal.accepted[offer.color] === uid) continue;
-      const owner = findPlayer(state, uid);
-      if (owner) owner.hand.push(offer.card);
+    const offer = deal.offers[uid];
+    if (!offer) continue;
+    const offerAccepted = offer.cards.some(
+      (card) => deal.accepted[card.color] === uid,
+    );
+    if (offerAccepted) continue;
+    const owner = findPlayer(state, uid);
+    if (!owner) continue;
+    for (const card of offer.cards) {
+      if (card.source === 'hand' && card.card) owner.hand.push(card.card);
     }
   }
 
@@ -891,7 +954,7 @@ function resolveDeal(state: FullGameState, at: number, events: GameEvent[]): voi
     bossDividends,
     accepted: accepted.map((entry) => ({
       uid: entry.uid,
-      color: entry.color,
+      colors: entry.colors,
       amount: entry.offer.amount,
     })),
     totalPaid: deal.requirements.dividends * value,
@@ -940,10 +1003,9 @@ function applyTravelEffect(state: FullGameState, pending: PendingCardState): boo
 
     state.onVacation.push(target.color);
 
-    const offer = findOffer(deal, owner.uid, target.color);
-    if (offer?.source === 'table') {
-      delete deal.offers[owner.uid]?.[target.color];
-      if (deal.accepted[target.color] === owner.uid) delete deal.accepted[target.color];
+    const offer = findOffer(deal, owner.uid);
+    if (findOfferCard(offer, target.color, 'table')) {
+      removeOfferCard(deal, owner.uid, target.color, 'table');
     }
     return true;
   }
@@ -960,11 +1022,9 @@ function applyTravelEffect(state: FullGameState, pending: PendingCardState): boo
     return true;
   }
 
-  const offer = findOffer(deal, target.uid, target.color);
-  if (!offer || offer.source !== 'hand' || !offer.card) return false;
-  delete deal.offers[target.uid]?.[target.color];
-  if (deal.accepted[target.color] === target.uid) delete deal.accepted[target.color];
-  state.discardPile.push(offer.card);
+  const removed = removeOfferCard(deal, target.uid, target.color, 'hand');
+  if (!removed?.card) return false;
+  state.discardPile.push(removed.card);
   moveCardsToDiscard(state, pending.cards);
   return true;
 }
@@ -986,10 +1046,8 @@ function applyRecruitmentEffect(state: FullGameState, pending: PendingCardState)
     if (!owner) return false;
 
     owner.investors = owner.investors.filter((candidate) => candidate !== color);
-    const offer = findOffer(deal, owner.uid, color);
-    if (offer?.source === 'table') {
-      delete deal.offers[owner.uid]?.[color];
-      if (deal.accepted[color] === owner.uid) delete deal.accepted[color];
+    if (findOfferCard(findOffer(deal, owner.uid), color, 'table')) {
+      removeOfferCard(deal, owner.uid, color, 'table');
     }
   }
 
@@ -1003,7 +1061,8 @@ function applyRecruitmentEffect(state: FullGameState, pending: PendingCardState)
     deal.accepted[color] &&
     !state.onVacation.includes(color)
   ) {
-    delete deal.accepted[color];
+    const acceptedUid = deal.accepted[color];
+    if (acceptedUid) clearOfferAcceptance(deal, acceptedUid);
   }
 
   return true;
@@ -1039,54 +1098,57 @@ function applyBossChange(
   const oldClanCards = [...deal.bossClanCards];
   deal.bossClanCards = [];
 
-  // The new boss's placed clan offers become free boss cards; table offers and
-  // offers for colors outside the space are simply dropped (cards return).
-  const newBossOffers = deal.offers[newBossUid] ?? {};
-  for (const color of Object.keys(newBossOffers) as FamilyColor[]) {
-    const offer = newBossOffers[color];
-    if (!offer) continue;
-    if (offer.source === 'hand' && offer.card) {
-      if (isColorRequired(deal.requirements, offer.color)) {
-        deal.bossClanCards.push(offer.card);
+  // The new boss's hand offers become free boss clan cards; table offers are
+  // dropped because the new boss's investors auto-join. One offer per player
+  // means the whole old offer disappears in this conversion.
+  const newBossOffer = deal.offers[newBossUid];
+  if (newBossOffer) {
+    for (const card of newBossOffer.cards) {
+      if (card.source !== 'hand' || !card.card) continue;
+      if (isColorRequired(deal.requirements, card.color)) {
+        deal.bossClanCards.push(card.card);
       } else {
-        newBoss.hand.push(offer.card);
+        newBoss.hand.push(card.card);
       }
     }
-    delete newBossOffers[color];
+    delete deal.offers[newBossUid];
   }
 
   // Every agreement is void; the new boss must accept offers again.
   deal.accepted = {};
 
-  // Old boss: participating investors become minimum table offers so the new
-  // boss can choose to keep them (ASSUMPTION 2).
+  // Old boss: participation becomes one minimum (amount 1) offer. Investor
+  // cards take precedence over clan cards when both exist for the same family.
+  const oldBossColors = new Set(
+    (deal.offers[oldBossUid]?.cards ?? []).map((card) => card.color),
+  );
+  const oldBossOfferForAdd = () => {
+    if (!deal.offers[oldBossUid]) {
+      deal.offers[oldBossUid] = { cards: [], amount: 1, submittedAt: at };
+    }
+    return deal.offers[oldBossUid];
+  };
+
   for (const color of oldFreeInvestors) {
-    if (deal.offers[oldBossUid]?.[color]) continue;
-    if (!deal.offers[oldBossUid]) deal.offers[oldBossUid] = {};
-    deal.offers[oldBossUid][color] = {
-      color,
-      source: 'table',
-      amount: 1,
-      submittedAt: at,
-    };
+    if (oldBossColors.has(color)) continue;
+    oldBossOfferForAdd().cards.push({ color, source: 'table' });
+    oldBossColors.add(color);
   }
 
-  // Old boss: placed clan cards become hand offers (or return to hand when the
-  // same family already has an offer).
   for (const clanCard of oldClanCards) {
-    if (deal.offers[oldBossUid]?.[clanCard.color]) {
+    if (oldBossColors.has(clanCard.color)) {
       oldBoss.hand.push(clanCard);
       continue;
     }
-    if (!deal.offers[oldBossUid]) deal.offers[oldBossUid] = {};
-    deal.offers[oldBossUid][clanCard.color] = {
+    oldBossOfferForAdd().cards.push({
       color: clanCard.color,
       source: 'hand',
       card: clanCard,
-      amount: 1,
-      submittedAt: at,
-    };
+    });
+    oldBossColors.add(clanCard.color);
   }
+
+  if (deal.offers[oldBossUid]?.cards.length === 0) delete deal.offers[oldBossUid];
 
   deal.excludedColors = [];
   deal.locked = false;

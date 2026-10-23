@@ -291,18 +291,24 @@ function DealSegments({
     >
       {segments.map((segment, index) => {
         const isBoss = segment.kind === 'boss';
-        const backgroundColor = isBoss
-          ? 'var(--gold)'
-          : segment.color
-            ? `var(${FAMILY_BY_ID[segment.color].cssVar})`
-            : 'var(--gold)';
+        const colors = segment.colors;
+        const background =
+          isBoss || colors.length === 0
+            ? 'var(--gold)'
+            : colors.length === 1
+              ? `var(${FAMILY_BY_ID[colors[0] ?? 'red'].cssVar})`
+              : `linear-gradient(90deg, ${colors
+                  .map((color) => `var(${FAMILY_BY_ID[color].cssVar})`)
+                  .join(', ')})`;
         const color =
-          isBoss || segment.color === 'yellow' || !segment.color ? 'var(--ink)' : 'var(--white)';
+          isBoss || colors.includes('yellow') || colors.length === 0
+            ? 'var(--ink)'
+            : 'var(--white)';
         return (
           <span
             key={index}
             className={`table-deal-seg is-${segment.kind}`}
-            style={{ backgroundColor, color }}
+            style={{ background, color }}
           >
             {segment.kind === 'boss'
               ? th.game.table.bossShare
@@ -357,10 +363,7 @@ function OpenDealPanel({
   const segments = getDealSegments(deal, participation);
   const acceptedTotal = participation.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0);
   const dealComplete = isDealComplete(deal, participation.allColors);
-  const offerCount = Object.values(deal.offers).reduce(
-    (sum, offers) => sum + Object.keys(offers ?? {}).length,
-    0,
-  );
+  const offerCount = Object.keys(deal.offers).length;
 
   return (
     <div className="table-deal-body">
@@ -423,11 +426,15 @@ function OpenDealPanel({
           <FamilyChip key={`clan-${color}`} color={color} suffix={th.card.clanTag} />
         ))}
         {participation.accepted.map((entry) => (
-          <FamilyChip
-            key={`offer-${entry.uid}-${entry.color}`}
-            color={entry.color}
-            suffix={`${getPlayerName(players, entry.uid)} · ${entry.offer.amount} ${th.game.table.parts}`}
-          />
+          <span className="table-accepted-offer" key={`offer-${entry.uid}`}>
+            {entry.colors.map((color) => (
+              <FamilyChip key={color} color={color} />
+            ))}
+            <span className="table-accepted-offer-label">
+              {getPlayerName(players, entry.uid)} · {entry.offer.amount}{' '}
+              {th.game.table.parts}
+            </span>
+          </span>
         ))}
         {participation.bossFree.length === 0 && participation.accepted.length === 0 && (
           <span className="table-empty-note">{th.game.table.noParticipants}</span>

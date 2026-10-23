@@ -19,17 +19,14 @@ interface TableSeatProps {
   investors: FamilyColor[];
   onVacation: FamilyColor[];
   handCount: number;
-  offers?: Partial<Record<FamilyColor, PublicOffer>>;
+  offer?: PublicOffer;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   valuePerDividend?: number;
   canManageOffers?: boolean;
   offersPending?: boolean;
-  offerActionState?: (
-    color: FamilyColor,
-    offer: PublicOffer,
-  ) => { disabled: boolean; title: string };
-  onAcceptOffer?: (uid: string, color: FamilyColor) => void;
-  onUnacceptOffer?: (color: FamilyColor) => void;
+  offerActionState?: (offer: PublicOffer) => { disabled: boolean; title: string };
+  onAcceptOffer?: (uid: string) => void;
+  onUnacceptOffer?: (uid: string) => void;
   /** `strip` is the compact card in the phone/tablet player strip. */
   variant: 'top' | 'side' | 'strip';
   /** Drawn cards are landing on this seat. */
@@ -57,8 +54,8 @@ function StatusDot({ connected }: { connected: boolean }) {
   );
 }
 
-function OfferBubbles({
-  offers,
+function OfferBubble({
+  offer,
   acceptedOffers,
   uid,
   name,
@@ -69,107 +66,98 @@ function OfferBubbles({
   onAcceptOffer,
   onUnacceptOffer,
 }: {
-  offers?: Partial<Record<FamilyColor, PublicOffer>>;
+  offer?: PublicOffer;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   uid: string;
   name: string;
   valuePerDividend?: number;
   canManageOffers?: boolean;
   offersPending?: boolean;
-  offerActionState?: (
-    color: FamilyColor,
-    offer: PublicOffer,
-  ) => { disabled: boolean; title: string };
-  onAcceptOffer?: (uid: string, color: FamilyColor) => void;
-  onUnacceptOffer?: (color: FamilyColor) => void;
+  offerActionState?: (offer: PublicOffer) => { disabled: boolean; title: string };
+  onAcceptOffer?: (uid: string) => void;
+  onUnacceptOffer?: (uid: string) => void;
 }) {
-  const entries = (Object.entries(offers ?? {}) as Array<[FamilyColor, PublicOffer]>).sort(
-    ([left], [right]) => FAMILY_ORDER.indexOf(left) - FAMILY_ORDER.indexOf(right),
+  if (!offer || offer.cards.length === 0) return null;
+
+  const cards = [...offer.cards].sort(
+    (left, right) => FAMILY_ORDER.indexOf(left.color) - FAMILY_ORDER.indexOf(right.color),
   );
-  if (entries.length === 0) return null;
+  const colors = cards.map((card) => card.color);
+  const accepted =
+    cards.length > 0 && cards.every((card) => acceptedOffers?.[card.color] === uid);
+  const hasHand = cards.some((card) => card.source === 'hand');
+  const value =
+    valuePerDividend !== undefined
+      ? th.game.table.offerValue.replace(
+          '{amount}',
+          String(offer.amount * valuePerDividend),
+        )
+      : null;
+  const actionState = canManageOffers && !accepted ? offerActionState?.(offer) : undefined;
+  const colorNames = colors.map((color) => th.families[color]).join(', ');
+  const content = (
+    <>
+      <span className="table-offer-colors" aria-hidden="true">
+        {colors.map((color) => (
+          <FamilySymbol
+            key={color}
+            shape={FAMILY_BY_ID[color].symbol}
+            size={13}
+            style={{ color: `var(${FAMILY_BY_ID[color].cssVar})` }}
+          />
+        ))}
+      </span>
+      <span>{th.game.table.offerBubble.replace('{amount}', String(offer.amount))}</span>
+      {hasHand && <em>{th.game.table.fromHand}</em>}
+      {value && <small>{value}</small>}
+      {accepted && !canManageOffers && (
+        <Check size={12} strokeWidth={3} aria-hidden="true" />
+      )}
+      {canManageOffers &&
+        (accepted ? (
+          <Undo2 size={12} strokeWidth={3} aria-hidden="true" />
+        ) : (
+          <Check size={12} strokeWidth={3} aria-hidden="true" />
+        ))}
+    </>
+  );
 
-  return (
-    <div className="table-offers">
-      {entries.map(([color, offer]) => {
-        const accepted = acceptedOffers?.[color] === uid;
-        const value =
-          valuePerDividend !== undefined
-            ? th.game.table.offerValue.replace(
-                '{amount}',
-                String(offer.amount * valuePerDividend),
-              )
-            : null;
-        const actionState = canManageOffers ? offerActionState?.(color, offer) : undefined;
-        const content = (
-          <>
-            <FamilySymbol
-              shape={FAMILY_BY_ID[color].symbol}
-              size={13}
-              style={{ color: `var(${FAMILY_BY_ID[color].cssVar})` }}
-            />
-            <span>{th.game.table.offerBubble.replace('{amount}', String(offer.amount))}</span>
-            {offer.source === 'hand' && <em>{th.game.table.fromHand}</em>}
-            {value && <small>{value}</small>}
-            {accepted && !canManageOffers && (
-              <Check size={12} strokeWidth={3} aria-hidden="true" />
-            )}
-            {canManageOffers &&
-              (accepted ? (
-                <Undo2 size={12} strokeWidth={3} aria-hidden="true" />
-              ) : (
-                <Check size={12} strokeWidth={3} aria-hidden="true" />
-              ))}
-          </>
-        );
-        const actionLabel = accepted
-          ? format(th.game.table.unacceptOfferAria, { color: th.families[color] })
-          : format(th.game.table.acceptOfferAria, {
-              color: th.families[color],
-              name,
-              amount: offer.amount,
-            });
-
-        if (
-          canManageOffers &&
-          (accepted ? Boolean(onUnacceptOffer) : Boolean(onAcceptOffer))
-        ) {
-          return (
-            <button
-              key={color}
-              type="button"
-              className={`table-offer is-action ${accepted ? 'is-accepted' : ''}`}
-              data-testid={
-                accepted ? `unaccept-offer-${color}` : `accept-offer-${uid}-${color}`
-              }
-              data-offer-color={color}
-              data-offer-uid={uid}
-              disabled={
-                offersPending || (!accepted && Boolean(actionState?.disabled))
-              }
-              title={
-                accepted
-                  ? th.game.table.unacceptOffer
-                  : (actionState?.title ?? th.game.table.acceptOffer)
-              }
-              aria-label={actionLabel}
-              onClick={() => {
-                if (accepted) onUnacceptOffer?.(color);
-                else onAcceptOffer?.(uid, color);
-              }}
-            >
-              {content}
-            </button>
-          );
+  if (
+    canManageOffers &&
+    (accepted ? Boolean(onUnacceptOffer) : Boolean(onAcceptOffer))
+  ) {
+    return (
+      <button
+        type="button"
+        className={`table-offer is-action ${accepted ? 'is-accepted' : ''}`}
+        data-testid={accepted ? `unaccept-offer-${uid}` : `accept-offer-${uid}`}
+        data-offer-uid={uid}
+        disabled={offersPending || (!accepted && Boolean(actionState?.disabled))}
+        title={
+          accepted
+            ? th.game.table.unacceptOffer
+            : (actionState?.title ?? th.game.table.acceptOffer)
         }
+        aria-label={
+          accepted
+            ? format(th.game.table.unacceptOfferAria, { colors: colorNames, name })
+            : format(th.game.table.acceptOfferAria, {
+                colors: colorNames,
+                name,
+                amount: offer.amount,
+              })
+        }
+        onClick={() => {
+          if (accepted) onUnacceptOffer?.(uid);
+          else onAcceptOffer?.(uid);
+        }}
+      >
+        {content}
+      </button>
+    );
+  }
 
-        return (
-          <div key={color} className={`table-offer ${accepted ? 'is-accepted' : ''}`}>
-            {content}
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <div className={`table-offer ${accepted ? 'is-accepted' : ''}`}>{content}</div>;
 }
 
 export function TableSeat({
@@ -183,7 +171,7 @@ export function TableSeat({
   investors,
   onVacation,
   handCount,
-  offers,
+  offer,
   acceptedOffers,
   valuePerDividend,
   canManageOffers,
@@ -240,8 +228,8 @@ export function TableSeat({
 
       <div className="table-seat-foot">
         <CardBacks count={handCount} bump={receiving} />
-        <OfferBubbles
-          offers={offers}
+        <OfferBubble
+          offer={offer}
           acceptedOffers={acceptedOffers}
           uid={uid}
           name={name}

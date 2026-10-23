@@ -10,6 +10,7 @@ import {
   countAcceptedDividends,
   getAllowedColors,
   getParticipatingColors,
+  isColorRequired,
   isDealComplete,
   requireDealSpace,
 } from '../validators';
@@ -143,6 +144,53 @@ function groupCount(
   return group.colors.filter((color) => participating.has(color)).length;
 }
 
+/** An offer is blocked when accepting it would be invalid or overfill a group. */
+function offerIsBlocked(
+  deal: NonNullable<FullGameState['deal']>,
+  offer: NonNullable<FullGameState['deal']>['offers'][string],
+  ownUid: string,
+  participating: Set<FamilyColor>,
+): boolean {
+  const colors = offer.cards.map((card) => card.color);
+  if (colors.length === 0) return true;
+  if (colors.some((color) => !isColorRequired(deal.requirements, color))) return true;
+
+  // Editing an offer revokes its own acceptance, so ignore those colors when
+  // deciding whether it can be extended and accepted again.
+  const effective = new Set(participating);
+  for (const color of colors) {
+    if (deal.accepted[color] === ownUid) effective.delete(color);
+  }
+  if (colors.some((color) => effective.has(color))) return true;
+
+  const ownAccepted = colors.some((color) => deal.accepted[color] === ownUid);
+  const acceptedTotal =
+    countAcceptedDividends(deal) - (ownAccepted ? offer.amount : 0);
+  if (acceptedTotal + offer.amount > deal.requirements.dividends) return true;
+
+  for (const group of deal.requirements.groups) {
+    const current = group.colors.filter((color) => effective.has(color)).length;
+    const adding = colors.filter((color) => group.colors.includes(color)).length;
+    if (current + adding > group.pick) return true;
+  }
+  return false;
+}
+
+function offerCardsWith(
+  offer: NonNullable<FullGameState['deal']>['offers'][string] | undefined,
+  input: { color: FamilyColor; source: 'table' | 'hand'; cardId?: string },
+  amount: number,
+): { cards: Array<{ color: FamilyColor; source: 'table' | 'hand'; cardId?: string }>; amount: number } {
+  if (!offer) return { cards: [input], amount };
+  return {
+    cards: [
+      ...offer.cards.map((card) => ({ color: card.color, source: card.source })),
+      input,
+    ],
+    amount: offer.amount,
+  };
+}
+
 function findGroupAction(
   state: FullGameState,
   deal: NonNullable<FullGameState['deal']>,
@@ -160,47 +208,58 @@ function findGroupAction(
     if (card) return { type: 'BOSS_ADD_CLAN', uid: bossUid, cardId: card.id };
   }
 
-  // 2. Accept an existing offer that fills the group.
-  for (const color of candidates) {
-    for (const uid of Object.keys(deal.offers)) {
-      if (uid === bossUid) continue;
-      const offer = deal.offers[uid]?.[color];
-      if (!offer) continue;
-      if (deal.accepted[color] === uid) continue;
-      if (countAcceptedDividends(deal) + offer.amount > deal.requirements.dividends) continue;
-      return { type: 'ACCEPT_OFFER', uid: bossUid, color, targetUid: uid };
-    }
+  // 2. Accept an existing whole offer that helps fill this group.
+  for (const uid of Object.keys(deal.offers)) {
+    if (uid === bossUid) continue;
+    const offer = deal.offers[uid];
+    if (!offer) continue;
+    const alreadyAccepted = offer.cards.every((card) => deal.accepted[card.color] === uid);
+    if (alreadyAccepted) continue;
+    if (offerIsBlocked(deal, offer, uid, participating)) continue;
+    const helps = offer.cards.some(
+      (card) => group.colors.includes(card.color) && !participating.has(card.color),
+    );
+    if (!helps) continue;
+    return { type: 'ACCEPT_OFFER', uid: bossUid, targetUid: uid };
   }
 
   // 3. Ask a player who can provide the family on the table.
   for (const color of candidates) {
     for (const player of state.players) {
       if (player.uid === bossUid) continue;
-      if (deal.offers[player.uid]?.[color]) continue;
+      const existing = deal.offers[player.uid];
       if (player.investors.includes(color) && !state.onVacation.includes(color)) {
+        if (existing && offerIsBlocked(deal, existing, player.uid, participating)) {
+          return { type: 'WITHDRAW_OFFER', uid: player.uid };
+        }
+        if (existing?.cards.some((card) => card.color === color)) continue;
+        const input = { color, source: 'table' as const };
+        const merged = offerCardsWith(existing, input, 1);
         return {
           type: 'SUBMIT_OFFER',
           uid: player.uid,
-          color,
-          source: 'table',
-          amount: 1,
+          cards: merged.cards,
+          amount: merged.amount,
         };
       }
     }
     for (const player of state.players) {
       if (player.uid === bossUid) continue;
-      if (deal.offers[player.uid]?.[color]) continue;
+      const existing = deal.offers[player.uid];
       const card = player.hand.find((entry) => entry.kind === 'clan' && entry.color === color);
-      if (card) {
-        return {
-          type: 'SUBMIT_OFFER',
-          uid: player.uid,
-          color,
-          source: 'hand',
-          cardId: card.id,
-          amount: 1,
-        };
+      if (!card) continue;
+      if (existing && offerIsBlocked(deal, existing, player.uid, participating)) {
+        return { type: 'WITHDRAW_OFFER', uid: player.uid };
       }
+      if (existing?.cards.some((entry) => entry.color === color)) continue;
+      const input = { color, source: 'hand' as const, cardId: card.id };
+      const merged = offerCardsWith(existing, input, 1);
+      return {
+        type: 'SUBMIT_OFFER',
+        uid: player.uid,
+        cards: merged.cards,
+        amount: merged.amount,
+      };
     }
   }
 
@@ -336,11 +395,16 @@ export function playSimulation(seed: number): SimulationSummary {
           throw new Error('Accepted amounts do not add up to dividends');
         }
         const colors = new Set<string>();
+        const acceptedUids = new Set<string>();
         for (const entry of event.accepted) {
           if (entry.amount < 1) throw new Error('Accepted amount below 1');
           if (!playerUids.has(entry.uid)) throw new Error('Unknown offer owner');
-          if (colors.has(entry.color)) throw new Error('Duplicate accepted color');
-          colors.add(entry.color);
+          if (acceptedUids.has(entry.uid)) throw new Error('Offer paid more than once');
+          acceptedUids.add(entry.uid);
+          for (const color of entry.colors) {
+            if (colors.has(color)) throw new Error('Duplicate accepted color');
+            colors.add(color);
+          }
         }
         summary.totalPaid += event.totalPaid;
         summary.deals += 1;

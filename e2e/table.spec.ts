@@ -106,23 +106,50 @@ async function myInvestorColors(page: Page): Promise<string[]> {
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-family') ?? ''));
 }
 
-async function submitTableOffer(page: Page, color: string): Promise<void> {
+async function submitTableOffer(page: Page, colors: string[]): Promise<void> {
   await expect(page.getByTestId('offer-open')).toBeEnabled({ timeout: 20_000 });
   await page.getByTestId('offer-open').click();
   await expect(page.getByTestId('offer-modal')).toBeVisible();
-  await page.getByTestId(`offer-investor-${color}`).click();
+  for (const color of colors) {
+    const picker = page.getByTestId(`offer-investor-${color}`);
+    await expect(picker).toBeVisible();
+    await picker.click();
+  }
   await expect(page.getByTestId('offer-amount')).toHaveValue('1');
   await page.getByTestId('offer-submit').click();
   await expect(page.getByTestId('offer-modal')).toHaveCount(0);
+  await page.waitForTimeout(250);
+  const toast = page.locator('.toast-error');
+  if ((await toast.count()) > 0) {
+    throw new Error(`Offer rejected: ${await toast.first().innerText()}`);
+  }
   await expect(page.getByTestId('offer-open')).toBeEnabled({ timeout: 20_000 });
 }
 
-async function acceptOffer(page: Page, color: string): Promise<void> {
-  const accept = page.locator(`[data-testid^="accept-offer-"][data-offer-color="${color}"]`);
+/** Re-submits the current offer unchanged, which must revoke boss acceptance. */
+async function resubmitOffer(page: Page): Promise<void> {
+  await expect(page.getByTestId('offer-open')).toBeEnabled({ timeout: 20_000 });
+  await page.getByTestId('offer-open').click();
+  await expect(page.getByTestId('offer-modal')).toBeVisible();
+  await expect(page.getByTestId('offer-accepted-note')).toBeVisible();
+  await page.getByTestId('offer-submit').click();
+  await expect(page.getByTestId('offer-modal')).toHaveCount(0);
+}
+
+async function myUid(page: Page): Promise<string> {
+  const seat = page.locator('.table-mine-seat[data-testid^="game-player-"]');
+  // The compact/mobile layout keeps the seat node in the DOM but hidden.
+  await expect(seat).toHaveCount(1);
+  const testId = await seat.getAttribute('data-testid');
+  return testId?.replace('game-player-', '') ?? '';
+}
+
+async function acceptOffer(page: Page, targetUid: string): Promise<void> {
+  const accept = page.getByTestId(`accept-offer-${targetUid}`);
   await expect(accept).toBeVisible({ timeout: 20_000 });
   await expect(accept).toBeEnabled();
   await accept.click();
-  await expect(page.getByTestId(`unaccept-offer-${color}`)).toBeVisible({
+  await expect(page.getByTestId(`unaccept-offer-${targetUid}`)).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -289,7 +316,7 @@ test('three players close the first deal with table offers', async ({ browser })
       );
     }
 
-    const offeredByPage = new Map<Page, number>();
+    const offeredByPage = new Map<Page, { page: Page; uid: string; colors: string[] }>();
     for (const color of missingColors) {
       const owner = (
         await Promise.all(
@@ -302,30 +329,50 @@ test('three players close the first deal with table offers', async ({ browser })
         )
       ).find((entry) => entry.colors.includes(color))?.page;
       expect(owner, `No investor found for ${color}`).toBeDefined();
-      await submitTableOffer(owner!, color);
-      offeredByPage.set(owner!, (offeredByPage.get(owner!) ?? 0) + 1);
+      let offer = offeredByPage.get(owner!);
+      if (!offer) {
+        offer = { page: owner!, uid: await myUid(owner!), colors: [] };
+        offeredByPage.set(owner!, offer);
+      }
+      offer.colors.push(color);
     }
+
+    for (const entry of offeredByPage.values()) {
+      await submitTableOffer(entry.page, entry.colors);
+    }
+    const acceptedOffers = offeredByPage.size;
 
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
       `รับแล้ว 0/${requirements.dividends} ส่วน`,
     );
-    for (const color of missingColors) {
-      await acceptOffer(boss, color);
+    for (const entry of offeredByPage.values()) {
+      await acceptOffer(boss, entry.uid);
     }
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
-      `รับแล้ว ${missingColors.length}/${requirements.dividends} ส่วน`,
+      `รับแล้ว ${acceptedOffers}/${requirements.dividends} ส่วน`,
     );
 
-    if (missingColors.length > 0) {
-      const firstColor = missingColors[0];
-      await boss.getByTestId(`unaccept-offer-${firstColor}`).click();
-      await expect(
-        boss.locator(`[data-testid^="accept-offer-"][data-offer-color="${firstColor}"]`),
-      ).toBeVisible({ timeout: 20_000 });
+    if (acceptedOffers > 0) {
+      const first = [...offeredByPage.values()][0]!;
+      // Editing an accepted offer revokes the whole acceptance automatically.
+      await resubmitOffer(first.page);
+      await expect(boss.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
+        timeout: 20_000,
+      });
       await expect(boss.getByTestId('deal-capacity')).toHaveText(
-        `รับแล้ว ${missingColors.length - 1}/${requirements.dividends} ส่วน`,
+        `รับแล้ว ${acceptedOffers - 1}/${requirements.dividends} ส่วน`,
       );
-      await acceptOffer(boss, firstColor);
+      await acceptOffer(boss, first.uid);
+
+      // The boss can also revoke an acceptance explicitly, one offer at a time.
+      await boss.getByTestId(`unaccept-offer-${first.uid}`).click();
+      await expect(boss.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(boss.getByTestId('deal-capacity')).toHaveText(
+        `รับแล้ว ${acceptedOffers - 1}/${requirements.dividends} ส่วน`,
+      );
+      await acceptOffer(boss, first.uid);
     }
 
     const lock = boss.getByTestId('lock-deal');
@@ -350,16 +397,17 @@ test('three players close the first deal with table offers', async ({ browser })
       timeout: 30_000,
     });
 
-    const bossShare = (requirements.dividends - missingColors.length) * value;
+    const bossShare = (requirements.dividends - acceptedOffers) * value;
     await expect(boss.getByTestId('my-money')).toHaveText(`${bossShare} ล้าน`, {
       timeout: 20_000,
     });
     await expect(boss.getByTestId('money-delta')).toBeVisible();
-    for (const [page, count] of offeredByPage) {
-      await expect(page.getByTestId('my-money')).toHaveText(`${count * value} ล้าน`, {
+    for (const entry of offeredByPage.values()) {
+      // One accepted offer pays once even when it contains several families.
+      await expect(entry.page.getByTestId('my-money')).toHaveText(`${value} ล้าน`, {
         timeout: 20_000,
       });
-      await expect(page.getByTestId('money-delta')).toBeVisible();
+      await expect(entry.page.getByTestId('money-delta')).toBeVisible();
     }
 
     // The next boss cannot chain straight into the following space: they must

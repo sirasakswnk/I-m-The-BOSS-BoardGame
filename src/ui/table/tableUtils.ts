@@ -163,7 +163,7 @@ export interface DealParticipation {
   bossInvestorFree: FamilyColor[];
   bossClanFree: FamilyColor[];
   bossFree: FamilyColor[];
-  accepted: Array<{ color: FamilyColor; uid: string; offer: PublicOffer }>;
+  accepted: Array<{ uid: string; colors: FamilyColor[]; offer: PublicOffer }>;
   allColors: Set<FamilyColor>;
 }
 
@@ -193,16 +193,25 @@ export function getDealParticipation(
     ),
   ];
   const accepted: DealParticipation['accepted'] = [];
-  for (const color of FAMILY_ORDER) {
-    const uid = deal.acceptedOffers[color];
-    if (!uid) continue;
-    const offer = deal.offers[uid]?.[color];
-    if (offer) accepted.push({ color, uid, offer });
+  for (const uid of Object.keys(deal.offers)) {
+    const offer = deal.offers[uid];
+    if (!offer) continue;
+    const colors = offer.cards
+      .map((card) => card.color)
+      .filter((color) => deal.acceptedOffers[color] === uid);
+    if (colors.length === 0) continue;
+    accepted.push({ uid, colors, offer });
   }
+  accepted.sort(
+    (left, right) =>
+      FAMILY_ORDER.indexOf(left.colors[0] ?? 'red') -
+        FAMILY_ORDER.indexOf(right.colors[0] ?? 'red') ||
+      left.uid.localeCompare(right.uid),
+  );
   const bossFree = [...new Set([...bossInvestorFree, ...bossClanFree])];
   const allColors = new Set<FamilyColor>([
     ...bossFree,
-    ...accepted.map((entry) => entry.color),
+    ...accepted.flatMap((entry) => entry.colors),
   ]);
 
   return { bossInvestorFree, bossClanFree, bossFree, accepted, allColors };
@@ -248,7 +257,7 @@ export function isDealComplete(
 
 export interface DealSegment {
   kind: 'accepted' | 'boss';
-  color: FamilyColor | null;
+  colors: FamilyColor[];
   uid?: string;
 }
 
@@ -259,7 +268,7 @@ export function getDealSegments(
   const segments: DealSegment[] = [];
   for (const entry of participation.accepted) {
     for (let index = 0; index < entry.offer.amount; index += 1) {
-      segments.push({ kind: 'accepted', color: entry.color, uid: entry.uid });
+      segments.push({ kind: 'accepted', colors: entry.colors, uid: entry.uid });
     }
   }
   const acceptedTotal = segments.length;
@@ -269,7 +278,7 @@ export function getDealSegments(
       participation.bossFree.length > 0
         ? participation.bossFree[index % participation.bossFree.length]
         : null;
-    segments.push({ kind: 'boss', color });
+    segments.push({ kind: 'boss', colors: color ? [color] : [] });
   }
   return segments;
 }

@@ -21,13 +21,24 @@ export interface PlayerState {
 
 export type OfferSource = 'table' | 'hand';
 
-export interface OfferState {
+export interface OfferCardState {
   color: FamilyColor;
   source: OfferSource;
   /** Present only for `source: 'hand'`; never projected into public state. */
   card?: ClanCard;
+}
+
+export interface OfferState {
+  /** The selected cards; each family may appear at most once. */
+  cards: OfferCardState[];
   amount: number;
   submittedAt: number;
+}
+
+export interface OfferCardInput {
+  color: FamilyColor;
+  source: OfferSource;
+  cardId?: string;
 }
 
 export type TravelTarget =
@@ -63,7 +74,7 @@ export interface DealState {
   tileNumber: number;
   /** Clan cards the boss placed face-up, removed from their hand. */
   bossClanCards: ClanCard[];
-  offers: Record<string, Partial<Record<FamilyColor, OfferState>>>;
+  offers: Record<string, OfferState>;
   /** color -> uid of the player whose offer the boss accepted. */
   accepted: Partial<Record<FamilyColor, string>>;
   excludedColors: FamilyColor[];
@@ -123,15 +134,13 @@ export type GameAction =
   | {
       type: 'SUBMIT_OFFER';
       uid: string;
-      color: FamilyColor;
-      source: OfferSource;
-      cardId?: string;
+      cards: OfferCardInput[];
       amount: number;
       ts?: number;
     }
-  | { type: 'WITHDRAW_OFFER'; uid: string; color: FamilyColor; ts?: number }
-  | { type: 'ACCEPT_OFFER'; uid: string; color: FamilyColor; targetUid: string; ts?: number }
-  | { type: 'UNACCEPT_OFFER'; uid: string; color: FamilyColor; ts?: number }
+  | { type: 'WITHDRAW_OFFER'; uid: string; ts?: number }
+  | { type: 'ACCEPT_OFFER'; uid: string; targetUid: string; ts?: number }
+  | { type: 'UNACCEPT_OFFER'; uid: string; targetUid: string; ts?: number }
   | { type: 'BOSS_ADD_CLAN'; uid: string; cardId: string; ts?: number }
   | { type: 'SET_EXCLUDED_COLORS'; uid: string; colors: FamilyColor[]; ts?: number }
   | { type: 'LOCK_DEAL'; uid: string; ts?: number }
@@ -181,13 +190,23 @@ export type GameEvent =
   | (BaseEvent & {
       type: 'offerSubmitted';
       uid: string;
-      color: FamilyColor;
-      source: OfferSource;
+      cards: { color: FamilyColor; source: OfferSource }[];
       amount: number;
     })
-  | (BaseEvent & { type: 'offerWithdrawn'; uid: string; color: FamilyColor })
-  | (BaseEvent & { type: 'offerAccepted'; uid: string; color: FamilyColor; amount: number })
-  | (BaseEvent & { type: 'offerUnaccepted'; color: FamilyColor })
+  | (BaseEvent & { type: 'offerWithdrawn'; uid: string; colors: FamilyColor[] })
+  | (BaseEvent & {
+      type: 'offerAccepted';
+      uid: string;
+      targetUid: string;
+      colors: FamilyColor[];
+      amount: number;
+    })
+  | (BaseEvent & {
+      type: 'offerUnaccepted';
+      uid: string;
+      targetUid: string;
+      colors: FamilyColor[];
+    })
   | (BaseEvent & { type: 'clanAdded'; uid: string; color: FamilyColor })
   | (BaseEvent & { type: 'excludedColorsSet'; uid: string; colors: FamilyColor[] })
   | (BaseEvent & { type: 'dealLocked'; uid: string })
@@ -212,7 +231,7 @@ export type GameEvent =
       dividends: number;
       valuePerDividend: number;
       bossDividends: number;
-      accepted: { uid: string; color: FamilyColor; amount: number }[];
+      accepted: { uid: string; colors: FamilyColor[]; amount: number }[];
       totalPaid: number;
     })
   | (BaseEvent & {
@@ -236,9 +255,13 @@ export type GameEvent =
 /* Public / private projections                                        */
 /* ------------------------------------------------------------------ */
 
-export interface PublicOffer {
+export interface PublicOfferCard {
   color: FamilyColor;
   source: OfferSource;
+}
+
+export interface PublicOffer {
+  cards: PublicOfferCard[];
   amount: number;
   submittedAt: number;
 }
@@ -248,7 +271,7 @@ export interface PublicDeal {
   requirements: DealSpace;
   tileNumber: number;
   bossClans: FamilyColor[];
-  offers: Record<string, Partial<Record<FamilyColor, PublicOffer>>>;
+  offers: Record<string, PublicOffer>;
   acceptedOffers: Partial<Record<FamilyColor, string>>;
   excludedColors: FamilyColor[];
   locked: boolean;

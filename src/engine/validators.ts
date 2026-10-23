@@ -2,10 +2,12 @@ import { DEAL_SPACE_COUNT, getDealSpace } from './config/dealBoard';
 import type { DealSpace } from './config/dealBoard';
 import { isFamilyColor } from './config/families';
 import type { FamilyColor } from './config/families';
-import type { ClanCard, InfluenceCard, InfluenceCardKind } from './config/influenceCards';
+import type { InfluenceCard, InfluenceCardKind } from './config/influenceCards';
 import type {
   DealState,
   FullGameState,
+  OfferCardInput,
+  OfferCardState,
   OfferSource,
   OfferState,
   PlayerState,
@@ -190,23 +192,38 @@ export function isColorOnVacation(state: FullGameState, color: FamilyColor): boo
 /* Offers                                                              */
 /* ------------------------------------------------------------------ */
 
-export function findOffer(
-  deal: DealState,
-  uid: string,
-  color: FamilyColor,
-): OfferState | undefined {
-  return deal.offers[uid]?.[color];
+export function findOffer(deal: DealState, uid: string): OfferState | undefined {
+  return deal.offers[uid];
 }
 
-export function getAcceptedOffers(
-  deal: DealState,
-): { color: FamilyColor; uid: string; offer: OfferState }[] {
-  const result: { color: FamilyColor; uid: string; offer: OfferState }[] = [];
-  for (const color of Object.keys(deal.accepted) as FamilyColor[]) {
-    const uid = deal.accepted[color];
-    if (!uid) continue;
-    const offer = findOffer(deal, uid, color);
-    if (offer) result.push({ color, uid, offer });
+export function findOfferCard(
+  offer: OfferState | undefined,
+  color: FamilyColor,
+  source?: OfferSource,
+): OfferCardState | undefined {
+  return offer?.cards.find(
+    (card) => card.color === color && (source === undefined || card.source === source),
+  );
+}
+
+export interface AcceptedOffer {
+  uid: string;
+  /** Every family in the accepted offer. */
+  colors: FamilyColor[];
+  offer: OfferState;
+}
+
+/** Accepted offers are grouped by player, so payout happens once per offer. */
+export function getAcceptedOffers(deal: DealState): AcceptedOffer[] {
+  const result: AcceptedOffer[] = [];
+  for (const uid of Object.keys(deal.offers)) {
+    const offer = deal.offers[uid];
+    if (!offer) continue;
+    const colors = offer.cards
+      .map((card) => card.color)
+      .filter((color) => deal.accepted[color] === uid);
+    if (colors.length === 0) continue;
+    result.push({ uid, colors, offer });
   }
   return result;
 }
@@ -215,110 +232,112 @@ export function countAcceptedDividends(deal: DealState): number {
   return getAcceptedOffers(deal).reduce((total, entry) => total + entry.offer.amount, 0);
 }
 
-export interface SubmitOfferInput {
-  color: FamilyColor;
-  source: OfferSource;
-  cardId?: string;
-  amount: number;
-}
-
 export interface ValidatedOffer {
-  color: FamilyColor;
-  source: OfferSource;
-  card?: ClanCard;
+  cards: OfferCardState[];
   amount: number;
   existing?: OfferState;
 }
 
 /**
- * Validates SUBMIT_OFFER. Offers may be created for any color the player can
- * legally provide; the boss can only accept colors required by the space.
- * Amount changes are only allowed before the boss accepts the offer.
+ * Validates SUBMIT_OFFER as an upsert of the player's single offer. Sending a
+ * different card list edits the offer; removed hand cards return to hand and an
+ * accepted offer loses its acceptance automatically.
  */
 export function validateSubmitOffer(
   state: FullGameState,
   player: PlayerState,
-  input: SubmitOfferInput,
+  cards: OfferCardInput[],
+  amount: number,
 ): ValidatedOffer {
   const deal = requireDeal(state);
   requirePhase(state, 'dealOpen');
   requireNoWindow(state);
   if (deal.locked) reject('DEAL_LOCKED');
   if (state.bossUid === player.uid) reject('CANNOT_OFFER_AS_BOSS');
+  if (!Array.isArray(cards)) reject('INVALID_ACTION');
+  if (!Number.isInteger(amount) || amount < 1) reject('INVALID_AMOUNT');
 
-  if (!isFamilyColor(input.color)) reject('INVALID_ACTION');
-  if (input.source !== 'table' && input.source !== 'hand') reject('INVALID_ACTION');
-  if (!Number.isInteger(input.amount) || input.amount < 1) reject('INVALID_AMOUNT');
+  const existing = findOffer(deal, player.uid);
+  if (cards.length === 0) {
+    if (!existing) reject('OFFER_NOT_FOUND');
+    return { cards: [], amount, existing };
+  }
 
-  const existing = findOffer(deal, player.uid, input.color);
-  if (existing) {
-    if (deal.accepted[input.color] === player.uid) reject('OFFER_ACCEPTED');
-    if (existing.source !== input.source) reject('OFFER_SOURCE_MISMATCH');
-    if (existing.source === 'hand' && existing.card?.id !== input.cardId) {
-      reject('OFFER_SOURCE_MISMATCH');
+  const colors = new Set<FamilyColor>();
+  const selected: OfferCardState[] = [];
+
+  for (const input of cards) {
+    if (!input || !isFamilyColor(input.color)) reject('INVALID_ACTION');
+    if (input.source !== 'table' && input.source !== 'hand') reject('INVALID_ACTION');
+    if (colors.has(input.color)) reject('INVALID_ACTION');
+    colors.add(input.color);
+
+    // A color already accepted from another player is a conflict. The boss must
+    // cancel that acceptance before this offer can claim the same family.
+    const acceptedUid = deal.accepted[input.color];
+    if (acceptedUid && acceptedUid !== player.uid) reject('COLOR_ALREADY_IN_DEAL');
+
+    if (input.source === 'table') {
+      if (!player.investors.includes(input.color)) reject('INVALID_TARGET');
+      if (isColorOnVacation(state, input.color)) reject('COLOR_ON_VACATION');
+      selected.push({ color: input.color, source: 'table' });
+      continue;
     }
-    return {
-      color: input.color,
-      source: existing.source,
-      card: existing.card,
-      amount: input.amount,
-      existing,
-    };
+
+    if (input.cardId) {
+      const card = requireCard(player, input.cardId);
+      if (card.kind !== 'clan') reject('WRONG_CARD_KIND');
+      if (card.color !== input.color) reject('INVALID_TARGET');
+      selected.push({ color: input.color, source: 'hand', card });
+      continue;
+    }
+
+    // Existing hand cards are no longer in the player's hand, so they are
+    // identified by family and reused without exposing their id publicly.
+    const retained = findOfferCard(existing, input.color, 'hand');
+    if (!retained?.card) reject('CARD_NOT_IN_HAND');
+    selected.push({ color: input.color, source: 'hand', card: retained.card });
   }
 
-  if (input.source === 'table') {
-    if (!player.investors.includes(input.color)) reject('INVALID_TARGET');
-    if (isColorOnVacation(state, input.color)) reject('COLOR_ON_VACATION');
-    return { color: input.color, source: 'table', amount: input.amount };
-  }
-
-  if (!input.cardId) reject('CARD_NOT_IN_HAND');
-  const card = requireCard(player, input.cardId);
-  if (card.kind !== 'clan') reject('WRONG_CARD_KIND');
-  if (card.color !== input.color) reject('INVALID_TARGET');
-
-  return { color: input.color, source: 'hand', card, amount: input.amount };
+  return { cards: selected, amount, existing };
 }
 
 /**
- * Validates ACCEPT_OFFER. The boss accepts at most one offer per family, and
- * the sum of accepted dividend amounts may not exceed the deal dividends.
+ * Validates ACCEPT_OFFER. One offer is accepted or rejected as a whole: every
+ * family in it must be usable and no family may already belong to another
+ * accepted offer.
  */
 export function validateAcceptOffer(
   state: FullGameState,
   boss: PlayerState,
-  color: FamilyColor,
   targetUid: string,
-): { offer: OfferState; deal: DealState } {
+): { offer: OfferState; deal: DealState; colors: FamilyColor[] } {
   const deal = requireDeal(state);
   requirePhase(state, 'dealOpen');
   requireNoWindow(state);
   if (deal.locked) reject('DEAL_LOCKED');
   if (state.bossUid !== boss.uid) reject('NOT_BOSS');
-  if (!isFamilyColor(color)) reject('INVALID_ACTION');
   if (targetUid === boss.uid) reject('CANNOT_ACCEPT_OWN_OFFER');
 
   const target = requirePlayer(state, targetUid);
-  const offer = findOffer(deal, target.uid, color);
+  const offer = findOffer(deal, target.uid);
   if (!offer) reject('OFFER_NOT_FOUND');
-  if (deal.accepted[color] === targetUid) reject('OFFER_ACCEPTED');
-  if (!isColorRequired(deal.requirements, color)) reject('COLOR_NOT_REQUIRED');
-  if (getBossFreeColors(state, deal).has(color)) reject('COLOR_ALREADY_IN_DEAL');
 
-  const alreadyAccepted = deal.accepted[color];
-  const alreadyAmount = alreadyAccepted
-    ? (findOffer(deal, alreadyAccepted, color)?.amount ?? 0)
-    : 0;
+  const colors = offer.cards.map((card) => card.color);
+  if (colors.length === 0) reject('OFFER_NOT_FOUND');
+  if (colors.some((color) => deal.accepted[color] === targetUid)) reject('OFFER_ACCEPTED');
 
-  if (countAcceptedDividends(deal) - alreadyAmount + offer.amount > deal.requirements.dividends) {
+  for (const color of colors) {
+    if (!isColorRequired(deal.requirements, color)) reject('COLOR_NOT_REQUIRED');
+    if (deal.accepted[color]) reject('COLOR_ALREADY_IN_DEAL');
+    if (getBossFreeColors(state, deal).has(color)) reject('COLOR_ALREADY_IN_DEAL');
+  }
+
+  if (countAcceptedDividends(deal) + offer.amount > deal.requirements.dividends) {
     reject('DIVIDENDS_EXCEEDED');
   }
 
-  return { offer, deal };
-}
-
-export function requireOfferNotAccepted(deal: DealState, uid: string, color: FamilyColor): void {
-  if (deal.accepted[color] === uid) reject('OFFER_ACCEPTED');
+  return { offer, deal, colors };
 }
 
 /* ------------------------------------------------------------------ */
@@ -439,8 +458,8 @@ export function validateTravelTarget(
     return target;
   }
 
-  const offer = findOffer(deal, owner.uid, target.color);
-  if (!offer || offer.source !== 'hand') reject('INVALID_TARGET');
+  const offer = findOffer(deal, owner.uid);
+  if (!findOfferCard(offer, target.color, 'hand')) reject('INVALID_TARGET');
   return target;
 }
 

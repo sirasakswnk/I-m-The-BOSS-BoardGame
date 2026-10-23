@@ -48,22 +48,27 @@ export function formatLogEvent(event: GameEvent, players: RoomPlayers): string {
     case 'offerSubmitted':
       return fill(log.offerSubmitted, {
         name: name(event.uid),
-        color: color(event.color),
+        colors: event.cards.map((card) => color(card.color)).join(', '),
         amount: event.amount,
       });
     case 'offerWithdrawn':
       return fill(log.offerWithdrawn, {
         name: name(event.uid),
-        color: color(event.color),
+        colors: event.colors.map(color).join(', '),
       });
     case 'offerAccepted':
       return fill(log.offerAccepted, {
         name: name(event.uid),
-        color: color(event.color),
+        target: name(event.targetUid),
+        colors: event.colors.map(color).join(', '),
         amount: event.amount,
       });
     case 'offerUnaccepted':
-      return fill(log.offerUnaccepted, { color: color(event.color) });
+      return fill(log.offerUnaccepted, {
+        name: name(event.uid),
+        target: name(event.targetUid),
+        colors: event.colors.map(color).join(', '),
+      });
     case 'clanAdded':
       return fill(log.clanAdded, {
         name: name(event.uid),

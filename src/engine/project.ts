@@ -19,22 +19,15 @@ function projectDeal(state: FullGameState): PublicDeal | null {
   const deal = state.deal;
   if (!deal) return null;
 
-  const offers: Record<string, Partial<Record<FamilyColor, PublicOffer>>> = {};
+  const offers: Record<string, PublicOffer> = {};
   for (const uid of Object.keys(deal.offers)) {
-    const byColor = deal.offers[uid];
-    if (!byColor) continue;
-    const publicOffers: Partial<Record<FamilyColor, PublicOffer>> = {};
-    for (const color of Object.keys(byColor) as FamilyColor[]) {
-      const offer = byColor[color];
-      if (!offer) continue;
-      publicOffers[color] = {
-        color: offer.color,
-        source: offer.source,
-        amount: offer.amount,
-        submittedAt: offer.submittedAt,
-      };
-    }
-    offers[uid] = publicOffers;
+    const offer = deal.offers[uid];
+    if (!offer || offer.cards.length === 0) continue;
+    offers[uid] = {
+      cards: offer.cards.map((card) => ({ color: card.color, source: card.source })),
+      amount: offer.amount,
+      submittedAt: offer.submittedAt,
+    };
   }
 
   return {

@@ -1,7 +1,7 @@
 # progess.md — บันทึกความคืบหน้า "โต๊ะเจรจาดีล"
 
 > บันทึกผลการลงมือทำจริง เทียบกับ `plan.md` (ทำทีละ Milestone ตามหัวข้อ 10)
-> อัปเดตล่าสุด: 22 ต.ค. 2026 (Post-M9: สุ่มผู้เล่นคนแรก, เริ่มช่อง 1, บังคับทอยก่อนเปิดดีลทุกเทิร์น)
+> อัปเดตล่าสุด: 23 ต.ค. 2026 (Post-M9: ข้อเสนอเดียวต่อผู้เล่นแบบหลายการ์ด, บอสรับ/ยกเลิกทั้งข้อเสนอ, พร้อม deploy production)
 
 ## สถานะ Milestone
 
@@ -17,6 +17,7 @@
 | M7 | End of Turn & Game End | ✅ เสร็จ (22/10/2026) |
 | M8 | Mobile Responsive | ✅ เสร็จ (22/10/2026) |
 | M9 | Resilience, Polish, Deploy | ✅ เสร็จ + deploy production (22/10/2026) |
+| M10 | ข้อเสนอเดียวต่อผู้เล่น (Grouped Offer) | ✅ ตรวจรับในเครื่อง (23/10/2026) — รอ deploy production |
 
 ---
 
@@ -953,3 +954,53 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
       → บอสทอย → เปิดดีล → ล้มดีล → เทิร์น 2 บอสคนถัดไปเห็นเฉพาะปุ่มทอย
       (ปุ่มเปิดดีลยังไม่ปรากฏจนกว่าจะทอย) — ผ่านใน 15.0 วินาที
 - [x] ลบห้อง smoke test (`48623`) ออกจาก Realtime Database แล้ว
+
+---
+
+## Post-M9 — ข้อเสนอเดียวต่อผู้เล่นแบบหลายการ์ด (23/10/2026)
+
+### สรุปการออกแบบ
+
+- ผู้เล่นแต่ละคนมี **หนึ่งข้อเสนอ** (`OfferState { cards[], amount, submittedAt }`) แทนการยื่นแยกทีละสี
+- ข้อเสนอรวมการ์ดได้หลายใบ: นักลงทุนหน้าตักของตัวเอง (`source = 'table'`) และ/หรือการ์ดญาติในมือ (`source = 'hand'`) โดยห้ามซ้ำตระกูล และต้องเป็นสีที่เงื่อนไขช่องต้องการ
+- `amount` มีค่าเดียวต่อข้อเสนอ เริ่มต้นที่ `1`, แก้ได้ตลอด และคงค่าเดิมเมื่อเพิ่ม/ลบการ์ด; การจ่ายคือ `amount × valuePerDividend` **ครั้งเดียวต่อข้อเสนอ** ไม่ว่าจะมีกี่สี
+- แก้ข้อเสนอได้ตลอด `dealOpen` ยกเว้นตอนล็อกดีลหรือเปิด interrupt window; การแก้ข้อเสนอที่บอสรับแล้วจะ **ยกเลิกการรับทั้งข้อเสนออัตโนมัติ** เพื่อให้บอสตรวจและรับชุดใหม่
+- บอสรับ/ยกเลิกทั้งข้อเสนอด้วย `ACCEPT_OFFER { targetUid }` / `UNACCEPT_OFFER { targetUid }`; `accepted` ยังเก็บเป็น `color → uid` แต่การรับจะเซ็ตทุกสีของข้อเสนอพร้อมกัน และ helper ฝั่ง payout/capacity ยุบตาม `uid`
+- ถ้าสีในข้อเสนอใหม่ชนกับข้อเสนออื่นที่บอสรับอยู่ ระบบปฏิเสธ `COLOR_ALREADY_IN_DEAL`; บอสต้องยกเลิกข้อเสนอเดิมก่อน
+- ลบการ์ดญาติออกจากข้อเสนอ = คืนการ์ดเข้ามือ; ส่งข้อเสนอว่าง = ลบข้อเสนอ; `WITHDRAW_OFFER {}` = ถอนทั้งข้อเสนอและคืนการ์ดญาติทั้งหมด (เปลี่ยนจากกติกาเดิมที่ห้ามถอนการ์ดญาติ)
+- `travel`/`recruitment` ที่กระทบการ์ดในข้อเสนอจะลบเฉพาะการ์ดนั้น; ถ้าข้อเสนอเคยถูกบอสรับ จะยกเลิกการรับทั้งข้อเสนอ และถ้าไม่เหลือการ์ดจึงลบข้อเสนอ
+- `imTheBoss` ล้างการรับทั้งหมด, แปลงฝั่งฟรีของบอสเดิมเป็นข้อเสนอเดียว `amount = 1`, และยุบข้อเสนอเดิมของบอสใหม่เป็นการ์ดฟรี/คืนมือตามแหล่งการ์ด
+
+### ไฟล์ที่เปลี่ยน
+
+- Engine: `src/engine/types.ts`, `validators.ts`, `reducer.ts`, `project.ts`
+- UI: `src/ui/table/OfferModal.tsx`, `TableSeat.tsx`, `TableScreen.tsx`, `DealPanel.tsx`, `tableUtils.ts`, `actionUtils.ts`, `gameLogFormat.ts`
+- ข้อความ/CSS: `src/i18n/th.ts`, `src/styles/global.css` — ใช้คำว่า “ข้อเสนอ” เท่านั้น ไม่มี “มัด/แพ็กเกจ/รับทั้งมัด”; เพิ่ม layout ตัวเลือกหลายการ์ด, รายการที่เลือก, bubble เดียวต่อที่นั่ง และแผงผู้ร่วมดีลแบบกลุ่ม
+- Tests: `src/engine/__tests__/deal.test.ts`, `cards.test.ts`, `project.test.ts`, `bot.ts`, `src/net/host/reclaim.test.ts`, `src/ui/table/actionUtils.test.ts`, `tableUtils.test.ts`
+- E2E: `e2e/table.spec.ts` — flow multi-card offer, แก้ข้อเสนอที่รับแล้ว, unaccept/reaccept, capacity ตามจำนวนข้อเสนอ, จ่ายครั้งเดียวต่อผู้เล่น
+
+### ปัญหาที่พบและแก้ระหว่างตรวจรับ
+
+- พบว่า e2e table-offer flow ล้มด้วย toast “การเชื่อมต่อขัดข้อง ลองใหม่อีกครั้ง”
+- สาเหตุ: `OfferModal` สร้างการ์ด `source = 'table'` พร้อม property `cardId: undefined`; Realtime Database ปฏิเสธ payload ที่มีค่า `undefined`
+- แก้โดยใส่ `cardId` เฉพาะการ์ดจากมือที่มี id จริงเท่านั้น; หลังแก้ flow ผ่านทั้ง desktop และ mobile
+- เพิ่ม guard ใน e2e helper ให้ throw ทันทีเมื่อมี toast error หลังยื่นข้อเสนอ เพื่อไม่ให้ความล้มเหลวแบบเงียบถูกกลบด้วยการรอ timeout
+- พบ path ที่ทำให้ข้อเสนอถูกแบ่งรับ: เมื่อบอสรวมนักลงทุนที่เคยตัดออกกลับเข้า deal (`SET_EXCLUDED_COLORS`) โค้ดเดิมลบ `accepted` เฉพาะสีนั้น ทำให้อีกสีของข้อเสนอเดิมยังถูกนับว่ารับอยู่; แก้เป็นปฏิเสธ `COLOR_ALREADY_IN_DEAL` จนกว่าบอสจะ `UNACCEPT_OFFER` ทั้งข้อเสนอก่อน และเพิ่ม unit test ครอบคลุม regrouping/partial acceptance
+
+### Gate ผลจริง (23/10/2026)
+
+- `typecheck` ✅
+- `lint` ✅
+- unit **177/177** (22 ไฟล์) ✅ — รวม bot simulation 200 seeds
+- rules **16/16** ✅
+- e2e **35/35** ทั้ง desktop และ mobile ✅
+- `build` ✅ — ยังมี warning chunk > 500 kB ตามเดิม
+
+### Deploy / หมายเหตุที่ต้องระวัง
+
+- [ ] commit + push `main` และ deploy Vercel production
+- [ ] production smoke test: สร้างห้อง 3 คน → เปิดดีล → ผู้เล่นยื่นข้อเสนอหลายการ์ด → บอสรับทั้งข้อเสนอ → แก้ข้อเสนอที่รับแล้วเห็นการรับถูกยกเลิก → บอสรับใหม่ → ปิดดีลและตรวจว่าจ่ายครั้งเดียวต่อข้อเสนอ → ลบห้อง smoke test
+- `schemaVersion` ยังเป็น `1` แต่รูป `public.deal.offers` เปลี่ยนจากรายสีเป็นรายผู้เล่น; ห้อง production ที่ยัง `playing` ด้วย state รูปเก่าจะไม่เข้ากัน ต้องปิด/ล้างห้องเก่าหรือเพิ่ม migration + bump schema ก่อนเปิดใช้งานจริง
+- ทุก path ใหม่ต้องแก้ `accepted` ผ่าน helper (`clearOfferAcceptance`, `getAcceptedOffers`) เท่านั้น ห้ามรับ/ถอนบางสีของข้อเสนอ
+- Action payload ในอนาคตต้องละเว้น optional field แทนการส่ง `undefined`; ควรเพิ่ม guard/test ฝั่ง network serializer
+- `npm run test:e2e` ต้องรัน Firebase Emulator (auth/database) และ Vite พร้อมก่อน; Playwright จะ reuse Vite ที่มีอยู่
