@@ -128,6 +128,16 @@ test('preview resolves a color conflict from the boss review panel', async ({ pa
   await expect(review).toBeVisible();
   await expect(review.getByTestId('offer-review-statusbar')).toBeVisible();
 
+  // The status bar is a flex child with overflow:hidden; it must keep its
+  // natural height instead of shrinking and clipping the summary values.
+  const statusBarBox = await review.getByTestId('offer-review-statusbar').boundingBox();
+  const capacityBox = await review.getByTestId('offer-review-capacity').boundingBox();
+  expect(statusBarBox).not.toBeNull();
+  expect(capacityBox).not.toBeNull();
+  expect(capacityBox!.y + capacityBox!.height).toBeLessThanOrEqual(
+    statusBarBox!.y + statusBarBox!.height + 1,
+  );
+
   // Space 2 needs four of six colors. The boss holds black and red is already
   // accepted, so the remaining four colors are the only missing ones.
   for (const color of ['blue', 'green', 'yellow', 'purple']) {
@@ -154,6 +164,29 @@ test('preview resolves a color conflict from the boss review panel', async ({ pa
   await expect(accept).toBeEnabled();
   await expect(review.getByTestId('offer-review-capacity')).toHaveText('0/5');
   await expect(review.getByTestId('offer-review-missing-color-red')).toBeVisible();
+
+  // Hovering or focusing accept previews the missing colors it would fill.
+  const redChip = review.getByTestId('offer-review-missing-color-red');
+  const blueChip = review.getByTestId('offer-review-missing-color-blue');
+  const group = review.getByTestId('offer-review-group-0');
+  await expect(redChip).toHaveAttribute('data-preview', 'false');
+  await expect(group).toHaveAttribute('data-preview', 'false');
+
+  if ((page.viewportSize()?.width ?? 0) > 640) {
+    await accept.hover();
+    await expect(redChip).toHaveAttribute('data-preview', 'true');
+    await expect(blueChip).toHaveAttribute('data-preview', 'false');
+    await expect(group).toHaveAttribute('data-preview', 'true');
+    await page.mouse.move(0, 0);
+    await expect(redChip).toHaveAttribute('data-preview', 'false');
+  }
+
+  await accept.focus();
+  await expect(redChip).toHaveAttribute('data-preview', 'true');
+  await expect(group).toHaveAttribute('data-preview', 'true');
+  await accept.blur();
+  await expect(redChip).toHaveAttribute('data-preview', 'false');
+  await expect(group).toHaveAttribute('data-preview', 'false');
 });
 
 test('preview shows a deal-15 game over without an end-check overlay', async ({ page }) => {

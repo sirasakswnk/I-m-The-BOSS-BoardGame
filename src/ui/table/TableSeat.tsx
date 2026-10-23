@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Crown, KeyRound, Lock } from 'lucide-react';
 
 import { FAMILY_ORDER, type FamilyColor } from '@/engine/config/families';
@@ -76,15 +77,10 @@ function OfferBubble({
     (left, right) => FAMILY_ORDER.indexOf(left.color) - FAMILY_ORDER.indexOf(right.color),
   );
   const colors = cards.map((card) => card.color);
-  const accepted = acceptedOffers
-    ? isOfferAccepted(offer, uid, acceptedOffers)
-    : false;
+  const accepted = acceptedOffers ? isOfferAccepted(offer, uid, acceptedOffers) : false;
   const value =
     valuePerDividend !== undefined
-      ? th.game.table.offerValue.replace(
-          '{amount}',
-          String(offer.amount * valuePerDividend),
-        )
+      ? th.game.table.offerValue.replace('{amount}', String(offer.amount * valuePerDividend))
       : null;
   const names = colors.map((color) => th.families[color]).join(', ');
   const label = accepted
@@ -158,6 +154,7 @@ export function TableSeat({
   receiving = false,
 }: TableSeatProps) {
   const seatLabel = th.game.table.seatAria.replace('{seat}', String(seat + 1));
+  const reduceMotion = useReducedMotion() ?? false;
 
   return (
     <div
@@ -181,11 +178,7 @@ export function TableSeat({
         {isMe && <span className="table-you">{th.common.you}</span>}
         {isHost && (
           <span className="table-host-mark" title={th.game.hostBadge}>
-            <KeyRound
-              size={13}
-              className="table-host-key"
-              aria-label={th.game.hostBadge}
-            />
+            <KeyRound size={13} className="table-host-key" aria-label={th.game.hostBadge} />
           </span>
         )}
         <StatusDot connected={connected} />
@@ -203,15 +196,34 @@ export function TableSeat({
 
       <div className="table-seat-foot">
         <CardBacks count={handCount} bump={receiving} />
-        <OfferBubble
-          offer={offer}
-          acceptedOffers={acceptedOffers}
-          uid={uid}
-          name={name}
-          valuePerDividend={valuePerDividend}
-          canOpenReview={canOpenOfferReview}
-          onOpenReview={onOpenOfferReview}
-        />
+        <AnimatePresence initial={false}>
+          {offer && offer.cards.length > 0 && (
+            <motion.div
+              key="offer"
+              className="table-offer-motion"
+              initial={reduceMotion ? false : { opacity: 0, y: 6, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={
+                reduceMotion
+                  ? { opacity: 0, transition: { duration: 0 } }
+                  : { opacity: 0, scale: 0.9, transition: { duration: 0.15 } }
+              }
+              transition={
+                reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 30 }
+              }
+            >
+              <OfferBubble
+                offer={offer}
+                acceptedOffers={acceptedOffers}
+                uid={uid}
+                name={name}
+                valuePerDividend={valuePerDividend}
+                canOpenReview={canOpenOfferReview}
+                onOpenReview={onOpenOfferReview}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -270,11 +282,7 @@ export function MySeat({
         )}
         {isHost && (
           <span className="table-host-mark" title={th.game.hostBadge}>
-            <KeyRound
-              size={13}
-              className="table-host-key"
-              aria-label={th.game.hostBadge}
-            />
+            <KeyRound size={13} className="table-host-key" aria-label={th.game.hostBadge} />
           </span>
         )}
         <StatusDot connected={connected} />

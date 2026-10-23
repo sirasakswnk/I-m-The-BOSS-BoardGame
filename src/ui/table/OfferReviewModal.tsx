@@ -1,5 +1,6 @@
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, Loader2, TriangleAlert, Undo2 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { FAMILY_ORDER, type FamilyColor } from '@/engine/config/families';
 import type { PublicOffer, PublicState } from '@/engine/types';
@@ -77,6 +78,9 @@ export function OfferReviewModal({
 }: OfferReviewModalProps) {
   const deal = publicState.deal;
   const rowRefs = useRef(new Map<string, HTMLElement>());
+  const [hoveredUid, setHoveredUid] = useState<string | null>(null);
+  const [focusedUid, setFocusedUid] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() ?? false;
 
   useEffect(() => {
     if (!focusUid) return;
@@ -167,8 +171,33 @@ export function OfferReviewModal({
   }
 
   function handleResolveConflict(ownerUid: string, pendingUid: string): void {
+    clearPreview();
     onUnacceptOffer(ownerUid);
     rowRefs.current.get(pendingUid)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function clearPreview(): void {
+    setHoveredUid(null);
+    setFocusedUid(null);
+  }
+
+  // Hovering or focusing an acceptable offer previews the missing colors and
+  // requirement groups that accepting it would fill.
+  let previewEntry: OfferEntry | undefined;
+  for (const uid of [focusedUid, hoveredUid]) {
+    if (uid === null) continue;
+    const entry = pendingEntries.find((item) => item.offerUid === uid);
+    if (!entry) continue;
+    if (issuesFor(entry.offer, entry.offerUid).length > 0) continue;
+    previewEntry = entry;
+    break;
+  }
+  const previewColors = new Set<FamilyColor>();
+  if (previewEntry) {
+    const missing = new Set(missingColors);
+    for (const card of previewEntry.offer.cards) {
+      if (missing.has(card.color)) previewColors.add(card.color);
+    }
   }
 
   function renderRow(entry: OfferEntry) {
@@ -176,6 +205,7 @@ export function OfferReviewModal({
     const accepted = isOfferAccepted(offer, offerUid, acceptedOffers);
     const issues = accepted ? [] : issuesFor(offer, offerUid);
     const busy = pendingAction !== null;
+    const previewable = !accepted && issues.length === 0;
     const action = accepted ? 'unaccept' : 'accept';
     const cards = [...offer.cards].sort(
       (left, right) => FAMILY_ORDER.indexOf(left.color) - FAMILY_ORDER.indexOf(right.color),
@@ -194,12 +224,20 @@ export function OfferReviewModal({
         });
 
     return (
-      <article
+      <motion.article
         key={offerUid}
         ref={(node) => {
           if (node) rowRefs.current.set(offerUid, node);
           else rowRefs.current.delete(offerUid);
         }}
+        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={
+          reduceMotion
+            ? { opacity: 0, transition: { duration: 0 } }
+            : { opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: 'easeIn' } }
+        }
+        transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
         className={[
           'table-review-row',
           accepted ? 'is-accepted' : 'is-pending',
@@ -289,7 +327,23 @@ export function OfferReviewModal({
           disabled={busy || issues.length > 0}
           title={issues[0]?.label ?? actionLabel}
           aria-label={actionLabel}
-          onClick={() => (accepted ? onUnacceptOffer(offerUid) : onAcceptOffer(offerUid))}
+          onPointerEnter={previewable ? () => setHoveredUid(offerUid) : undefined}
+          onPointerLeave={
+            previewable
+              ? () => setHoveredUid((current) => (current === offerUid ? null : current))
+              : undefined
+          }
+          onFocus={previewable ? () => setFocusedUid(offerUid) : undefined}
+          onBlur={
+            previewable
+              ? () => setFocusedUid((current) => (current === offerUid ? null : current))
+              : undefined
+          }
+          onClick={() => {
+            clearPreview();
+            if (accepted) onUnacceptOffer(offerUid);
+            else onAcceptOffer(offerUid);
+          }}
         >
           {actionPending ? (
             <Loader2 size={15} className="animate-spin" aria-hidden="true" />
@@ -300,7 +354,7 @@ export function OfferReviewModal({
           )}
           {accepted ? th.game.table.unacceptOffer : th.game.table.acceptOffer}
         </button>
-      </article>
+      </motion.article>
     );
   }
 
@@ -324,11 +378,19 @@ export function OfferReviewModal({
           <span className="table-review-status-label">{th.game.table.offerReviewMissing}</span>
           {missingColors.length > 0 ? (
             <div className="table-review-status-colors">
-              {missingColors.map((color) => (
-                <span key={color} data-testid={`offer-review-missing-color-${color}`}>
-                  <FamilyChip color={color} />
-                </span>
-              ))}
+              {missingColors.map((color) => {
+                const preview = previewColors.has(color);
+                return (
+                  <span
+                    key={color}
+                    className={preview ? 'is-preview' : undefined}
+                    data-testid={`offer-review-missing-color-${color}`}
+                    data-preview={preview ? 'true' : 'false'}
+                  >
+                    <FamilyChip color={color} />
+                  </span>
+                );
+              })}
             </div>
           ) : (
             <strong className="table-review-status-ok">
@@ -374,14 +436,25 @@ export function OfferReviewModal({
       <div className="table-review-groups" aria-label={th.game.table.offerReviewGroups}>
         <span className="table-review-groups-label">{th.game.table.offerReviewGroups}</span>
         <div className="table-review-group-list">
-          {progress.map((entry, index) => (
-            <span key={index} className={`table-review-group is-${entry.status}`}>
-              <GroupSymbols groups={[entry.group]} size={14} showPick={false} />
-              <strong>
-                {entry.count}/{entry.group.pick}
-              </strong>
-            </span>
-          ))}
+          {progress.map((entry, index) => {
+            const preview =
+              previewColors.size > 0 &&
+              entry.status === 'missing' &&
+              entry.group.colors.some((color) => previewColors.has(color));
+            return (
+              <span
+                key={index}
+                className={`table-review-group is-${entry.status}${preview ? ' is-preview' : ''}`}
+                data-testid={`offer-review-group-${index}`}
+                data-preview={preview ? 'true' : 'false'}
+              >
+                <GroupSymbols groups={[entry.group]} size={14} showPick={false} />
+                <strong>
+                  {entry.count}/{entry.group.pick}
+                </strong>
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -395,23 +468,22 @@ export function OfferReviewModal({
             <h3 className="table-review-section-title">
               {format(th.game.table.offerReviewPending, { count: pendingEntries.length })}
             </h3>
-            {pendingEntries.length > 0 ? (
-              pendingEntries.map(renderRow)
-            ) : (
+            <AnimatePresence initial={false}>{pendingEntries.map(renderRow)}</AnimatePresence>
+            {pendingEntries.length === 0 && (
               <p className="table-review-none">{th.game.table.offerReviewNoPending}</p>
             )}
           </section>
 
-          {acceptedEntries.length > 0 && (
-            <section className="table-review-section">
+          <section className="table-review-section">
+            {acceptedEntries.length > 0 && (
               <h3 className="table-review-section-title is-accepted">
                 {format(th.game.table.offerReviewAccepted, {
                   count: acceptedEntries.length,
                 })}
               </h3>
-              {acceptedEntries.map(renderRow)}
-            </section>
-          )}
+            )}
+            <AnimatePresence initial={false}>{acceptedEntries.map(renderRow)}</AnimatePresence>
+          </section>
         </>
       )}
     </Modal>

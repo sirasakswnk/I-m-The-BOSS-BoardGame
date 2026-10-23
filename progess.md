@@ -1148,3 +1148,59 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 
 - ปุ่มยกเลิกข้อเสนอที่ชนใช้ `min-height: 44px` และคงไว้ใน mobile CSS
 - ยังไม่ push/deploy รอบนี้; รอคำสั่งก่อน
+
+---
+
+## Post-M9 — Phase 3: preview ตอน hover/focus และแอนิเมชันข้อเสนอ (23/10/2026)
+
+### สรุปการออกแบบ
+
+- **Fill preview**: เมื่อบอส hover หรือ focus ปุ่มรับของข้อเสนอที่ยังรอตรวจและไม่มีข้อชน
+  ระบบไฮไลต์ชิปสีที่ขาดซึ่งข้อเสนอนั้นจะเติม และไฮไลต์กลุ่มเงื่อนไขที่ยังไม่ครบซึ่งมีสีนั้นอยู่
+  - ทำงานเฉพาะข้อเสนอที่รับได้ (pending + ไม่มี conflict) เพื่อไม่ให้ preview ขัดกับ callout
+  - เก็บ `hoveredUid` และ `focusedUid` แยกกัน; focus มาก่อน hover และล้างทั้งคู่เมื่อกดรับ/ยกเลิก
+    หรือเมื่อแก้ conflict
+  - สีที่ข้อเสนอมีแต่ไม่ใช่สีที่ขาด (หรือกลุ่มที่ครบแล้ว) จะไม่ถูกไฮไลต์
+- **แอนิเมชันข้อเสนอ**: แถวในแผงตรวจข้อเสนอและ bubble บนที่นั่งใช้ `AnimatePresence`
+  (`initial={false}`) เพื่อให้ข้อเสนอใหม่เด้งเข้าและข้อเสนอที่ถูกถอนหุบออก
+  - ใช้ `useReducedMotion()`; เมื่อผู้ใช้ขอ reduced motion จะปิดการเคลื่อนไหวทั้งหมด
+- **แก้ regression จาก Phase 2**: `.table-review-statusbar` เป็น flex child ที่มี `overflow: hidden`
+  จึงถูกบีบจนเหลือ ~35px และ clip ตัวเลขเมื่อมีทั้งแถวรอตรวจและรับแล้ว; เพิ่ม `flex: none`
+  ให้คงความสูงตามเนื้อหา (~91px) และเพิ่ม assertion กัน clipping ใน e2e
+- ไม่แตะ engine/schema; `schemaVersion` ยังเป็น `1`; เป็น UI + CSS + tests + เอกสารเท่านั้น
+
+### ไฟล์ที่เปลี่ยน
+
+- UI: `src/ui/table/OfferReviewModal.tsx` (preview state, `data-preview`, animated rows),
+  `src/ui/table/TableSeat.tsx` (animated offer bubble)
+- CSS: `src/styles/global.css` (preview ring, `.table-offer-motion`, `.table-review-section:empty`,
+  status-bar `flex: none`)
+- Tests: `e2e/preview.spec.ts` (hover/focus preview + status-bar clipping assertion)
+- เอกสาร: `plan.md` (หัวข้อ 9.1/9.2), `progess.md`
+
+### Test IDs / markers ใหม่
+
+- `data-preview="true|false"` บน `offer-review-missing-color-<color>` — ชิปสีที่ข้อเสนอจะเติม
+- `data-preview="true|false"` บน `offer-review-group-<index>` — กลุ่มเงื่อนไขที่ข้อเสนอจะช่วยเติม
+- `.table-offer-motion` — wrapper ของ bubble ข้อเสนอที่ใช้แอนิเมชัน (ไม่มี test id)
+- คง test IDs เดิมทั้งหมดของ Phase 1–2
+
+### Gate ผลจริง (23/10/2026)
+
+- Prettier ✅ ทุกไฟล์ที่เปลี่ยน
+- `typecheck` ✅
+- `lint` ✅
+- unit **182/182** (22 ไฟล์) ✅
+- rules **16/16** ✅
+- e2e **37/37** ทั้ง desktop และ mobile (3.3 นาที) ✅
+  - preview `dealConflict`: หลังแก้ conflict แล้ว hover ปุ่มรับ → ชิปแดงขึ้น `data-preview="true"`,
+    ชิปน้ำเงินคง `false`, กลุ่มที่ขาดขึ้น `true`; เลื่อนเมาส์ออกแล้วกลับเป็น `false`
+  - focus ปุ่มรับด้วยคีย์บอร์ดให้ผลเหมือน hover และทดสอบบนมือถือด้วย
+  - แถบสรุปไม่ถูกบีบ: ขอบล่างของ capacity อยู่ภายในขอบล่างของ status bar
+- `build` ✅ — JS `805.84 kB` (gzip `238.89 kB`), CSS `115.96 kB` (gzip `21.29 kB`),
+  Preview chunk `16.70 kB` (gzip `5.31 kB`); ยังมี warning chunk >500 kB ตามเดิม
+
+### หมายเหตุ
+
+- ตรวจภาพจริงแล้ว: วงแหวน accent ปรากฏบนชิปสีที่ขาดและ group pill; status bar กลับมาสูงตามเนื้อหา
+- ยังไม่ push/deploy รอบนี้; production ยังเป็น Phase 1; รอคำสั่งก่อน
