@@ -1068,7 +1068,23 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
   Preview chunk แยก `15.87 kB`; ยังมี warning chunk >500 kB ตามเดิม
 - ตรวจภาพด้วย Playwright screenshot ที่ 1280px และ 375px: CTA, สรุป, แถวข้อเสนอ และปุ่มรับแสดงผลถูกต้อง
 
+### Deploy / Production Verification (23/10/2026)
+
+- [x] commit `d873dc9` (`feat: add boss offer review panel`) และ push `origin/main`
+- [x] deploy Vercel production สำเร็จ: deployment `dpl_DRMMbzpggW9AYnQFiAPtLRpoHpDh` (`READY`)
+      — https://im-the-boss-boardgame.vercel.app
+- [x] ตรวจ production bundle `assets/index-Blw_yQhU.js` ว่ามี `offer-review-open`,
+      `offer-review-modal` และข้อความ “ตรวจข้อเสนอ”
+- [x] production smoke test ด้วย Playwright + Chrome 3 browser contexts (ไม่ใช้ emulator):
+      สร้างห้อง → join 3 คน → เริ่มเกม → บอสทอยและเปิดดีล → ผู้เล่น 2 คนยื่นข้อเสนอ
+      → บอสเปิดแผงตรวจข้อเสนอเห็น 2 แถว capacity `0/4`
+      → รับข้อเสนอแรก capacity เปลี่ยนเป็น `1/4`, จ่ายผู้เล่น 2 ล้าน, บอสเหลือ 6 ล้าน
+      → ปิดแผงแล้วคลิก bubble ที่นั่ง แผงเปิดพร้อมไฮไลต์แถวของผู้เล่นคนนั้น — ผ่านทั้งหมด
+- [x] ลบห้อง smoke test (`89728`, `37227`) ออกจาก Realtime Database แล้ว — `/rooms` ไม่มีห้องค้าง
+- หมายเหตุ: รอบแรกของ smoke script ล้มเพราะ selector ไปโดน `offer-investor-grid` แทนปุ่ม
+  (แก้เป็น `button[data-testid^="offer-investor-"]`) — เป็นปัญหาของ script ชั่วคราว ไม่ใช่ตัวแอป
+
 ### หมายเหตุ
 
 - ปุ่มรับในแผงใช้ `min-height: 46px` เพราะ Playwright mobile emulation วัด 44px ได้จริง 43.76px
-- ยังไม่ได้ deploy production สำหรับ Phase 1 นี้; รอ commit/push ก่อน
+- `schemaVersion` ยังเป็น `1`; Phase 1 ไม่แตะ engine หรือรูป state จึงเข้ากันได้กับห้องเดิม
