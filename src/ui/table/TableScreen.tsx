@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { HAND_LIMIT } from '@/engine/config/rules';
 import type { FamilyColor } from '@/engine/config/families';
-import type { PrivateState, PublicOffer, PublicState } from '@/engine/types';
+import type { PrivateState, PublicState } from '@/engine/types';
 import { th } from '@/i18n/th';
 import type { ActionIntent } from '@/net/actions';
 import { sendAction } from '@/net/actions';
@@ -35,6 +35,7 @@ import { HandFan } from './HandFan';
 import { HostRecoveryBar } from './HostRecoveryBar';
 import { InterruptBar } from './InterruptBar';
 import { OfferModal, type OfferInput } from './OfferModal';
+import { OfferReviewModal } from './OfferReviewModal';
 import { InvestorTile } from './TableBits';
 import { MySeat, TableSeat } from './TableSeat';
 import {
@@ -76,6 +77,8 @@ export function TableScreen({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [exclusions, setExclusions] = useState<FamilyColor[]>([]);
   const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [offerReviewOpen, setOfferReviewOpen] = useState(false);
+  const [offerReviewFocusUid, setOfferReviewFocusUid] = useState<string | null>(null);
   const [clanModalOpen, setClanModalOpen] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [moneyDelta, setMoneyDelta] = useState<number | null>(null);
@@ -180,6 +183,25 @@ export function TableScreen({
   }, [publicState.phase, publicState.deal, publicState.window]);
 
   useEffect(() => {
+    if (
+      publicState.phase !== 'dealOpen' ||
+      !publicState.deal ||
+      publicState.deal.locked ||
+      publicState.window ||
+      publicState.bossUid !== uid
+    ) {
+      setOfferReviewOpen(false);
+      setOfferReviewFocusUid(null);
+    }
+  }, [
+    publicState.phase,
+    publicState.deal,
+    publicState.window,
+    publicState.bossUid,
+    uid,
+  ]);
+
+  useEffect(() => {
     if (publicState.phase !== 'dealOpen' || !publicState.deal) {
       setActionModalOpen(false);
     }
@@ -269,6 +291,17 @@ export function TableScreen({
     });
   }
 
+  function handleOpenOfferReview(focusUid: string | null = null): void {
+    if (!canManageOffers) return;
+    setOfferReviewFocusUid(focusUid);
+    setOfferReviewOpen(true);
+  }
+
+  function handleCloseOfferReview(): void {
+    setOfferReviewOpen(false);
+    setOfferReviewFocusUid(null);
+  }
+
   function handlePlaceClan(cardId: string): void {
     void act(`clan:${cardId}`, {
       type: 'BOSS_ADD_CLAN',
@@ -350,27 +383,6 @@ export function TableScreen({
     !deal.locked &&
     !publicState.window,
   );
-  const acceptedTotal =
-    dealParticipation?.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0) ?? 0;
-  const offerActionState =
-    canManageOffers && deal && dealParticipation
-      ? (offer: PublicOffer): { disabled: boolean; title: string } => {
-          const colors = offer.cards.map((card) => card.color);
-          if (colors.some((color) => !requiredColors.has(color))) {
-            return { disabled: true, title: th.game.table.offerNotRequired };
-          }
-          if (colors.some((color) => dealParticipation.bossFree.includes(color))) {
-            return { disabled: true, title: th.game.table.offerColorTaken };
-          }
-          if (colors.some((color) => Boolean(deal.acceptedOffers[color]))) {
-            return { disabled: true, title: th.game.table.offerColorTaken };
-          }
-          if (acceptedTotal + offer.amount > deal.requirements.dividends) {
-            return { disabled: true, title: th.game.table.offerTooLarge };
-          }
-          return { disabled: false, title: th.game.table.acceptOffer };
-        }
-      : undefined;
   const canOffer =
     publicState.phase === 'dealOpen' &&
     Boolean(deal) &&
@@ -491,11 +503,8 @@ export function TableScreen({
         offer={publicState.deal?.offers[entry.uid]}
         acceptedOffers={publicState.deal?.acceptedOffers}
         valuePerDividend={dealValue}
-        canManageOffers={canManageOffers}
-        offersPending={pendingAction !== null}
-        offerActionState={offerActionState}
-        onAcceptOffer={handleAcceptOffer}
-        onUnacceptOffer={handleUnacceptOffer}
+        canOpenOfferReview={canManageOffers}
+        onOpenOfferReview={handleOpenOfferReview}
         variant={variant}
       />
     );
@@ -515,6 +524,7 @@ export function TableScreen({
       onRollDice={handleRollDice}
       onDrawCards={handleDrawCards}
       onLockDeal={handleLockDeal}
+      onOpenOfferReview={() => handleOpenOfferReview(null)}
       onPlaceClan={() => setClanModalOpen(true)}
       canPlaceClan={canPlaceClan}
       diceRolling={
@@ -808,6 +818,23 @@ export function TableScreen({
             onClose={() => setOfferModalOpen(false)}
             onSubmit={handleSubmitOffer}
             onWithdraw={handleWithdrawOffer}
+          />
+        )}
+
+      {offerReviewOpen &&
+        deal &&
+        publicState.phase === 'dealOpen' &&
+        publicState.bossUid === uid &&
+        !deal.locked &&
+        !publicState.window && (
+          <OfferReviewModal
+            players={players}
+            publicState={publicState}
+            pendingAction={pendingAction}
+            focusUid={offerReviewFocusUid}
+            onClose={handleCloseOfferReview}
+            onAcceptOffer={handleAcceptOffer}
+            onUnacceptOffer={handleUnacceptOffer}
           />
         )}
 

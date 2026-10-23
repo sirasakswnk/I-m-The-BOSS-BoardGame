@@ -167,6 +167,18 @@ export interface DealParticipation {
   allColors: Set<FamilyColor>;
 }
 
+/** An offer is accepted only when every one of its families belongs to the boss's deal. */
+export function isOfferAccepted(
+  offer: PublicOffer,
+  uid: string,
+  acceptedOffers: Partial<Record<FamilyColor, string>>,
+): boolean {
+  return (
+    offer.cards.length > 0 &&
+    offer.cards.every((card) => acceptedOffers[card.color] === uid)
+  );
+}
+
 export function getDealParticipation(
   deal: PublicDeal,
   bossUid: string | null,

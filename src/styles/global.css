@@ -1709,6 +1709,38 @@
   font-size: 8.5px;
 }
 
+.table-offer.is-summary {
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease;
+}
+
+.table-offer.is-summary:hover {
+  background: var(--gold);
+}
+
+.table-offer.is-summary:active {
+  transform: translateY(2px);
+}
+
+.table-offer-summary {
+  font-weight: 600;
+}
+
+.table-offer .table-offer-state {
+  color: var(--ink-soft);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table-offer .table-offer-state.is-accepted {
+  color: var(--green);
+}
+
 /* Modal shell -------------------------------------------------------- */
 
 .app-modal-backdrop {
@@ -2281,6 +2313,356 @@
   color: var(--ink);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* Boss offer review ------------------------------------------------ */
+
+.table-review-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  box-shadow: 3px 4px 0 rgba(29, 27, 46, 0.9);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-review-cta:hover {
+  background: var(--gold-deep);
+}
+
+.table-review-cta:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(29, 27, 46, 0.9);
+}
+
+.table-review-cta-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.table-review-cta-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.table-review-cta-copy strong {
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.table-review-cta-copy small {
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.app-modal.offer-review-modal {
+  width: min(820px, 100%);
+}
+
+.table-review-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.table-review-stat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--white);
+}
+
+.table-review-stat.is-capacity {
+  background: var(--gold);
+}
+
+.table-review-stat span {
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.table-review-stat strong {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.table-review-stat em {
+  color: var(--ink-soft);
+  font-size: 9.5px;
+  font-style: normal;
+}
+
+.table-review-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.table-review-groups-label {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.table-review-group-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.table-review-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+}
+
+.table-review-group.is-complete {
+  border-color: var(--green);
+  background: #e2f0df;
+}
+
+.table-review-group.is-missing {
+  background: #fff3cd;
+}
+
+.table-review-group.is-over {
+  border-color: var(--red);
+  background: #f2c9c6;
+}
+
+.table-review-group strong {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.table-review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-review-section-title {
+  margin: 0;
+  padding-bottom: 5px;
+  border-bottom: 2px dashed rgba(29, 27, 46, 0.25);
+  color: var(--ink-soft);
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.table-review-section-title.is-accepted {
+  color: var(--green);
+}
+
+.table-review-none {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.table-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 12px;
+  padding: 10px 12px;
+  border: 2px solid rgba(29, 27, 46, 0.3);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.table-review-row.is-accepted {
+  border-color: var(--green);
+  background: #eef7ec;
+}
+
+.table-review-row.is-focused {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.table-review-row-head {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 7px;
+}
+
+.table-review-seat {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.table-review-name {
+  min-width: 0;
+  overflow: hidden;
+  font-family: 'Kanit', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-review-state {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table-review-state.is-pending {
+  background: var(--gold);
+}
+
+.table-review-state.is-accepted {
+  border-color: var(--green);
+  background: #cfe8cd;
+  color: #1f6b43;
+}
+
+.table-review-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.table-review-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 10px;
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.table-review-numbers span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.table-review-numbers em {
+  font-style: normal;
+}
+
+.table-review-numbers strong {
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.table-review-issues {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.table-review-issues li {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.table-review-issues svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.table-review-action {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 2px 3px 0 rgba(29, 27, 46, 0.9);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.table-review-action:hover:not(:disabled) {
+  background: var(--gold-deep);
+}
+
+.table-review-action:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.table-review-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.table-review-action.is-undo {
+  background: var(--white);
 }
 
 .table-deal-capacity {
@@ -3989,6 +4371,22 @@ button.table-family-chip:hover:not(:disabled) {
     padding: 0 10px;
     font-size: 13px;
   }
+
+  .table-review-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table-review-stat.is-capacity {
+    grid-column: 1 / -1;
+  }
+
+  .table-review-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .table-review-numbers {
+    justify-content: flex-start;
+  }
 }
 
 /* Turn-start dice roll (shared by every player; never blocks input) --- */
@@ -4576,6 +4974,10 @@ button.table-family-chip:hover:not(:disabled) {
 
 .table-seat.is-strip .table-offer {
   min-height: 36px;
+}
+
+.table-seat.is-strip .table-offer.is-summary {
+  min-height: 44px;
 }
 
 @media (min-width: 768px) {

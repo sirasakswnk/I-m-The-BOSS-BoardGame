@@ -1,4 +1,4 @@
-import { Handshake, Loader2 } from 'lucide-react';
+import { ChevronRight, ClipboardCheck, Handshake, Loader2 } from 'lucide-react';
 
 import type { FamilyColor } from '@/engine/config/families';
 import type { PrivateState, PublicState } from '@/engine/types';
@@ -23,6 +23,7 @@ import {
   getRemainingExclusionNeed,
   isDealComplete,
   isExclusionPlanValid,
+  isOfferAccepted,
 } from './tableUtils';
 
 interface DealPanelProps {
@@ -38,6 +39,7 @@ interface DealPanelProps {
   onRollDice: () => void;
   onDrawCards: () => void;
   onLockDeal: () => void;
+  onOpenOfferReview: () => void;
   onPlaceClan: () => void;
   canPlaceClan: boolean;
   /** Hides the rolled face while the shared dice animation is still playing. */
@@ -327,6 +329,7 @@ function OpenDealPanel({
   pendingAction,
   onFailDeal,
   onLockDeal,
+  onOpenOfferReview,
   onPlaceClan,
   canPlaceClan,
 }: Pick<
@@ -337,6 +340,7 @@ function OpenDealPanel({
   | 'pendingAction'
   | 'onFailDeal'
   | 'onLockDeal'
+  | 'onOpenOfferReview'
   | 'onPlaceClan'
   | 'canPlaceClan'
 >) {
@@ -363,7 +367,14 @@ function OpenDealPanel({
   const segments = getDealSegments(deal, participation);
   const acceptedTotal = participation.accepted.reduce((sum, entry) => sum + entry.offer.amount, 0);
   const dealComplete = isDealComplete(deal, participation.allColors);
-  const offerCount = Object.keys(deal.offers).length;
+  const offerEntries = Object.entries(deal.offers).filter(
+    ([, offer]) => offer.cards.length > 0,
+  );
+  const offerCount = offerEntries.length;
+  const acceptedCount = offerEntries.filter(([offerUid, offer]) =>
+    isOfferAccepted(offer, offerUid, deal.acceptedOffers),
+  ).length;
+  const pendingCount = offerCount - acceptedCount;
 
   return (
     <div className="table-deal-body">
@@ -397,8 +408,31 @@ function OpenDealPanel({
 
       <PendingQueue players={players} pendingCards={publicState.pendingCards} />
 
-      {isBoss && offerCount > 0 && !deal.locked && (
-        <p className="table-deal-hint">{th.game.table.offerActionHint}</p>
+      {isBoss && offerCount > 0 && !deal.locked && !publicState.window && (
+        <button
+          type="button"
+          className="table-review-cta"
+          data-testid="offer-review-open"
+          onClick={onOpenOfferReview}
+        >
+          <span className="table-review-cta-icon" aria-hidden="true">
+            <ClipboardCheck size={20} strokeWidth={2.4} />
+          </span>
+          <span className="table-review-cta-copy">
+            <strong>{text(th.game.table.reviewOffers, { count: offerCount })}</strong>
+            <small>
+              {pendingCount > 0
+                ? text(th.game.table.reviewOffersHint, {
+                    pending: pendingCount,
+                    accepted: acceptedCount,
+                  })
+                : text(th.game.table.reviewOffersAllAccepted, {
+                    accepted: acceptedCount,
+                  })}
+            </small>
+          </span>
+          <ChevronRight size={19} strokeWidth={2.8} aria-hidden="true" />
+        </button>
       )}
 
       <div className="table-deal-req-list">
@@ -590,6 +624,7 @@ export function DealPanel({
   onRollDice,
   onDrawCards,
   onLockDeal,
+  onOpenOfferReview,
   onPlaceClan,
   canPlaceClan,
   diceRolling,
@@ -622,6 +657,7 @@ export function DealPanel({
           pendingAction={pendingAction}
           onFailDeal={onFailDeal}
           onLockDeal={onLockDeal}
+          onOpenOfferReview={onOpenOfferReview}
           onPlaceClan={onPlaceClan}
           canPlaceClan={canPlaceClan}
         />

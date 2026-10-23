@@ -1,4 +1,4 @@
-import { Check, Crown, KeyRound, Lock, Undo2 } from 'lucide-react';
+import { Check, Crown, KeyRound, Lock } from 'lucide-react';
 
 import { FAMILY_ORDER, type FamilyColor } from '@/engine/config/families';
 import type { PublicOffer } from '@/engine/types';
@@ -7,6 +7,7 @@ import { FAMILY_BY_ID } from '@/ui/common/families';
 import { FamilySymbol } from '@/ui/common/FamilySymbol';
 
 import { CardBacks, InvestorTile } from './TableBits';
+import { isOfferAccepted } from './tableUtils';
 
 interface TableSeatProps {
   uid: string;
@@ -22,11 +23,9 @@ interface TableSeatProps {
   offer?: PublicOffer;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   valuePerDividend?: number;
-  canManageOffers?: boolean;
-  offersPending?: boolean;
-  offerActionState?: (offer: PublicOffer) => { disabled: boolean; title: string };
-  onAcceptOffer?: (uid: string) => void;
-  onUnacceptOffer?: (uid: string) => void;
+  /** The boss can open the central review panel from an offer summary. */
+  canOpenOfferReview?: boolean;
+  onOpenOfferReview?: (uid: string) => void;
   /** `strip` is the compact card in the phone/tablet player strip. */
   variant: 'top' | 'side' | 'strip';
   /** Drawn cards are landing on this seat. */
@@ -60,22 +59,16 @@ function OfferBubble({
   uid,
   name,
   valuePerDividend,
-  canManageOffers = false,
-  offersPending = false,
-  offerActionState,
-  onAcceptOffer,
-  onUnacceptOffer,
+  canOpenReview = false,
+  onOpenReview,
 }: {
   offer?: PublicOffer;
   acceptedOffers?: Partial<Record<FamilyColor, string>>;
   uid: string;
   name: string;
   valuePerDividend?: number;
-  canManageOffers?: boolean;
-  offersPending?: boolean;
-  offerActionState?: (offer: PublicOffer) => { disabled: boolean; title: string };
-  onAcceptOffer?: (uid: string) => void;
-  onUnacceptOffer?: (uid: string) => void;
+  canOpenReview?: boolean;
+  onOpenReview?: (uid: string) => void;
 }) {
   if (!offer || offer.cards.length === 0) return null;
 
@@ -83,9 +76,9 @@ function OfferBubble({
     (left, right) => FAMILY_ORDER.indexOf(left.color) - FAMILY_ORDER.indexOf(right.color),
   );
   const colors = cards.map((card) => card.color);
-  const accepted =
-    cards.length > 0 && cards.every((card) => acceptedOffers?.[card.color] === uid);
-  const hasHand = cards.some((card) => card.source === 'hand');
+  const accepted = acceptedOffers
+    ? isOfferAccepted(offer, uid, acceptedOffers)
+    : false;
   const value =
     valuePerDividend !== undefined
       ? th.game.table.offerValue.replace(
@@ -93,8 +86,18 @@ function OfferBubble({
           String(offer.amount * valuePerDividend),
         )
       : null;
-  const actionState = canManageOffers && !accepted ? offerActionState?.(offer) : undefined;
-  const colorNames = colors.map((color) => th.families[color]).join(', ');
+  const names = colors.map((color) => th.families[color]).join(', ');
+  const label = accepted
+    ? format(th.game.table.openAcceptedOfferAria, { colors: names, name })
+    : format(th.game.table.openOfferReviewAria, {
+        colors: names,
+        name,
+        amount: offer.amount,
+      });
+  const summary = format(th.game.table.offerBubbleSummary, {
+    colors: colors.length,
+    amount: offer.amount,
+  });
   const content = (
     <>
       <span className="table-offer-colors" aria-hidden="true">
@@ -107,50 +110,25 @@ function OfferBubble({
           />
         ))}
       </span>
-      <span>{th.game.table.offerBubble.replace('{amount}', String(offer.amount))}</span>
-      {hasHand && <em>{th.game.table.fromHand}</em>}
+      <span className="table-offer-summary">{summary}</span>
       {value && <small>{value}</small>}
-      {accepted && !canManageOffers && (
-        <Check size={12} strokeWidth={3} aria-hidden="true" />
-      )}
-      {canManageOffers &&
-        (accepted ? (
-          <Undo2 size={12} strokeWidth={3} aria-hidden="true" />
-        ) : (
-          <Check size={12} strokeWidth={3} aria-hidden="true" />
-        ))}
+      <em className={`table-offer-state ${accepted ? 'is-accepted' : 'is-pending'}`}>
+        {accepted ? th.game.table.offerAcceptedStatus : th.game.table.offerPending}
+      </em>
+      {accepted && <Check size={12} strokeWidth={3} aria-hidden="true" />}
     </>
   );
 
-  if (
-    canManageOffers &&
-    (accepted ? Boolean(onUnacceptOffer) : Boolean(onAcceptOffer))
-  ) {
+  if (canOpenReview && onOpenReview) {
     return (
       <button
         type="button"
-        className={`table-offer is-action ${accepted ? 'is-accepted' : ''}`}
-        data-testid={accepted ? `unaccept-offer-${uid}` : `accept-offer-${uid}`}
+        className={`table-offer is-summary ${accepted ? 'is-accepted' : ''}`}
+        data-testid={`offer-seat-${uid}`}
         data-offer-uid={uid}
-        disabled={offersPending || (!accepted && Boolean(actionState?.disabled))}
-        title={
-          accepted
-            ? th.game.table.unacceptOffer
-            : (actionState?.title ?? th.game.table.acceptOffer)
-        }
-        aria-label={
-          accepted
-            ? format(th.game.table.unacceptOfferAria, { colors: colorNames, name })
-            : format(th.game.table.acceptOfferAria, {
-                colors: colorNames,
-                name,
-                amount: offer.amount,
-              })
-        }
-        onClick={() => {
-          if (accepted) onUnacceptOffer?.(uid);
-          else onAcceptOffer?.(uid);
-        }}
+        title={label}
+        aria-label={label}
+        onClick={() => onOpenReview(uid)}
       >
         {content}
       </button>
@@ -174,11 +152,8 @@ export function TableSeat({
   offer,
   acceptedOffers,
   valuePerDividend,
-  canManageOffers,
-  offersPending,
-  offerActionState,
-  onAcceptOffer,
-  onUnacceptOffer,
+  canOpenOfferReview,
+  onOpenOfferReview,
   variant,
   receiving = false,
 }: TableSeatProps) {
@@ -234,11 +209,8 @@ export function TableSeat({
           uid={uid}
           name={name}
           valuePerDividend={valuePerDividend}
-          canManageOffers={canManageOffers}
-          offersPending={offersPending}
-          offerActionState={offerActionState}
-          onAcceptOffer={onAcceptOffer}
-          onUnacceptOffer={onUnacceptOffer}
+          canOpenReview={canOpenOfferReview}
+          onOpenReview={onOpenOfferReview}
         />
       </div>
     </div>

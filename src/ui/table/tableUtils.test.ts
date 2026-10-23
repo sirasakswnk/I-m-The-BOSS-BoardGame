@@ -19,6 +19,7 @@ import {
   getSpacePosition,
   isDealComplete,
   isExclusionPlanValid,
+  isOfferAccepted,
 } from './tableUtils';
 
 function player(seat: number, name = `P${seat + 1}`) {
@@ -199,6 +200,24 @@ describe('deal participation and dividends', () => {
     expect(segments).toHaveLength(3);
     expect(segments[0]).toMatchObject({ kind: 'accepted', colors: ['red'], uid: 'p4' });
     expect(segments.filter((segment) => segment.kind === 'boss')).toHaveLength(1);
+  });
+
+  it('treats a grouped offer as accepted only when every card is accepted', () => {
+    const offer = {
+      cards: [
+        { color: 'red' as const, source: 'table' as const },
+        { color: 'black' as const, source: 'hand' as const },
+      ],
+      amount: 1,
+      submittedAt: 6,
+    };
+
+    expect(isOfferAccepted(offer, 'p3', { red: 'p3', black: 'p3' })).toBe(true);
+    expect(isOfferAccepted(offer, 'p3', { red: 'p3' })).toBe(false);
+    expect(isOfferAccepted(offer, 'p3', { red: 'p4', black: 'p3' })).toBe(false);
+    expect(
+      isOfferAccepted({ ...offer, cards: [] }, 'p3', { red: 'p3', black: 'p3' }),
+    ).toBe(false);
   });
 
   it('checks each requirement group and the total investor count', () => {

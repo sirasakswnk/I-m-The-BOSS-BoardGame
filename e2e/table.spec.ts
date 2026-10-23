@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 import { getDealSpace } from '../src/engine/config/dealBoard';
 import { getDealTile } from '../src/engine/config/dealTiles';
@@ -144,12 +144,31 @@ async function myUid(page: Page): Promise<string> {
   return testId?.replace('game-player-', '') ?? '';
 }
 
+async function openOfferReview(page: Page): Promise<Locator> {
+  const modal = page.getByTestId('offer-review-modal');
+  if ((await modal.count()) === 0) {
+    const open = page.getByTestId('offer-review-open');
+    await expect(open).toBeVisible({ timeout: 20_000 });
+    await open.click();
+  }
+  await expect(modal).toBeVisible({ timeout: 20_000 });
+  return modal;
+}
+
+async function closeOfferReview(page: Page): Promise<void> {
+  const modal = page.getByTestId('offer-review-modal');
+  if ((await modal.count()) === 0) return;
+  await modal.getByRole('button', { name: 'ปิด' }).click();
+  await expect(modal).toHaveCount(0);
+}
+
 async function acceptOffer(page: Page, targetUid: string): Promise<void> {
-  const accept = page.getByTestId(`accept-offer-${targetUid}`);
+  const review = await openOfferReview(page);
+  const accept = review.getByTestId(`accept-offer-${targetUid}`);
   await expect(accept).toBeVisible({ timeout: 20_000 });
   await expect(accept).toBeEnabled();
   await accept.click();
-  await expect(page.getByTestId(`unaccept-offer-${targetUid}`)).toBeVisible({
+  await expect(review.getByTestId(`unaccept-offer-${targetUid}`)).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -345,18 +364,61 @@ test('three players close the first deal with table offers', async ({ browser })
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
       `รับแล้ว 0/${requirements.dividends} ส่วน`,
     );
+
+    // Every offer is reviewed in one boss panel, opened from the deal CTA.
+    const review = await openOfferReview(boss);
+    await expect(review.getByTestId('offer-review-capacity')).toHaveText(
+      `0/${requirements.dividends}`,
+    );
+    for (const entry of offeredByPage.values()) {
+      const row = review.getByTestId(`offer-review-row-${entry.uid}`);
+      await expect(row).toBeVisible();
+      await expect(row).toHaveAttribute('data-accepted', 'false');
+    }
+
+    // On a phone the panel is the same full-width bottom sheet as other modals.
+    const viewport = boss.viewportSize();
+    if (viewport && viewport.width <= 640) {
+      await expect(review).toBeInViewport();
+      await expect(review).toHaveCSS('border-top-left-radius', '18px');
+      await expect(review).toHaveCSS('border-bottom-left-radius', '0px');
+      const firstOffer = [...offeredByPage.values()][0]!;
+      const actionBox = await review
+        .getByTestId(`accept-offer-${firstOffer.uid}`)
+        .boundingBox();
+      expect(actionBox).not.toBeNull();
+      expect(actionBox!.height).toBeGreaterThanOrEqual(44);
+      const widths = await boss.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      expect(widths.scroll).toBeLessThanOrEqual(widths.client);
+    }
+
     for (const entry of offeredByPage.values()) {
       await acceptOffer(boss, entry.uid);
     }
     await expect(boss.getByTestId('deal-capacity')).toHaveText(
       `รับแล้ว ${acceptedOffers}/${requirements.dividends} ส่วน`,
     );
+    await expect(review.getByTestId('offer-review-capacity')).toHaveText(
+      `${acceptedOffers}/${requirements.dividends}`,
+    );
 
     if (acceptedOffers > 0) {
       const first = [...offeredByPage.values()][0]!;
+
+      // A seat summary opens the same panel focused on that player's offer.
+      await closeOfferReview(boss);
+      await boss.getByTestId(`offer-seat-${first.uid}`).click();
+      await expect(review).toBeVisible({ timeout: 20_000 });
+      await expect(review.getByTestId(`offer-review-row-${first.uid}`)).toHaveClass(
+        /is-focused/,
+      );
+
       // Editing an accepted offer revokes the whole acceptance automatically.
       await resubmitOffer(first.page);
-      await expect(boss.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
+      await expect(review.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
         timeout: 20_000,
       });
       await expect(boss.getByTestId('deal-capacity')).toHaveText(
@@ -365,8 +427,8 @@ test('three players close the first deal with table offers', async ({ browser })
       await acceptOffer(boss, first.uid);
 
       // The boss can also revoke an acceptance explicitly, one offer at a time.
-      await boss.getByTestId(`unaccept-offer-${first.uid}`).click();
-      await expect(boss.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
+      await review.getByTestId(`unaccept-offer-${first.uid}`).click();
+      await expect(review.getByTestId(`accept-offer-${first.uid}`)).toBeVisible({
         timeout: 20_000,
       });
       await expect(boss.getByTestId('deal-capacity')).toHaveText(
@@ -375,6 +437,7 @@ test('three players close the first deal with table offers', async ({ browser })
       await acceptOffer(boss, first.uid);
     }
 
+    await closeOfferReview(boss);
     const lock = boss.getByTestId('lock-deal');
     await expect(lock).toBeEnabled();
     await lock.click();

@@ -1013,3 +1013,62 @@ Milestone ถัดไปคือ **M6 — Action Cards & Interrupt Window** �
 - ทุก path ใหม่ต้องแก้ `accepted` ผ่าน helper (`clearOfferAcceptance`, `getAcceptedOffers`) เท่านั้น ห้ามรับ/ถอนบางสีของข้อเสนอ
 - Action payload ในอนาคตต้องละเว้น optional field แทนการส่ง `undefined`; ควรเพิ่ม guard/test ฝั่ง network serializer
 - `npm run test:e2e` ต้องรัน Firebase Emulator (auth/database) และ Vite พร้อมก่อน; Playwright จะ reuse Vite ที่มีอยู่
+
+---
+
+## Post-M9 — Phase 1: ศูนย์ตรวจข้อเสนอของบอส (23/10/2026)
+
+### สรุปการออกแบบ
+
+- เปลี่ยนการรับ/ยกเลิกข้อเสนอจาก bubble เล็กบนที่นั่ง มาเป็น **modal ศูนย์ตรวจข้อเสนอ** ของบอสเพียงจุดเดียว
+  (desktop เป็น modal กลางจอ, มือถือเป็น bottom sheet เดิมของ `Modal`)
+- ปุ่ม CTA `ตรวจข้อเสนอ (n)` บนแผงดีลของบอส แสดงจำนวนรอตัดสิน/รับแล้ว และเปิดแผงได้ตลอดช่วง `dealOpen`
+  ที่ยังไม่ล็อก/ไม่เปิดช่วงป่วนดีล
+- bubble บนที่นั่งเหลือเป็น **สรุปอย่างเดียว** (จำนวนสี · จำนวนส่วน + สถานะรอตรวจ/รับแล้ว) และคลิกได้เฉพาะบอส
+  เพื่อเปิดแผงเดียวกันพร้อมไฮไลต์แถวของผู้เล่นคนนั้น
+- ในแผงสรุปส่วนที่รับแล้ว/จำนวนส่วนทั้งหมด, เงินที่จ่ายผู้เล่น (ครั้งเดียวต่อข้อเสนอ), เงินที่บอสเหลือ,
+  ความคืบหน้ากลุ่มเงื่อนไข และแยกส่วน “รอตัดสิน” กับ “รับแล้ว” เรียงตามที่นั่ง
+- แต่ละแถวแสดงที่นั่ง/ชื่อ, ชิปสีพร้อมแหล่งที่มา (บนโต๊ะ/จากมือ), จำนวนส่วนที่ขอ, เงินที่ผู้เล่นจะได้,
+  สถานะ และเหตุผลที่รับไม่ได้แบบมีโครงสร้าง (สีไม่อยู่ในเงื่อนไข, บอสใช้สีอยู่, ซ้ำกับข้อเสนอที่รับแล้ว,
+  เกินส่วนแบ่งดีล) — ปุ่มรับจะถูกปิดพร้อม title/aria ตามเหตุผลแรก
+- คง semantics เดิมทุกข้อ: หนึ่งข้อเสนอต่อผู้เล่น, รับ/ยกเลิก **ทั้งข้อเสนอ**, ไม่มี “รับทั้งหมด”;
+  ใช้คำว่า “ข้อเสนอ” เท่านั้น
+- แผงปิดอัตโนมัติเมื่อล็อกดีล, เปิดช่วงป่วนดีล, เปลี่ยน phase หรือเปลี่ยนบอส; ไม่มีการแก้ engine
+
+### ไฟล์ที่เปลี่ยน
+
+- ใหม่: `src/ui/table/OfferReviewModal.tsx`
+- UI: `src/ui/table/TableScreen.tsx`, `DealPanel.tsx`, `TableSeat.tsx`, `tableUtils.ts`
+- ข้อความ/CSS: `src/i18n/th.ts`, `src/styles/global.css`
+- Tests: `src/ui/table/tableUtils.test.ts` (helper `isOfferAccepted`), `e2e/table.spec.ts`
+- เอกสาร: `plan.md` (หัวข้อ 9.1/9.2)
+
+### Test IDs ใหม่
+
+- `offer-review-open` — CTA บนแผงดีลของบอส
+- `offer-review-modal` — ตัว modal
+- `offer-review-capacity`, `offer-review-payout`, `offer-review-boss-left` — สรุปตัวเลข
+- `offer-review-row-<uid>` — แถวข้อเสนอ (`data-accepted="true|false"`, `.is-focused` เมื่อเปิดจากที่นั่ง)
+- `offer-seat-<uid>` — bubble สรุปบนที่นั่ง
+- คง `accept-offer-<uid>` / `unaccept-offer-<uid>` เดิม แต่ย้ายไปอยู่ในแผงตรวจข้อเสนอ
+
+### Gate ผลจริง (23/10/2026)
+
+- `typecheck` ✅
+- `lint` ✅
+- unit **178/178** (22 ไฟล์) ✅
+- rules **16/16** ✅
+- e2e **35/35** ทั้ง desktop และ mobile (2.8 นาที) ✅
+  - เปิดแผงจาก CTA, เห็นทุกแถวและ capacity เริ่มต้น `0/n`
+  - รับทุกข้อเสนอในแผง แล้ว capacity อัปเดตทั้งแผงและแผงดีล
+  - ปิดแผง → คลิก bubble ที่นั่ง → แผงเปิดพร้อมไฮไลต์แถวผู้เล่นคนนั้น
+  - resubmit ข้อเสนอที่รับแล้ว → การรับถูกยกเลิกทั้งข้อเสนอ; unaccept/reaccept ในแผงได้
+  - มือถือ: แผงเป็น bottom sheet เต็มความกว้าง, ปุ่มรับสูง ≥44px, ไม่มี horizontal scroll
+- `build` ✅ — JS `797.06 kB` (gzip `236.28 kB`), CSS `113.94 kB` (gzip `20.94 kB`),
+  Preview chunk แยก `15.87 kB`; ยังมี warning chunk >500 kB ตามเดิม
+- ตรวจภาพด้วย Playwright screenshot ที่ 1280px และ 375px: CTA, สรุป, แถวข้อเสนอ และปุ่มรับแสดงผลถูกต้อง
+
+### หมายเหตุ
+
+- ปุ่มรับในแผงใช้ `min-height: 46px` เพราะ Playwright mobile emulation วัด 44px ได้จริง 43.76px
+- ยังไม่ได้ deploy production สำหรับ Phase 1 นี้; รอ commit/push ก่อน
